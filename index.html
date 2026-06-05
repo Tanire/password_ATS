@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ATS Gestión V4.0 - JMSystems</title>
+    <title>SEC ATS</title>
     <!-- Web App Manifest & iOS support -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2913/2913990.png">
+    <link rel="apple-touch-icon" href="logo.png">
     <link rel="manifest" href="manifest.json">
     
     <!-- Boxicons for modern premium icons -->
@@ -25,14 +25,18 @@
             <div id="loading-text" style="font-size: 0.9rem; color: var(--text-secondary);">Cargando...</div>
         </div>
 
-        <!-- 1. LOGIN SCREEN (MASTER KEY ENTRY) -->
+        <!-- 1. LOGIN SCREEN (CREDENTIALS ENTRY) -->
         <div id="screen-login" class="screen active">
             <div class="login-box anim-fade">
-                <div class="login-icon">
-                    <i class="bx bxs-shield-lock"></i>
+                <div class="login-logo-container" style="text-align: center; margin-bottom: 20px;">
+                    <img src="logo.png" alt="SEC ATS Logo" style="max-width: 180px; height: auto;">
                 </div>
                 <h2>Bóveda Segura</h2>
-                <p>Introduce tu Clave Maestra para descifrar la base de datos de JMSystems.</p>
+                <p id="login-box-subtitle">Introduce tu Clave Maestra para descifrar la base de datos de JMSystems.</p>
+                
+                <div class="form-group" id="login-username-group" style="display: none;">
+                    <input type="text" id="login-username" class="input-control" placeholder="Usuario">
+                </div>
                 <div class="form-group">
                     <input type="password" id="login-password" class="input-control" placeholder="Clave Maestra" required>
                 </div>
@@ -48,8 +52,8 @@
             <!-- App Header -->
             <header>
                 <div class="header-logo">
-                    <i class="bx bx-shield-quarter" style="font-size: 1.5rem; color: var(--accent);"></i>
-                    <h1 id="lbl-company-name">ATS Gestión V4.0</h1>
+                    <img src="logo.png" alt="Logo" style="height: 24px; width: auto; object-fit: contain;">
+                    <h1 id="lbl-company-name">SEC ATS</h1>
                 </div>
                 <div class="sync-badge" id="btn-sync-trigger" title="Forzar Sincronización">
                     <span class="sync-dot synced" id="sync-status-dot"></span>
@@ -79,7 +83,7 @@
                             <span class="card-icon" style="color: #f59e0b;">📚</span>
                             <span class="card-title">Manuales</span>
                         </div>
-                        <div class="menu-card" id="menu-expenses">
+                        <div class="menu-card" id="menu-expenses" style="display: none;">
                             <span class="card-icon" style="color: #ef4444;">💰</span>
                             <span class="card-title">Gastos</span>
                         </div>
@@ -185,7 +189,10 @@
                         </div>
                         <div class="form-group">
                             <label>Dirección</label>
-                            <input type="text" id="sub-address" class="input-control" placeholder="Calle, Número, Localidad">
+                            <div class="input-with-action">
+                                <input type="text" id="sub-address" class="input-control" placeholder="Calle, Número, Localidad">
+                                <button type="button" class="btn-icon" id="btn-get-sub-location" title="Obtener Ubicación Actual"><i class="bx bx-map-pin"></i></button>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Usuario Técnico</label>
@@ -338,8 +345,8 @@
                             <i class="bx bx-cog"></i>
                         </div>
                         <div>
-                            <div style="font-weight: 600; font-size: 1rem;">Administrador</div>
-                            <div style="font-size: 0.8rem; color: var(--text-secondary);">JMSystems - Tanire</div>
+                            <div style="font-weight: 600; font-size: 1rem;" id="set-current-username">Administrador</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);" id="set-current-user-role">JMSystems - Tanire</div>
                         </div>
                     </div>
 
@@ -363,6 +370,17 @@
                             <i class="bx bx-save"></i> GUARDAR AJUSTES
                         </button>
                         
+                        <!-- Admin User Management Panel (hidden by default) -->
+                        <div id="admin-user-panel" style="display: none; margin-top: 25px; padding-top: 25px; border-top: 1px solid var(--border-glass);" class="anim-fade">
+                            <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Administración de Usuarios</h3>
+                            <div class="users-list-container" id="admin-users-list" style="margin-bottom: 15px; display: flex; flex-direction: column; gap: 8px;">
+                                <!-- Populated dynamically -->
+                            </div>
+                            <button id="btn-add-user" type="button" class="btn-premium btn-secondary" style="margin-bottom: 20px;">
+                                <i class="bx bx-user-plus"></i> NUEVO USUARIO
+                            </button>
+                        </div>
+                        
                         <button id="btn-logout" class="btn-premium btn-secondary" style="margin-top: 12px; margin-bottom: 20px;">
                             <i class="bx bx-lock-alt"></i> CERRAR BÓVEDA
                         </button>
@@ -385,7 +403,7 @@
                     <i class="bx bx-bell"></i>
                     <span>Abonados</span>
                 </div>
-                <div class="nav-item" data-screen="expenses">
+                <div class="nav-item" data-screen="expenses" style="display: none;">
                     <i class="bx bx-wallet"></i>
                     <span>Gastos</span>
                 </div>
@@ -395,6 +413,50 @@
                 </div>
             </nav>
 
+        </div>
+        
+        <!-- L. EDIT USER FORM -->
+        <div id="screen-form-user" class="screen">
+            <div class="list-header">
+                <h2 id="user-form-title">Nuevo Usuario</h2>
+                <button class="btn-icon" id="btn-back-settings"><i class="bx bx-arrow-back"></i></button>
+            </div>
+            <form id="form-user" class="anim-fade" style="padding-bottom: 80px;">
+                <input type="hidden" id="user-edit-id">
+                <div class="form-group">
+                    <label>Nombre de Usuario</label>
+                    <input type="text" id="user-name-input" class="input-control" placeholder="Ej. tecnico1" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label>Contraseña</label>
+                    <input type="password" id="user-pass-input" class="input-control" placeholder="Contraseña de acceso" required autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label>Rol</label>
+                    <select id="user-role-select" class="input-control">
+                        <option value="viewer">Solo Ver (Lector)</option>
+                        <option value="editor">Editar (Editor)</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Secciones Permitidas</label>
+                    <div style="display: flex; flex-direction: column; gap: 10px; padding: 12px; background: var(--bg-secondary); border-radius: var(--radius-md); border: 1px solid var(--border-glass);">
+                        <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 0; cursor: pointer; color: var(--text-primary); font-weight: normal;">
+                            <input type="checkbox" id="user-scope-passwords" checked style="width: 18px; height: 18px; accent-color: var(--accent);"> Contraseñas (Webs)
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 0; cursor: pointer; color: var(--text-primary); font-weight: normal;">
+                            <input type="checkbox" id="user-scope-subscribers" checked style="width: 18px; height: 18px; accent-color: var(--accent);"> Abonados
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 0; cursor: pointer; color: var(--text-primary); font-weight: normal;">
+                            <input type="checkbox" id="user-scope-manuals" checked style="width: 18px; height: 18px; accent-color: var(--accent);"> Manuales
+                        </label>
+                    </div>
+                </div>
+                <button type="submit" class="btn-premium" style="margin-top: 10px;">
+                    <i class="bx bx-save"></i> GUARDAR USUARIO
+                </button>
+            </form>
         </div>
 
         <!-- Sync Toast Alert -->

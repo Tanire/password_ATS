@@ -6,20 +6,23 @@
 // App State
 const state = {
     vault: {
-        version: "4.0",
-        company_name: "JMSystems",
+        version: "4.01",
+        company_name: "SEC ATS",
         theme: "default",
         entries: [],       // General passwords
         subscribers: [],   // Alarm/Recorder subscriber accounts
         manuals: [],       // Technical manual notes
-        expenses: []       // Expense logs
+        expenses: [],      // Expense logs
+        users: []          // User list
     },
     masterPassword: "",
     gitClient: null,
     gitSha: null,
     isSynced: true,      // true: Synced, false: Unsaved changes, 'offline': Offline mode
     currentScreen: "dashboard",
-    activeCategory: "General" // For manuals brand selection
+    activeCategory: "General", // For manuals brand selection
+    usersMetadata: {},   // Wrapped keys metadata
+    currentUser: null    // Current active user
 };
 
 // LocalStorage Keys
@@ -88,6 +91,7 @@ const els = {
 document.addEventListener("DOMContentLoaded", () => {
     loadSettingsFromStorage();
     setupEventListeners();
+    checkVaultUsersOnLoad();
 });
 
 // Load settings into UI fields
@@ -144,6 +148,7 @@ function setupEventListeners() {
 
     // GPS Location Fetch
     document.getElementById("btn-get-location").addEventListener("click", getGeoLocation);
+    document.getElementById("btn-get-sub-location").addEventListener("click", getSubGeoLocation);
 
     // Generate Passwords triggers
     document.getElementById("btn-gen-pass").addEventListener("click", () => {
@@ -168,11 +173,13 @@ function setupEventListeners() {
     els.formPassword.addEventListener("submit", savePasswordEntry);
     els.formSubscriber.addEventListener("submit", saveSubscriberEntry);
     els.formExpense.addEventListener("submit", saveExpenseEntry);
+    document.getElementById("form-user").addEventListener("submit", saveUserAction);
 
     // New item buttons
     document.getElementById("btn-new-password").addEventListener("click", () => openPasswordForm(null));
     document.getElementById("btn-new-subscriber").addEventListener("click", () => openSubscriberForm(null));
     document.getElementById("btn-new-expense").addEventListener("click", () => openExpenseForm());
+    document.getElementById("btn-add-user").addEventListener("click", () => openUserForm(null));
 
     // Back buttons
     document.getElementById("btn-back-passwords").addEventListener("click", () => switchScreen("passwords"));
@@ -180,6 +187,7 @@ function setupEventListeners() {
     document.getElementById("btn-back-manuals-brands").addEventListener("click", () => switchScreen("manuals"));
     document.getElementById("btn-back-manuals-list").addEventListener("click", () => switchScreen("manuals-list"));
     document.getElementById("btn-back-expenses").addEventListener("click", () => switchScreen("expenses"));
+    document.getElementById("btn-back-settings").addEventListener("click", () => switchScreen("settings"));
 
     // Settings save
     els.btnSaveSettings.addEventListener("click", saveSettingsAction);
@@ -190,6 +198,16 @@ function setupEventListeners() {
 
 // Switch UI active view
 function switchScreen(screenId) {
+    // Check privileges for non-admin users
+    if (state.currentUser && state.currentUser.role !== "admin") {
+        const scopes = state.currentUser.scope || [];
+        if (screenId === "passwords" && !scopes.includes("passwords")) return;
+        if (screenId === "subscribers" && !scopes.includes("subscribers")) return;
+        if (screenId === "manuals" && !scopes.includes("manuals")) return;
+        if (screenId === "manuals-list" && !scopes.includes("manuals")) return;
+        if (screenId === "manual-view" && !scopes.includes("manuals")) return;
+    }
+
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
     
     // Show destination screen
@@ -214,14 +232,16 @@ function switchScreen(screenId) {
 
 // Derive keys and pull vault from GitHub or local cache
 async function handleUnlock() {
+    const usernameInput = document.getElementById("login-username");
+    const username = usernameInput ? usernameInput.value.trim().toLowerCase() : "";
     const password = els.loginPass.value.trim();
+    
     if (!password) {
-        showToast("Escribe tu clave maestra");
+        showToast("Escribe tu contraseña");
         return;
     }
 
     showLoading(true, "Descifrando bóveda...");
-    state.masterPassword = password;
 
     const gitUser = GIT_CONFIG.user;
     const gitRepo = GIT_CONFIG.repo;
@@ -271,18 +291,80 @@ async function handleUnlock() {
         setSyncStatus("offline");
     }
 
-    // 2. Decrypt data using the master password
+    // 2. Decrypt data using the user password (wrapped key) or direct master key
     try {
         showLoading(true, "Descifrando datos...");
         const encryptedPayload = JSON.parse(encryptedPayloadStr);
+        state.usersMetadata = encryptedPayload.users || {};
+        
+        let vaultKey = password;
+        const userCount = Object.keys(state.usersMetadata).length;
+        
+        if (userCount > 0) {
+            const targetUser = username || "admin";
+            const wrappedKeyData = state.usersMetadata[targetUser];
+            
+            if (!wrappedKeyData) {
+                showLoading(false);
+                showToast(`Usuario "${targetUser}" no encontrado.`);
+                return;
+            }
+            
+            // Decrypt the wrapped key using the entered user password
+            try {
+                vaultKey = await decryptData(
+                    wrappedKeyData.ciphertext,
+                    password,
+                    wrappedKeyData.salt,
+                    wrappedKeyData.iv
+                );
+            } catch (err) {
+                console.error("Wrapped key decryption failed:", err);
+                showLoading(false);
+                showToast("Contraseña incorrecta");
+                return;
+            }
+        }
+        
+        // Decrypt main vault using vaultKey (master key)
         const decryptedData = await decryptData(
             encryptedPayload.ciphertext,
-            password,
+            vaultKey,
             encryptedPayload.salt,
             encryptedPayload.iv
         );
 
+        state.masterPassword = vaultKey;
         state.vault = JSON.parse(decryptedData);
+        
+        if (!state.vault.users) {
+            state.vault.users = [];
+        }
+        
+        // Automatic default admin user initialization on first unlock
+        if (userCount === 0) {
+            state.vault.users = [
+                { username: "admin", role: "admin", scope: ["passwords", "subscribers", "manuals"] }
+            ];
+            const adminWrapped = await encryptData(vaultKey, vaultKey);
+            state.usersMetadata["admin"] = adminWrapped;
+            state.vault.version = "4.01";
+            state.vault.company_name = "SEC ATS";
+        }
+        
+        const loggedInUsername = (username || "admin").toLowerCase();
+        let activeUser = state.vault.users.find(u => u.username.toLowerCase() === loggedInUsername);
+        
+        if (!activeUser) {
+            activeUser = {
+                username: loggedInUsername,
+                role: loggedInUsername === "admin" ? "admin" : "viewer",
+                scope: loggedInUsername === "admin" ? ["passwords", "subscribers", "manuals"] : []
+            };
+        }
+        
+        state.currentUser = activeUser;
+        applyUserPrivileges(activeUser);
         
         // Apply configs
         if (state.vault.theme) {
@@ -292,6 +374,9 @@ async function handleUnlock() {
         if (state.vault.company_name) {
             els.lblCompanyName.textContent = state.vault.company_name;
             els.setCompanyName.value = state.vault.company_name;
+        } else {
+            els.lblCompanyName.textContent = "SEC ATS";
+            els.setCompanyName.value = "SEC ATS";
         }
 
         els.screenLogin.style.display = "none";
@@ -300,7 +385,7 @@ async function handleUnlock() {
         showToast(isOffline ? "Bóveda abierta fuera de línea" : "Bóveda abierta correctamente");
     } catch (e) {
         console.error("Decryption failed:", e);
-        showToast("Clave maestra incorrecta");
+        showToast("Clave maestra o contraseña incorrecta");
     } finally {
         showLoading(false);
     }
@@ -326,6 +411,10 @@ async function syncWithCloud() {
         // 1. Encrypt current state vault
         const plaintext = JSON.stringify(state.vault);
         const encryptedPayload = await encryptData(plaintext, state.masterPassword);
+        
+        // Include public user metadata
+        encryptedPayload.users = state.usersMetadata || {};
+        
         const encryptedStr = JSON.stringify(encryptedPayload);
 
         // Save local cache first
@@ -369,9 +458,21 @@ async function syncWithCloud() {
 // Lock application and wipe password from memory
 function lockVault() {
     state.masterPassword = "";
-    state.vault = { version: "4.0", company_name: "JMSystems", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [] };
+    state.vault = { version: "4.01", company_name: "SEC ATS", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [] };
     state.gitSha = null;
+    state.currentUser = null;
+    
+    // Clear inputs
+    const usernameInput = document.getElementById("login-username");
+    if (usernameInput) usernameInput.value = "";
     els.loginPass.value = "";
+    
+    // Hide dynamic UI elements that depend on user role
+    document.getElementById("app-container").removeAttribute("data-role");
+    
+    // Reset login fields based on cache
+    adaptLoginFields();
+    
     els.appBody.style.display = "none";
     els.screenLogin.style.display = "flex";
     showToast("Bóveda cerrada");
@@ -702,6 +803,10 @@ function openPasswordForm(id = null) {
 
 async function savePasswordEntry(evt) {
     evt.preventDefault();
+    if (state.currentUser && state.currentUser.role === "viewer") {
+        showToast("Error: Acceso de sólo lectura");
+        return;
+    }
     const id = document.getElementById("pass-id").value;
     const tipo = document.getElementById("pass-type").value;
     const nombre = document.getElementById("pass-name").value.trim();
@@ -732,6 +837,10 @@ async function savePasswordEntry(evt) {
 }
 
 async function deletePasswordEntry(id) {
+    if (state.currentUser && state.currentUser.role === "viewer") {
+        showToast("Error: Acceso de sólo lectura");
+        return;
+    }
     if (confirm("¿Estás seguro de que quieres eliminar esta contraseña?")) {
         state.vault.entries = state.vault.entries.filter(e => e.id !== id);
         setSyncStatus(false);
@@ -765,6 +874,10 @@ function openSubscriberForm(id = null) {
 
 async function saveSubscriberEntry(evt) {
     evt.preventDefault();
+    if (state.currentUser && state.currentUser.role === "viewer") {
+        showToast("Error: Acceso de sólo lectura");
+        return;
+    }
     const id = document.getElementById("sub-id").value;
     const tipo = document.getElementById("sub-type").value;
     const subscriber_code = document.getElementById("sub-code").value.trim();
@@ -793,6 +906,10 @@ async function saveSubscriberEntry(evt) {
 }
 
 async function deleteSubscriberEntry(id) {
+    if (state.currentUser && state.currentUser.role === "viewer") {
+        showToast("Error: Acceso de sólo lectura");
+        return;
+    }
     if (confirm("¿Eliminar este abonado?")) {
         state.vault.subscribers = state.vault.subscribers.filter(s => s.id !== id);
         setSyncStatus(false);
@@ -1042,6 +1159,355 @@ function generateAlphanumericPassword(length = 8) {
         password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return password;
+}
+
+// --- V4.01 NEW FEATURES: MULTI-USER AND GEOLOCATION ---
+
+// Check if vault has users configured to adapt login screen fields on page load
+async function checkVaultUsersOnLoad() {
+    // 1. Check local cache first for instant load
+    const cachedPayloadStr = localStorage.getItem(STORAGE_KEYS.VAULT_CACHE);
+    if (cachedPayloadStr) {
+        try {
+            const payload = JSON.parse(cachedPayloadStr);
+            state.usersMetadata = payload.users || {};
+            adaptLoginFields();
+        } catch (e) {
+            console.error("Error parsing cached vault metadata:", e);
+        }
+    }
+    
+    // 2. Fetch remote vault metadata in background to ensure it is up to date
+    if (GIT_CONFIG.user && GIT_CONFIG.repo && GIT_CONFIG.token) {
+        try {
+            const client = new GitHubClient(GIT_CONFIG.user, GIT_CONFIG.repo, GIT_CONFIG.token, GIT_CONFIG.path);
+            const fileData = await client.fetchFile();
+            if (fileData && fileData.content) {
+                const payload = JSON.parse(fileData.content);
+                state.usersMetadata = payload.users || {};
+                state.gitSha = fileData.sha;
+                // Update local cache
+                localStorage.setItem(STORAGE_KEYS.VAULT_CACHE, fileData.content);
+                adaptLoginFields();
+            }
+        } catch (e) {
+            console.warn("Background vault metadata fetch failed (normal if offline):", e);
+        }
+    }
+}
+
+// Adapt Login inputs depending on the presence of user profiles
+function adaptLoginFields() {
+    const usernameGroup = document.getElementById("login-username-group");
+    const loginSubtitle = document.getElementById("login-box-subtitle");
+    const loginPassInput = document.getElementById("login-password");
+    
+    const userCount = Object.keys(state.usersMetadata || {}).length;
+    if (userCount > 0) {
+        if (usernameGroup) usernameGroup.style.display = "block";
+        if (loginSubtitle) loginSubtitle.textContent = "Introduce tus credenciales para acceder a SEC ATS.";
+        if (loginPassInput) loginPassInput.placeholder = "Contraseña";
+    } else {
+        if (usernameGroup) usernameGroup.style.display = "none";
+        if (loginSubtitle) loginSubtitle.textContent = "Introduce tu Clave Maestra para descifrar la base de datos de SEC ATS.";
+        if (loginPassInput) loginPassInput.placeholder = "Clave Maestra";
+    }
+}
+
+// Apply role and scope privileges in the UI
+function applyUserPrivileges(user) {
+    // Set role attribute for CSS hiding rules (viewer vs editor/admin)
+    document.getElementById("app-container").setAttribute("data-role", user.role);
+    
+    // Update UI profile display in Settings
+    document.getElementById("set-current-username").textContent = user.username.toUpperCase();
+    document.getElementById("set-current-user-role").textContent = `Rol: ${user.role.toUpperCase()}`;
+    
+    // Admin User Management Panel visibility
+    if (user.role === "admin") {
+        document.getElementById("admin-user-panel").style.display = "block";
+        renderAdminUsers();
+    } else {
+        document.getElementById("admin-user-panel").style.display = "none";
+    }
+    
+    // Filter Dashboard categories and bottom navigation based on scopes
+    const scopes = user.scope || [];
+    const hasPass = scopes.includes("passwords") || user.role === "admin";
+    const hasSubs = scopes.includes("subscribers") || user.role === "admin";
+    const hasManuals = scopes.includes("manuals") || user.role === "admin";
+    
+    document.getElementById("menu-passwords").style.display = hasPass ? "flex" : "none";
+    document.querySelector('nav [data-screen="passwords"]').style.display = hasPass ? "flex" : "none";
+    
+    document.getElementById("menu-subscribers").style.display = hasSubs ? "flex" : "none";
+    document.querySelector('nav [data-screen="subscribers"]').style.display = hasSubs ? "flex" : "none";
+    
+    document.getElementById("menu-manuals").style.display = hasManuals ? "flex" : "none";
+}
+
+// Browser geolocation for subscriber form address auto-fill
+function getSubGeoLocation() {
+    const addressInput = document.getElementById("sub-address");
+    const originalPlaceholder = addressInput.placeholder;
+    addressInput.value = "";
+    addressInput.placeholder = "Obteniendo coordenadas GPS...";
+
+    if (!navigator.geolocation) {
+        showToast("Geolocalización no soportada por el navegador");
+        addressInput.placeholder = originalPlaceholder;
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        async (position) => {
+            const lat = position.coords.latitude.toFixed(5);
+            const lon = position.coords.longitude.toFixed(5);
+            
+            showToast("Ubicación GPS obtenida. Buscando dirección...");
+            addressInput.placeholder = "Buscando dirección postal...";
+            
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18`, {
+                    headers: { "Accept-Language": "es" }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const addr = data.address;
+                    if (addr) {
+                        const road = addr.road || addr.pedestrian || addr.path || "";
+                        const house = addr.house_number || "";
+                        const city = addr.city || addr.town || addr.village || addr.suburb || "";
+                        const postcode = addr.postcode || "";
+                        const stateName = addr.state || addr.county || "";
+                        
+                        let formatted = "";
+                        if (road) {
+                            formatted += road;
+                            if (house) formatted += ` ${house}`;
+                        }
+                        if (city) {
+                            if (formatted) formatted += ", ";
+                            formatted += city;
+                        }
+                        if (postcode) {
+                            if (formatted) formatted += ` (${postcode})`;
+                        } else if (stateName) {
+                            if (formatted) formatted += `, ${stateName}`;
+                        }
+                        
+                        addressInput.value = formatted || `${lat}, ${lon}`;
+                    } else {
+                        addressInput.value = `${lat}, ${lon}`;
+                    }
+                } else {
+                    addressInput.value = `${lat}, ${lon}`;
+                }
+            } catch (err) {
+                console.error("Reverse geocoding failed:", err);
+                addressInput.value = `${lat}, ${lon}`;
+            }
+            addressInput.placeholder = originalPlaceholder;
+            showToast("Dirección de Abonado actualizada");
+        },
+        (error) => {
+            console.error("GPS error:", error);
+            showToast("Error al obtener señal GPS");
+            addressInput.placeholder = originalPlaceholder;
+        },
+        { timeout: 8000, enableHighAccuracy: true }
+    );
+}
+
+// User Administration: Render Users List
+function renderAdminUsers() {
+    const listContainer = document.getElementById("admin-users-list");
+    listContainer.innerHTML = "";
+    
+    if (!state.vault.users || state.vault.users.length === 0) {
+        listContainer.innerHTML = `<div style="text-align:center; padding:10px; color:var(--text-secondary); font-size:0.85rem;">No hay usuarios configurados</div>`;
+        return;
+    }
+    
+    state.vault.users.forEach(u => {
+        const item = document.createElement("div");
+        item.style.display = "flex";
+        item.style.justifyContent = "space-between";
+        item.style.alignItems = "center";
+        item.style.padding = "10px 14px";
+        item.style.background = "rgba(255, 255, 255, 0.03)";
+        item.style.border = "1px solid var(--border-glass)";
+        item.style.borderRadius = "var(--radius-sm)";
+        item.style.fontSize = "0.9rem";
+        
+        const details = document.createElement("div");
+        details.innerHTML = `
+            <div style="font-weight:600;">${u.username} <span style="font-size:0.75rem; color:var(--accent); font-weight:normal; text-transform:uppercase;">(${u.role})</span></div>
+            <div style="font-size:0.75rem; color:var(--text-secondary);">Accesos: ${u.scope.join(', ') || 'ninguno'}</div>
+        `;
+        
+        const actions = document.createElement("div");
+        actions.style.display = "flex";
+        actions.style.gap = "6px";
+        
+        const btnEdit = document.createElement("button");
+        btnEdit.type = "button";
+        btnEdit.className = "btn-icon";
+        btnEdit.innerHTML = `<i class="bx bx-edit-alt"></i>`;
+        btnEdit.style.width = "30px";
+        btnEdit.style.height = "30px";
+        btnEdit.addEventListener("click", () => openUserForm(u));
+        
+        const btnDel = document.createElement("button");
+        btnDel.type = "button";
+        btnDel.className = "btn-icon";
+        btnDel.innerHTML = `<i class="bx bx-trash"></i>`;
+        btnDel.style.width = "30px";
+        btnDel.style.height = "30px";
+        btnDel.style.color = "var(--danger)";
+        if (u.username.toLowerCase() === state.currentUser.username.toLowerCase()) {
+            btnDel.disabled = true;
+            btnDel.style.opacity = "0.3";
+            btnDel.style.cursor = "not-allowed";
+        } else {
+            btnDel.addEventListener("click", () => deleteUser(u.username));
+        }
+        
+        actions.appendChild(btnEdit);
+        actions.appendChild(btnDel);
+        item.appendChild(details);
+        item.appendChild(actions);
+        listContainer.appendChild(item);
+    });
+}
+
+// User Administration: Open Form for New / Edit User
+function openUserForm(u = null) {
+    const form = document.getElementById("form-user");
+    form.reset();
+    
+    const title = document.getElementById("user-form-title");
+    const nameInput = document.getElementById("user-name-input");
+    const passInput = document.getElementById("user-pass-input");
+    const roleSelect = document.getElementById("user-role-select");
+    const editId = document.getElementById("user-edit-id");
+    
+    if (u) {
+        title.textContent = "Editar Usuario";
+        nameInput.value = u.username;
+        nameInput.disabled = true;
+        passInput.placeholder = "Dejar en blanco para mantener contraseña";
+        passInput.required = false;
+        roleSelect.value = u.role;
+        editId.value = u.username;
+        
+        document.getElementById("user-scope-passwords").checked = u.scope.includes("passwords");
+        document.getElementById("user-scope-subscribers").checked = u.scope.includes("subscribers");
+        document.getElementById("user-scope-manuals").checked = u.scope.includes("manuals");
+    } else {
+        title.textContent = "Nuevo Usuario";
+        nameInput.value = "";
+        nameInput.disabled = false;
+        passInput.placeholder = "Contraseña de acceso";
+        passInput.required = true;
+        roleSelect.value = "viewer";
+        editId.value = "";
+        
+        document.getElementById("user-scope-passwords").checked = true;
+        document.getElementById("user-scope-subscribers").checked = true;
+        document.getElementById("user-scope-manuals").checked = true;
+    }
+    
+    switchScreen("form-user");
+}
+
+// User Administration: Form Submission Save
+async function saveUserAction(evt) {
+    evt.preventDefault();
+    if (state.currentUser && state.currentUser.role !== "admin") {
+        showToast("Operación no permitida");
+        return;
+    }
+    
+    const editId = document.getElementById("user-edit-id").value;
+    const username = document.getElementById("user-name-input").value.trim().toLowerCase();
+    const password = document.getElementById("user-pass-input").value.trim();
+    const role = document.getElementById("user-role-select").value;
+    
+    const scope = [];
+    if (document.getElementById("user-scope-passwords").checked) scope.push("passwords");
+    if (document.getElementById("user-scope-subscribers").checked) scope.push("subscribers");
+    if (document.getElementById("user-scope-manuals").checked) scope.push("manuals");
+    
+    if (!username) {
+        showToast("Escribe un nombre de usuario");
+        return;
+    }
+    
+    showLoading(true, "Guardando usuario...");
+    
+    try {
+        if (editId) {
+            const idx = state.vault.users.findIndex(u => u.username.toLowerCase() === editId.toLowerCase());
+            if (idx !== -1) {
+                state.vault.users[idx].role = role;
+                state.vault.users[idx].scope = scope;
+                
+                if (password) {
+                    const wrappedKey = await encryptData(state.masterPassword, password);
+                    state.usersMetadata[editId.toLowerCase()] = wrappedKey;
+                }
+            }
+        } else {
+            if (state.vault.users.some(u => u.username.toLowerCase() === username)) {
+                showLoading(false);
+                showToast("El usuario ya existe");
+                return;
+            }
+            
+            state.vault.users.push({ username, role, scope });
+            
+            const wrappedKey = await encryptData(state.masterPassword, password);
+            state.usersMetadata[username] = wrappedKey;
+        }
+        
+        setSyncStatus(false);
+        switchScreen("settings");
+        showToast("Usuario guardado");
+        
+        await syncWithCloud();
+    } catch (err) {
+        console.error("Save user error:", err);
+        showToast("Error al guardar: " + err.message);
+    } finally {
+        showLoading(false);
+    }
+}
+
+// User Administration: Delete User Action
+async function deleteUser(username) {
+    if (state.currentUser && state.currentUser.role !== "admin") return;
+    if (username.toLowerCase() === state.currentUser.username.toLowerCase()) {
+        showToast("No puedes eliminar a tu propio usuario");
+        return;
+    }
+    
+    if (confirm(`¿Estás seguro de que quieres eliminar al usuario "${username}"?`)) {
+        showLoading(true, "Eliminando usuario...");
+        try {
+            state.vault.users = state.vault.users.filter(u => u.username.toLowerCase() !== username.toLowerCase());
+            delete state.usersMetadata[username.toLowerCase()];
+            
+            setSyncStatus(false);
+            renderAdminUsers();
+            await syncWithCloud();
+        } catch (err) {
+            console.error("Delete user error:", err);
+            showToast("Error al eliminar usuario");
+        } finally {
+            showLoading(false);
+        }
+    }
 }
 
 // Register Service Worker for PWA offline capabilities

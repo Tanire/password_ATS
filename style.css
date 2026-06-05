@@ -716,3 +716,12 @@ select.input-control {
     border-top-color: var(--accent);
     animation: spin 1s ease-in-out infinite;
 }
+
+/* Viewer Role UI Restrictions */
+[data-role="viewer"] .btn-add-circle,
+[data-role="viewer"] .btn-edit,
+[data-role="viewer"] .btn-delete,
+[data-role="viewer"] .btn-delete-expense {
+    display: none !important;
+}
+

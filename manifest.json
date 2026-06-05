@@ -1,7 +1,7 @@
 {
-  "name": "ATS Gestión V4.0 - JMSystems",
-  "short_name": "ATS Gestión",
-  "description": "Bóveda cifrada y documentación técnica sincronizada con GitHub",
+  "name": "SEC ATS",
+  "short_name": "SEC ATS",
+  "description": "Bóveda cifrada y documentación técnica sincronizada con GitHub - SEC ATS",
   "start_url": "index.html",
   "display": "standalone",
   "orientation": "portrait",
@@ -9,7 +9,7 @@
   "theme_color": "#0a0b10",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2913/2913990.png",
+      "src": "logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

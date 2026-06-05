@@ -2,13 +2,14 @@
  * Service Worker for Offline Cache
  */
 
-const CACHE_NAME = "ats-gestion-v4.0-cache-v3";
+const CACHE_NAME = "sec-ats-cache-v4.01";
 const ASSETS = [
     "index.html",
     "style.css",
     "crypto.js",
     "github.js",
     "app.js",
+    "logo.png",
     "manifest.json",
     "https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css",
     "https://unpkg.com/boxicons@2.1.4/fonts/boxicons.woff2",
