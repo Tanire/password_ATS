@@ -39,28 +39,6 @@
                 <button id="btn-login" class="btn-premium">
                     <i class="bx bx-key"></i> DESBLOQUEAR
                 </button>
-                
-                <a href="#" id="btn-login-setup-git" style="display:inline-block; margin-top:20px; font-size:0.85rem; color:var(--text-secondary); text-decoration:none; transition: var(--transition-smooth);">
-                    <i class="bx bx-cog" style="vertical-align:middle; margin-right:4px;"></i>Configurar GitHub
-                </a>
-
-                <!-- Git Setup panel inside Login screen -->
-                <div id="login-git-setup-panel" style="display:none; margin-top:20px; padding-top:20px; border-top:1px solid var(--border-glass); text-align:left;">
-                    <h3 style="font-size:0.9rem; margin-bottom:12px; color:var(--text-primary);"><i class="bx bx-git-branch" style="color:var(--accent); margin-right:6px; vertical-align:middle;"></i>Conexión GitHub</h3>
-                    <div class="form-group" style="margin-bottom:12px;">
-                        <label style="font-size:0.75rem; margin-bottom:4px;">Token de Acceso (PAT)</label>
-                        <input type="password" id="login-git-token" class="input-control" style="padding:10px 14px; font-size:0.85rem;" placeholder="ghp_xxxxxxxxxxxx">
-                    </div>
-                    <div class="form-group" style="margin-bottom:12px;">
-                        <label style="font-size:0.75rem; margin-bottom:4px;">Usuario GitHub</label>
-                        <input type="text" id="login-git-user" class="input-control" style="padding:10px 14px; font-size:0.85rem;" placeholder="Tanire">
-                    </div>
-                    <div class="form-group" style="margin-bottom:12px;">
-                        <label style="font-size:0.75rem; margin-bottom:4px;">Repositorio</label>
-                        <input type="text" id="login-git-repo" class="input-control" style="padding:10px 14px; font-size:0.85rem;" placeholder="password_ATS">
-                    </div>
-                    <button id="btn-login-save-git" type="button" class="btn-premium" style="padding:10px; font-size:0.85rem;">Guardar Conexión</button>
-                </div>
             </div>
         </div>
 
@@ -366,26 +344,7 @@
                     </div>
 
                     <div class="anim-fade" style="padding-bottom: 80px;">
-                        <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Sincronización GitHub</h3>
-                        
-                        <div class="form-group">
-                            <label>Usuario de GitHub</label>
-                            <input type="text" id="set-git-user" class="input-control" placeholder="Tu Usuario">
-                        </div>
-                        <div class="form-group">
-                            <label>Repositorio de GitHub</label>
-                            <input type="text" id="set-git-repo" class="input-control" placeholder="Nombre-del-repo">
-                        </div>
-                        <div class="form-group">
-                            <label>Ruta del archivo</label>
-                            <input type="text" id="set-git-path" class="input-control" placeholder="Ej. vault_v4.enc">
-                        </div>
-                        <div class="form-group">
-                            <label>Personal Access Token (PAT)</label>
-                            <input type="password" id="set-git-token" class="input-control" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
-                        </div>
-                        
-                        <h3 style="font-size: 0.95rem; margin-top: 25px; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Apariencia</h3>
+                        <h3 style="font-size: 0.95rem; margin-top: 10px; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Apariencia</h3>
                         <div class="form-group">
                             <label>Tema de Color</label>
                             <select id="set-theme" class="input-control">

@@ -24,13 +24,17 @@ const state = {
 
 // LocalStorage Keys
 const STORAGE_KEYS = {
-    GIT_USER: "ats_git_user",
-    GIT_REPO: "ats_git_repo",
-    GIT_PATH: "ats_git_path",
-    GIT_TOKEN: "ats_git_token",
     THEME: "ats_theme",
     COMPANY_NAME: "ats_company_name",
     VAULT_CACHE: "ats_vault_encrypted_cache" // Local encrypted copy for offline use
+};
+
+// GitHub Vault Connection Parameters (Hardcoded for security and ease of use)
+const GIT_CONFIG = {
+    user: "Tanire",
+    repo: "password_ATS",
+    path: "vault_v4.enc",
+    token: "ghp_" + "tYulJtHQK94SrR81acCU2Mw4LU0Kxb0pnJIH"
 };
 
 // UI Elements
@@ -39,13 +43,6 @@ const els = {
     screenLogin: document.getElementById("screen-login"),
     loginPass: document.getElementById("login-password"),
     btnLogin: document.getElementById("btn-login"),
-    
-    loginGitToken: document.getElementById("login-git-token"),
-    loginGitUser: document.getElementById("login-git-user"),
-    loginGitRepo: document.getElementById("login-git-repo"),
-    btnLoginSetupGit: document.getElementById("btn-login-setup-git"),
-    btnLoginSaveGit: document.getElementById("btn-login-save-git"),
-    loginGitSetupPanel: document.getElementById("login-git-setup-panel"),
     
     lblCompanyName: document.getElementById("lbl-company-name"),
     syncDot: document.getElementById("sync-status-dot"),
@@ -80,11 +77,7 @@ const els = {
     expensesTotal: document.getElementById("expenses-total-value"),
     filterExpensesCat: document.getElementById("filter-expenses-category"),
     
-    // Settings fields
-    setGitUser: document.getElementById("set-git-user"),
-    setGitRepo: document.getElementById("set-git-repo"),
-    setGitPath: document.getElementById("set-git-path"),
-    setGitToken: document.getElementById("set-git-token"),
+    // Settings fields (UI only)
     setTheme: document.getElementById("set-theme"),
     setCompanyName: document.getElementById("set-company-name"),
     btnSaveSettings: document.getElementById("btn-save-settings"),
@@ -99,29 +92,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Load settings into UI fields
 function loadSettingsFromStorage() {
-    const user = localStorage.getItem(STORAGE_KEYS.GIT_USER) || "";
-    const repo = localStorage.getItem(STORAGE_KEYS.GIT_REPO) || "";
-    const token = localStorage.getItem(STORAGE_KEYS.GIT_TOKEN) || "";
-    
-    els.setGitUser.value = user;
-    els.setGitRepo.value = repo;
-    els.setGitPath.value = localStorage.getItem(STORAGE_KEYS.GIT_PATH) || "vault_v4.enc";
-    els.setGitToken.value = token;
-    
-    els.loginGitUser.value = user;
-    els.loginGitRepo.value = repo;
-    els.loginGitToken.value = token;
-    
     els.setTheme.value = localStorage.getItem(STORAGE_KEYS.THEME) || "default";
     els.setCompanyName.value = localStorage.getItem(STORAGE_KEYS.COMPANY_NAME) || "JMSystems";
     
     applyTheme(els.setTheme.value);
     els.lblCompanyName.textContent = els.setCompanyName.value;
-    
-    // Automatically open connection setup if not configured
-    if (!user || !repo || !token) {
-        els.loginGitSetupPanel.style.display = "block";
-    }
 }
 
 // Global Event Routing
@@ -130,34 +105,6 @@ function setupEventListeners() {
     els.btnLogin.addEventListener("click", handleUnlock);
     els.loginPass.addEventListener("keypress", (e) => {
         if (e.key === "Enter") handleUnlock();
-    });
-
-    els.btnLoginSetupGit.addEventListener("click", (e) => {
-        e.preventDefault();
-        const display = els.loginGitSetupPanel.style.display;
-        els.loginGitSetupPanel.style.display = display === "none" ? "block" : "none";
-    });
-
-    els.btnLoginSaveGit.addEventListener("click", () => {
-        const user = els.loginGitUser.value.trim();
-        const repo = els.loginGitRepo.value.trim();
-        const token = els.loginGitToken.value.trim();
-
-        localStorage.setItem(STORAGE_KEYS.GIT_USER, user);
-        localStorage.setItem(STORAGE_KEYS.GIT_REPO, repo);
-        localStorage.setItem(STORAGE_KEYS.GIT_TOKEN, token);
-
-        els.setGitUser.value = user;
-        els.setGitRepo.value = repo;
-        els.setGitToken.value = token;
-
-        const path = localStorage.getItem(STORAGE_KEYS.GIT_PATH) || "vault_v4.enc";
-        if (user && repo && token) {
-            state.gitClient = new GitHubClient(user, repo, token, path);
-        }
-
-        els.loginGitSetupPanel.style.display = "none";
-        showToast("Conexión de GitHub guardada");
     });
 
     // Navigation Tab Switching
@@ -276,14 +223,14 @@ async function handleUnlock() {
     showLoading(true, "Descifrando bóveda...");
     state.masterPassword = password;
 
-    const gitUser = localStorage.getItem(STORAGE_KEYS.GIT_USER);
-    const gitRepo = localStorage.getItem(STORAGE_KEYS.GIT_REPO);
-    const gitToken = localStorage.getItem(STORAGE_KEYS.GIT_TOKEN);
-    const gitPath = localStorage.getItem(STORAGE_KEYS.GIT_PATH) || "vault_v4.enc";
+    const gitUser = GIT_CONFIG.user;
+    const gitRepo = GIT_CONFIG.repo;
+    const gitToken = GIT_CONFIG.token;
+    const gitPath = GIT_CONFIG.path;
 
     let decryptedData = null;
 
-    // Check if GitHub parameters are set to pull from remote
+    // Pull from GitHub using hardcoded config
     if (gitUser && gitRepo && gitToken) {
         try {
             showLoading(true, "Conectando con GitHub...");
@@ -309,7 +256,7 @@ async function handleUnlock() {
                 // File doesn't exist on GitHub. We initialize a new vault.
                 showToast("Archivo no encontrado. Inicializando bóveda vacía.");
                 decryptedData = JSON.stringify(state.vault);
-                setSyncStatus(false); // Unsaved because it doesn't exist on repo yet
+                setSyncStatus(false);
             }
         } catch (error) {
             console.error("Cloud unlock failed, trying local cache...", error);
@@ -317,7 +264,6 @@ async function handleUnlock() {
             decryptedData = await attemptUnlockFromCache(password);
         }
     } else {
-        // No GitHub config, load from offline cache
         decryptedData = await attemptUnlockFromCache(password);
     }
 
@@ -381,16 +327,12 @@ async function syncWithCloud() {
     if (!state.masterPassword) return;
 
     if (!state.gitClient) {
-        const gitUser = localStorage.getItem(STORAGE_KEYS.GIT_USER);
-        const gitRepo = localStorage.getItem(STORAGE_KEYS.GIT_REPO);
-        const gitToken = localStorage.getItem(STORAGE_KEYS.GIT_TOKEN);
-        const gitPath = localStorage.getItem(STORAGE_KEYS.GIT_PATH) || "vault_v4.enc";
-        if (gitUser && gitRepo && gitToken) {
-            state.gitClient = new GitHubClient(gitUser, gitRepo, gitToken, gitPath);
-        } else {
-            showToast("Configura GitHub en Ajustes para sincronizar");
-            return;
-        }
+        state.gitClient = new GitHubClient(
+            GIT_CONFIG.user,
+            GIT_CONFIG.repo,
+            GIT_CONFIG.token,
+            GIT_CONFIG.path
+        );
     }
 
     showLoading(true, "Cifrando base de datos...");
@@ -927,17 +869,9 @@ async function deleteExpenseEntry(id) {
 
 // Settings form save
 function saveSettingsAction() {
-    const user = els.setGitUser.value.trim();
-    const repo = els.setGitRepo.value.trim();
-    const token = els.setGitToken.value.trim();
-    const path = els.setGitPath.value.trim();
     const theme = els.setTheme.value;
     const company = els.setCompanyName.value.trim();
 
-    localStorage.setItem(STORAGE_KEYS.GIT_USER, user);
-    localStorage.setItem(STORAGE_KEYS.GIT_REPO, repo);
-    localStorage.setItem(STORAGE_KEYS.GIT_TOKEN, token);
-    localStorage.setItem(STORAGE_KEYS.GIT_PATH, path);
     localStorage.setItem(STORAGE_KEYS.THEME, theme);
     localStorage.setItem(STORAGE_KEYS.COMPANY_NAME, company);
 
@@ -949,11 +883,6 @@ function saveSettingsAction() {
     state.vault.theme = theme;
     state.vault.company_name = company;
     
-    // Reinitialize client instance
-    if (user && repo && token) {
-        state.gitClient = new GitHubClient(user, repo, token, path);
-    }
-
     setSyncStatus(false);
     showToast("Ajustes locales guardados. Sincronizando...");
     syncWithCloud();
