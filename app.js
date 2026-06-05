@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.02",
+        version: "1.04",
         company_name: "ATS TEC",
         theme: "default",
         entries: [],       // General passwords
@@ -196,6 +196,29 @@ function setupEventListeners() {
     // Delete actions
     document.getElementById("btn-delete-manual").addEventListener("click", deleteManualEntry);
 
+    // V1.04 New Listeners
+    document.getElementById("btn-change-my-pass").addEventListener("click", changeMyPassword);
+    document.getElementById("btn-new-folder").addEventListener("click", createNewFolderAction);
+    document.getElementById("btn-back-sub-list").addEventListener("click", () => switchScreen("subscribers"));
+    document.getElementById("btn-sub-view-edit").addEventListener("click", editSubscriberFromView);
+    
+    document.getElementById("btn-sub-view-copy-user").addEventListener("click", () => {
+        if (state.activeSubscriber) copyToClipboard(state.activeSubscriber.usuario);
+    });
+    
+    document.getElementById("btn-sub-view-copy-pass").addEventListener("click", () => {
+        if (state.activeSubscriber) copyToClipboard(state.activeSubscriber.password);
+    });
+    
+    document.getElementById("btn-sub-view-map").addEventListener("click", () => {
+        if (state.activeSubscriber && state.activeSubscriber.address) {
+            const query = encodeURIComponent(state.activeSubscriber.address);
+            window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, "_blank");
+        } else {
+            showToast("Este abonado no tiene dirección registrada");
+        }
+    });
+
     // Settings save
     els.btnSaveSettings.addEventListener("click", saveSettingsAction);
     els.btnLogout.addEventListener("click", lockVault);
@@ -210,6 +233,7 @@ function switchScreen(screenId) {
         const scopes = state.currentUser.scope || [];
         if (screenId === "passwords" && !scopes.includes("passwords")) return;
         if (screenId === "subscribers" && !scopes.includes("subscribers")) return;
+        if (screenId === "subscriber-view" && !scopes.includes("subscribers")) return;
         if (screenId === "manuals" && !scopes.includes("manuals")) return;
         if (screenId === "manuals-list" && !scopes.includes("manuals")) return;
         if (screenId === "manual-view" && !scopes.includes("manuals")) return;
@@ -617,6 +641,11 @@ function renderSubscribers() {
             copyToClipboard(e.password);
         });
 
+        card.addEventListener("click", (evt) => {
+            if (evt.target.closest(".item-actions")) return;
+            openSubscriberView(e);
+        });
+
         els.listSubscribers.appendChild(card);
     });
 }
@@ -625,8 +654,12 @@ function renderSubscribers() {
 function renderManualsBrands() {
     els.brandGrid.innerHTML = "";
     
-    // Distinct list of categories defined in config.py
-    const categories = ["Ademco", "DSC", "Paradox", "Risco", "Galaxy", "Ajax", "Texecom", "General"];
+    if (!state.vault.manual_categories || state.vault.manual_categories.length === 0) {
+        state.vault.manual_categories = ["Ademco", "DSC", "Paradox", "Risco", "Galaxy", "Ajax", "Texecom", "General"];
+    }
+
+    const categories = state.vault.manual_categories;
+    const isAdmin = state.currentUser && state.currentUser.role === "admin";
 
     categories.forEach(brand => {
         const card = document.createElement("div");
@@ -635,6 +668,20 @@ function renderManualsBrands() {
             <i class="bx bx-folder" style="color: var(--accent);"></i>
             <span>${brand}</span>
         `;
+
+        if (isAdmin) {
+            const deleteBtn = document.createElement("button");
+            deleteBtn.type = "button";
+            deleteBtn.className = "btn-delete-folder";
+            deleteBtn.innerHTML = `<i class="bx bx-x"></i>`;
+            deleteBtn.title = `Eliminar carpeta ${brand}`;
+            deleteBtn.addEventListener("click", (evt) => {
+                evt.stopPropagation();
+                deleteFolder(brand);
+            });
+            card.appendChild(deleteBtn);
+        }
+
         card.addEventListener("click", () => {
             state.activeCategory = brand;
             document.getElementById("manuals-list-title").textContent = `Manuales: ${brand}`;
@@ -1536,6 +1583,18 @@ function openManualForm(m = null) {
     const fileInput = document.getElementById("manual-file-input");
     const editId = document.getElementById("manual-edit-id");
     
+    // Populate categories dynamically
+    if (!state.vault.manual_categories || state.vault.manual_categories.length === 0) {
+        state.vault.manual_categories = ["Ademco", "DSC", "Paradox", "Risco", "Galaxy", "Ajax", "Texecom", "General"];
+    }
+    categorySelect.innerHTML = "";
+    state.vault.manual_categories.forEach(c => {
+        const option = document.createElement("option");
+        option.value = c;
+        option.textContent = c;
+        categorySelect.appendChild(option);
+    });
+    
     if (m) {
         title.textContent = "Editar Manual";
         categorySelect.value = m.category || "General";
@@ -1636,6 +1695,143 @@ async function deleteManualEntry() {
         } finally {
             showLoading(false);
         }
+    }
+}
+
+// --- V1.04 NEW USER AND FOLDER MANAGEMENT FUNCTIONS ---
+
+async function changeMyPassword() {
+    const newPassInput = document.getElementById("set-new-password");
+    const newPassword = newPassInput.value.trim();
+    
+    if (!newPassword) {
+        showToast("Por favor, introduce una nueva contraseña");
+        return;
+    }
+    
+    if (!state.currentUser) {
+        showToast("No hay usuario activo");
+        return;
+    }
+    
+    showLoading(true, "Actualizando contraseña...");
+    
+    try {
+        const username = state.currentUser.username.toLowerCase();
+        
+        // Encrypt the master password with the new password
+        const wrappedKey = await encryptData(state.masterPassword, newPassword);
+        
+        // Save to usersMetadata
+        state.usersMetadata[username] = wrappedKey;
+        
+        // Clear input
+        newPassInput.value = "";
+        
+        setSyncStatus(false);
+        showToast("Contraseña actualizada localmente");
+        
+        // Sync changes
+        await syncWithCloud();
+    } catch (err) {
+        console.error("Change password error:", err);
+        showToast("Error al cambiar la contraseña: " + err.message);
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function createNewFolderAction() {
+    if (state.currentUser && state.currentUser.role !== "admin") {
+        showToast("Error: Sólo los administradores pueden crear carpetas");
+        return;
+    }
+    
+    const folderName = prompt("Introduce el nombre de la nueva marca o carpeta:");
+    if (!folderName) return;
+    
+    const trimmed = folderName.trim();
+    if (!trimmed) return;
+    
+    if (!state.vault.manual_categories) {
+        state.vault.manual_categories = ["Ademco", "DSC", "Paradox", "Risco", "Galaxy", "Ajax", "Texecom", "General"];
+    }
+    
+    const exists = state.vault.manual_categories.some(c => c.toLowerCase() === trimmed.toLowerCase());
+    if (exists) {
+        showToast("Esa carpeta ya existe");
+        return;
+    }
+    
+    state.vault.manual_categories.push(trimmed);
+    setSyncStatus(false);
+    renderManualsBrands();
+    showToast(`Carpeta "${trimmed}" creada`);
+    
+    await syncWithCloud();
+}
+
+async function deleteFolder(brand) {
+    if (state.currentUser && state.currentUser.role !== "admin") {
+        showToast("Error: Sólo los administradores pueden eliminar carpetas");
+        return;
+    }
+    
+    const count = state.vault.manuals ? state.vault.manuals.filter(m => m.category === brand).length : 0;
+    let confirmMsg = `¿Estás seguro de que deseas eliminar la carpeta "${brand}"?`;
+    if (count > 0) {
+        confirmMsg = `¿Estás seguro de que deseas eliminar la carpeta "${brand}"? Se eliminarán también los ${count} manuales asociados.`;
+    }
+    
+    if (confirm(confirmMsg)) {
+        showLoading(true, "Eliminando carpeta...");
+        try {
+            state.vault.manual_categories = state.vault.manual_categories.filter(c => c !== brand);
+            
+            if (state.vault.manuals) {
+                state.vault.manuals = state.vault.manuals.filter(m => m.category !== brand);
+            }
+            
+            setSyncStatus(false);
+            renderManualsBrands();
+            showToast(`Carpeta "${brand}" eliminada`);
+            
+            await syncWithCloud();
+        } catch (err) {
+            console.error("Delete folder error:", err);
+            showToast("Error al eliminar la carpeta");
+        } finally {
+            showLoading(false);
+        }
+    }
+}
+
+function openSubscriberView(sub) {
+    state.activeSubscriber = sub;
+    
+    let emoji = "🔒";
+    if (sub.tipo === "alarm") emoji = "🔔";
+    else if (sub.tipo === "recorder") emoji = "📹";
+    else if (sub.tipo === "camera") emoji = "📷";
+    else if (sub.tipo === "system") emoji = "⚙️";
+    
+    document.getElementById("sub-view-icon").textContent = emoji;
+    document.getElementById("sub-view-title").textContent = `[${sub.subscriber_code || "?"}] ${sub.nombre || "Sin Cliente"}`;
+    document.getElementById("sub-view-type").textContent = (sub.tipo || "alarm").toUpperCase();
+    document.getElementById("sub-view-address").textContent = sub.address || "(Sin dirección)";
+    document.getElementById("sub-view-username").textContent = sub.usuario || "-";
+    document.getElementById("sub-view-password").textContent = sub.password || "-";
+    
+    switchScreen("subscriber-view");
+}
+
+function editSubscriberFromView() {
+    if (state.currentUser && state.currentUser.role === "viewer") {
+        showToast("Error: Acceso de sólo lectura");
+        return;
+    }
+    if (state.activeSubscriber) {
+        openSubscriberForm(state.activeSubscriber.id);
     }
 }
 

@@ -89,7 +89,7 @@
                         </div>
                     </div>
                     <div style="text-align: center; margin-top: 40px; font-size: 0.8rem; color: var(--text-secondary);" class="dashboard-footer">
-                        Versión 1.02 - JMSYSTEMAS
+                        Versión 1.04 - JMSYSTEMAS
                     </div>
                 </div>
 
@@ -222,6 +222,7 @@
                 <div id="screen-manuals" class="screen">
                     <div class="list-header">
                         <h2>Documentación</h2>
+                        <button class="btn-add-circle" id="btn-new-folder" title="Nueva Carpeta">+</button>
                     </div>
                     <div class="brand-grid" id="brand-grid-container">
                         <!-- Dynamic brand grids -->
@@ -380,6 +381,15 @@
                             <i class="bx bx-save"></i> GUARDAR AJUSTES
                         </button>
                         
+                        <h3 style="font-size: 0.95rem; margin-top: 25px; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Seguridad</h3>
+                        <div class="form-group">
+                            <label>Cambiar mi Contraseña</label>
+                            <div class="input-with-action">
+                                <input type="password" id="set-new-password" class="input-control" placeholder="Nueva contraseña de acceso" autocomplete="new-password">
+                                <button type="button" class="btn-icon" id="btn-change-my-pass" title="Actualizar Contraseña"><i class="bx bx-check-shield"></i></button>
+                            </div>
+                        </div>
+                        
                         <!-- Admin User Management Panel (hidden by default) -->
                         <div id="admin-user-panel" style="display: none; margin-top: 25px; padding-top: 25px; border-top: 1px solid var(--border-glass);" class="anim-fade">
                             <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Administración de Usuarios</h3>
@@ -506,6 +516,53 @@
                     <i class="bx bx-save"></i> GUARDAR MANUAL
                 </button>
             </form>
+        </div>
+        
+        <!-- N. SUBSCRIBER VIEW SHEET -->
+        <div id="screen-subscriber-view" class="screen">
+            <div class="list-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <button class="btn-icon" id="btn-back-sub-list"><i class="bx bx-arrow-back"></i></button>
+                    <h2>Detalles del Abonado</h2>
+                </div>
+            </div>
+            <div class="anim-fade" style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 20px; flex: 1; display: flex; flex-direction: column; gap: 16px; margin-bottom: 80px;">
+                <div style="text-align: center; padding-bottom: 15px; border-bottom: 1px solid var(--border-glass);">
+                    <div style="font-size: 2.5rem; margin-bottom: 10px;" id="sub-view-icon">🔔</div>
+                    <h3 style="font-size: 1.25rem; font-weight: 700;" id="sub-view-title">[Código] Nombre</h3>
+                    <span style="font-size: 0.8rem; color: var(--accent); font-weight: 600; text-transform: uppercase;" id="sub-view-type">ALARMA</span>
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: 16px; flex: 1; overflow-y: auto;">
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 500;">Dirección</span>
+                        <span style="font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                            <span id="sub-view-address">Calle Mayor, 12</span>
+                            <button type="button" class="btn-icon" id="btn-sub-view-map" title="Ver en Google Maps" style="width: 36px; height: 36px; font-size: 1rem;"><i class="bx bx-map"></i></button>
+                        </span>
+                    </div>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 500;">Usuario Técnico</span>
+                        <span style="font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                            <span id="sub-view-username">Admin</span>
+                            <button type="button" class="btn-icon btn-copy-view" id="btn-sub-view-copy-user" title="Copiar Usuario" style="width: 36px; height: 36px; font-size: 1rem;"><i class="bx bx-copy"></i></button>
+                        </span>
+                    </div>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 500;">Clave de Acceso</span>
+                        <span style="font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                            <span id="sub-view-password" style="font-family: monospace; letter-spacing: 1px;">1234</span>
+                            <button type="button" class="btn-icon btn-copy-view" id="btn-sub-view-copy-pass" title="Copiar Clave" style="width: 36px; height: 36px; font-size: 1rem;"><i class="bx bx-copy"></i></button>
+                        </span>
+                    </div>
+                </div>
+                
+                <button id="btn-sub-view-edit" class="btn-premium" style="margin-top: auto;">
+                    <i class="bx bx-edit-alt"></i> EDITAR ABONADO
+                </button>
+            </div>
         </div>
 
         <!-- Sync Toast Alert -->

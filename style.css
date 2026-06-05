@@ -69,25 +69,25 @@ body {
     align-items: center;
 }
 
-/* Main Container - Mimic Mobile Screen on Desktop */
+/* Main Container - Responsive Full Screen */
 #app-container {
     width: 100%;
     height: 100%;
-    max-width: 500px;
+    max-width: none;
     background-color: var(--bg-primary);
     display: flex;
     flex-direction: column;
     position: relative;
-    box-shadow: var(--shadow-premium);
+    box-shadow: none;
     overflow: hidden;
     transition: var(--transition-smooth);
 }
 
 @media (min-width: 501px) {
     #app-container {
-        height: 85vh;
-        border-radius: var(--radius-lg);
-        border: 1px solid var(--border-glass);
+        height: 100%;
+        border-radius: 0;
+        border: none;
     }
 }
 
@@ -238,12 +238,15 @@ nav {
     -webkit-text-fill-color: transparent;
 }
 
-/* Content Area */
+/* Content Area - Centered Bounded Width */
 main {
     flex: 1;
     overflow-y: auto;
     position: relative;
     padding: 16px;
+    max-width: 1000px;
+    width: 100%;
+    margin: 0 auto;
 }
 
 /* Screens */
@@ -378,10 +381,10 @@ select.input-control {
     margin-bottom: 30px;
 }
 
-/* Dashboard / Center Menu */
+/* Dashboard / Center Menu - Fluid Grid */
 .menu-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 16px;
     margin-top: 20px;
 }
@@ -630,12 +633,13 @@ select.input-control {
 /* Document Category grid (brand filters) */
 .brand-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 12px;
     padding-bottom: 80px;
 }
 
 .brand-card {
+    position: relative;
     background: var(--bg-glass);
     border: 1px solid var(--border-glass);
     border-radius: var(--radius-md);
@@ -740,5 +744,50 @@ select.input-control {
     border-top: 1px solid var(--border-glass);
     width: 80%;
     margin: 40px auto 10px auto;
+}
+
+/* Category Folder Delete Button */
+.btn-delete-folder {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: var(--danger);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    z-index: 5;
+}
+
+.btn-delete-folder:hover {
+    background: var(--danger);
+    color: var(--text-primary);
+}
+
+/* Copy buttons in view detailed screens */
+.btn-copy-view {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    color: var(--accent);
+}
+
+.btn-copy-view:active {
+    background: rgba(59, 130, 246, 0.2);
+}
+
+/* Role restrictions for V1.04 */
+[data-role="viewer"] .btn-delete-folder,
+[data-role="editor"] .btn-delete-folder,
+[data-role="viewer"] #btn-new-folder,
+[data-role="editor"] #btn-new-folder,
+[data-role="viewer"] #btn-sub-view-edit {
+    display: none !important;
 }
 
