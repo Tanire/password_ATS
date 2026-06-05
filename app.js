@@ -2511,83 +2511,58 @@ function exportMonthlyReport() {
         }
         
         const printWindow = window.open("", "_blank");
-        printWindow.document.write(`
-            <!DOCTYPE html>
-            <html lang="es">
-            <head>
-                <meta charset="UTF-8">
-                <title>Horas Extras - \${monthName} \${year}</title>
-                <style>
-                    body { font-family: 'Outfit', sans-serif; color: #000; padding: 20px; margin: 0; }
-                    .report-container { max-width: 800px; margin: 0 auto; }
-                    .main-header { display: flex; align-items: center; border: 2.5px solid #000; margin-bottom: 25px; }
-                    .main-header-title { flex: 1; text-align: center; font-size: 1.4rem; font-weight: 800; padding: 12px; border-right: 2.5px solid #000; letter-spacing: 0.5px; }
-                    .main-header-month { width: 180px; text-align: center; font-size: 1.3rem; font-weight: 800; padding: 12px; background: #f8fafc; }
-                    .info-section { display: flex; justify-content: space-between; margin-bottom: 25px; font-size: 0.95rem; line-height: 1.8; }
-                    .info-box { flex: 1; }
-                    .logo-box { text-align: right; }
-                    .logo-box img { height: 50px; }
-                    .info-row { display: flex; gap: 8px; }
-                    .info-label { font-weight: 700; width: 80px; }
-                    .info-val { border-bottom: 1.5px solid #000; flex: 1; font-weight: 600; padding-left: 5px; }
-                    .data-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-                    .data-table th, .data-table td { border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem; }
-                    .data-table th { background: #f1f5f9; font-weight: 700; }
-                    .total-row td { background: #ffff00; font-weight: 700; border-top: 2.5px solid #000; }
-                    .signature-section { margin-top: 50px; font-size: 0.95rem; font-weight: 600; }
-                    @media print {
-                        body { padding: 0; }
-                        .report-container { max-width: 100%; }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="report-container">
-                    <div class="main-header">
-                        <div class="main-header-title">HORAS EXTRAS</div>
-                        <div class="main-header-month">\${monthName}</div>
-                    </div>
-                    <div class="info-section">
-                        <div class="info-box">
-                            <div class="info-row"><span class="info-label">EMPRESA:</span><span class="info-val">\${company.toUpperCase()}</span></div>
-                            <div class="info-row" style="margin-top: 10px;"><span class="info-label">NOMBRE:</span><span class="info-val">\${userFullName}</span></div>
-                        </div>
-                        <div class="logo-box">
-                            <img src="\${logoUrl}" alt="Logo" onerror="this.style.display='none';">
-                        </div>
-                    </div>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 15%;">FECHA</th>
-                                <th style="width: 20%;">CONCEPTO</th>
-                                <th style="text-align: left; padding-left: 15px;">MOTIVO / DESCRIPCIÓN</th>
-                                <th style="width: 18%;">TOTAL EXTRAS</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            \${rowsHtml}
-                            <tr class="total-row">
-                                <td colspan="3" style="text-align: right; padding-right: 15px;">TOTAL HORAS</td>
-                                <td>\${totalSumStr}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <div class="signature-section">
-                        FIRMA: \${userFullName}
-                    </div>
-                </div>
-                <script>
-                    window.onload = function() {
-                        setTimeout(function() {
-                            window.print();
-                            window.close();
-                        }, 500);
-                    };
-                </script>
-            </body>
-            </html>
-        `);
+        const htmlHours = '<!DOCTYPE html>' +
+            '<html lang="es"><head><meta charset="UTF-8">' +
+            '<title>Horas Extras - ' + monthName + ' ' + year + '</title>' +
+            '<style>' +
+            'body { font-family: Arial, sans-serif; color: #000; padding: 20px; margin: 0; }' +
+            '.report-container { max-width: 800px; margin: 0 auto; }' +
+            '.main-header { display: flex; align-items: center; border: 2.5px solid #000; margin-bottom: 25px; }' +
+            '.main-header-title { flex: 1; text-align: center; font-size: 1.4rem; font-weight: 800; padding: 12px; border-right: 2.5px solid #000; letter-spacing: 0.5px; }' +
+            '.main-header-month { width: 180px; text-align: center; font-size: 1.3rem; font-weight: 800; padding: 12px; background: #f8fafc; }' +
+            '.info-section { display: flex; justify-content: space-between; margin-bottom: 25px; font-size: 0.95rem; line-height: 1.8; }' +
+            '.info-box { flex: 1; }' +
+            '.logo-box { text-align: right; }' +
+            '.logo-box img { height: 50px; }' +
+            '.info-row { display: flex; gap: 8px; }' +
+            '.info-label { font-weight: 700; width: 80px; }' +
+            '.info-val { border-bottom: 1.5px solid #000; flex: 1; font-weight: 600; padding-left: 5px; }' +
+            '.data-table { width: 100%; border-collapse: collapse; margin-top: 15px; }' +
+            '.data-table th, .data-table td { border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem; }' +
+            '.data-table th { background: #f1f5f9; font-weight: 700; }' +
+            '.total-row td { background: #ffff00; font-weight: 700; border-top: 2.5px solid #000; }' +
+            '.signature-section { margin-top: 50px; font-size: 0.95rem; font-weight: 600; }' +
+            '@media print { body { padding: 0; } .report-container { max-width: 100%; } }' +
+            '</style></head><body>' +
+            '<div class="report-container">' +
+            '<div class="main-header">' +
+            '<div class="main-header-title">HORAS EXTRAS</div>' +
+            '<div class="main-header-month">' + monthName + '</div>' +
+            '</div>' +
+            '<div class="info-section">' +
+            '<div class="info-box">' +
+            '<div class="info-row"><span class="info-label">EMPRESA:</span><span class="info-val">' + company.toUpperCase() + '</span></div>' +
+            '<div class="info-row" style="margin-top:10px"><span class="info-label">NOMBRE:</span><span class="info-val">' + userFullName + '</span></div>' +
+            '</div>' +
+            '<div class="logo-box"><img src="' + logoUrl + '" alt="Logo" onerror="this.style.display=\'none\'"></div>' +
+            '</div>' +
+            '<table class="data-table">' +
+            '<thead><tr>' +
+            '<th style="width:15%">FECHA</th>' +
+            '<th style="width:20%">CONCEPTO</th>' +
+            '<th style="text-align:left;padding-left:15px">MOTIVO / DESCRIPCIÓN</th>' +
+            '<th style="width:18%">TOTAL EXTRAS</th>' +
+            '</tr></thead>' +
+            '<tbody>' + rowsHtml +
+            '<tr class="total-row">' +
+            '<td colspan="3" style="text-align:right;padding-right:15px">TOTAL HORAS</td>' +
+            '<td>' + totalSumStr + '</td>' +
+            '</tr></tbody></table>' +
+            '<div class="signature-section">FIRMA: ' + userFullName + '</div>' +
+            '</div>' +
+            '<scr' + 'ipt>window.onload=function(){setTimeout(function(){window.print();window.close();},500);};<\/scr' + 'ipt>' +
+            '</body></html>';
+        printWindow.document.write(htmlHours);
         printWindow.document.close();
     } else {
         // Consolidated expenses (dietas + materiales)
@@ -2616,13 +2591,11 @@ function exportMonthlyReport() {
             if (c) {
                 const parts = c.date.split("-");
                 const formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
-                rowsHtml += `
-                    <tr>
-                        <td style="text-align: center;">\${formattedDate}</td>
-                        <td style="text-align: left; padding-left: 15px;">\${c.concept.toUpperCase()}</td>
-                        <td class="num-col">\${c.amount.toFixed(2)} €</td>
-                    </tr>
-                `;
+                rowsHtml += '<tr>' +
+                    '<td style="text-align:center">' + formattedDate + '</td>' +
+                    '<td style="text-align:left;padding-left:15px">' + c.concept.toUpperCase() + '</td>' +
+                    '<td class="num-col">' + c.amount.toFixed(2) + ' €</td>' +
+                    '</tr>';
             } else {
                 rowsHtml += `
                     <tr>
@@ -2635,94 +2608,69 @@ function exportMonthlyReport() {
         }
         
         const printWindow = window.open("", "_blank");
-        printWindow.document.write(`
-            <!DOCTYPE html>
-            <html lang="es">
-            <head>
-                <meta charset="UTF-8">
-                <title>Control de Gastos - \${monthName} \${year}</title>
-                <style>
-                    body { font-family: 'Outfit', sans-serif; color: #000; padding: 20px; margin: 0; }
-                    .report-container { max-width: 800px; margin: 0 auto; }
-                    .main-header { display: flex; align-items: center; border: 2.5px solid #000; margin-bottom: 20px; }
-                    .header-logo { padding: 12px; border-right: 2.5px solid #000; text-align: center; width: 140px; display: flex; align-items: center; justify-content: center; }
-                    .header-logo img { height: 40px; }
-                    .header-title { flex: 1; text-align: center; font-size: 1.4rem; font-weight: 800; letter-spacing: 0.5px; padding: 12px; border-right: 2.5px solid #000; }
-                    .header-side { width: 140px; text-align: center; font-weight: 800; font-size: 1.3rem; padding: 12px; background: #e0f2fe; }
-                    .info-grid { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
-                    .info-grid td { border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; }
-                    .bg-light { background: #f1f5f9; font-weight: 700; width: 130px; }
-                    .val-field { text-align: center; font-weight: 700; }
-                    .data-table { width: 100%; border-collapse: collapse; }
-                    .data-table th, .data-table td { border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; }
-                    .data-table th { background: #f1f5f9; text-align: center; font-weight: 700; }
-                    .data-table td.num-col { text-align: right; font-weight: 600; padding-right: 20px; width: 22%; }
-                    .total-row td { font-weight: 800; font-size: 0.95rem; border-top: 2.5px solid #000; }
-                    @media print {
-                        body { padding: 0; }
-                        .report-container { max-width: 100%; }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="report-container">
-                    <div class="main-header">
-                        <div class="header-logo"><img src="\${logoUrl}" alt="Logo" onerror="this.style.display='none';"></div>
-                        <div class="header-title">CONTROL DE GASTOS</div>
-                        <div class="header-side">GASTOS</div>
-                    </div>
-                    <table class="info-grid">
-                        <tr>
-                            <td class="bg-light">ZONA:</td>
-                            <td class="val-field" style="width: 35%;">\${zona.toUpperCase()}</td>
-                            <td class="bg-light">MES/AÑO:</td>
-                            <td class="val-field">\${monthName}</td>
-                        </tr>
-                        <tr>
-                            <td class="bg-light">DELEGACION:</td>
-                            <td class="val-field">\${delegacion.toUpperCase()}</td>
-                            <td class="bg-light">AÑO:</td>
-                            <td class="val-field">\${year}</td>
-                        </tr>
-                        <tr>
-                            <td class="bg-light">TARJETA Nº:</td>
-                            <td class="val-field">\${tarjeta.toUpperCase()}</td>
-                            <td class="bg-light" rowspan="2">CONDUCTOR:</td>
-                            <td class="val-field" rowspan="2" style="vertical-align: middle;">\${userFullName}</td>
-                        </tr>
-                        <tr>
-                            <td class="bg-light">VEHICULO:</td>
-                            <td class="val-field">\${vehiculo.toUpperCase()}</td>
-                        </tr>
-                    </table>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 15%;">DIA</th>
-                                <th style="text-align: left; padding-left: 15px;">CONCEPTO</th>
-                                <th style="width: 22%;">IMPORTE</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            \${rowsHtml}
-                            <tr class="total-row">
-                                <td colspan="2" style="text-align: right; padding-right: 15px; font-weight: 800;">TOTAL</td>
-                                <td class="num-col" style="background: #f8fafc; font-weight: 800;">\${totalSum.toFixed(2)} €</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <script>
-                    window.onload = function() {
-                        setTimeout(function() {
-                            window.print();
-                            window.close();
-                        }, 500);
-                    };
-                </script>
-            </body>
-            </html>
-        `);
+        const htmlGastos = '<!DOCTYPE html>' +
+            '<html lang="es"><head><meta charset="UTF-8">' +
+            '<title>Control de Gastos - ' + monthName + ' ' + year + '</title>' +
+            '<style>' +
+            'body { font-family: Arial, sans-serif; color: #000; padding: 20px; margin: 0; }' +
+            '.report-container { max-width: 800px; margin: 0 auto; }' +
+            '.main-header { display: flex; align-items: center; border: 2.5px solid #000; margin-bottom: 20px; }' +
+            '.header-logo { padding: 12px; border-right: 2.5px solid #000; text-align: center; width: 140px; display: flex; align-items: center; justify-content: center; }' +
+            '.header-logo img { height: 40px; }' +
+            '.header-title { flex: 1; text-align: center; font-size: 1.4rem; font-weight: 800; letter-spacing: 0.5px; padding: 12px; border-right: 2.5px solid #000; }' +
+            '.header-side { width: 140px; text-align: center; font-weight: 800; font-size: 1.3rem; padding: 12px; background: #e0f2fe; }' +
+            '.info-grid { width: 100%; border-collapse: collapse; margin-bottom: 25px; }' +
+            '.info-grid td { border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; }' +
+            '.bg-light { background: #f1f5f9; font-weight: 700; width: 130px; }' +
+            '.val-field { text-align: center; font-weight: 700; }' +
+            '.data-table { width: 100%; border-collapse: collapse; }' +
+            '.data-table th, .data-table td { border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; }' +
+            '.data-table th { background: #f1f5f9; text-align: center; font-weight: 700; }' +
+            '.data-table td.num-col { text-align: right; font-weight: 600; padding-right: 20px; width: 22%; }' +
+            '.total-row td { font-weight: 800; font-size: 0.95rem; border-top: 2.5px solid #000; }' +
+            '@media print { body { padding: 0; } .report-container { max-width: 100%; } }' +
+            '</style></head><body>' +
+            '<div class="report-container">' +
+            '<div class="main-header">' +
+            '<div class="header-logo"><img src="' + logoUrl + '" alt="Logo" onerror="this.style.display=\'none\'"></div>' +
+            '<div class="header-title">CONTROL DE GASTOS</div>' +
+            '<div class="header-side">GASTOS</div>' +
+            '</div>' +
+            '<table class="info-grid">' +
+            '<tr>' +
+            '<td class="bg-light">ZONA:</td>' +
+            '<td class="val-field" style="width:35%">' + zona.toUpperCase() + '</td>' +
+            '<td class="bg-light">MES/AÑO:</td>' +
+            '<td class="val-field">' + monthName + '</td>' +
+            '</tr><tr>' +
+            '<td class="bg-light">DELEGACION:</td>' +
+            '<td class="val-field">' + delegacion.toUpperCase() + '</td>' +
+            '<td class="bg-light">AÑO:</td>' +
+            '<td class="val-field">' + year + '</td>' +
+            '</tr><tr>' +
+            '<td class="bg-light">TARJETA Nº:</td>' +
+            '<td class="val-field">' + tarjeta.toUpperCase() + '</td>' +
+            '<td class="bg-light" rowspan="2">CONDUCTOR:</td>' +
+            '<td class="val-field" rowspan="2" style="vertical-align:middle">' + userFullName + '</td>' +
+            '</tr><tr>' +
+            '<td class="bg-light">VEHICULO:</td>' +
+            '<td class="val-field">' + vehiculo.toUpperCase() + '</td>' +
+            '</tr></table>' +
+            '<table class="data-table">' +
+            '<thead><tr>' +
+            '<th style="width:15%">DIA</th>' +
+            '<th style="text-align:left;padding-left:15px">CONCEPTO</th>' +
+            '<th style="width:22%">IMPORTE</th>' +
+            '</tr></thead>' +
+            '<tbody>' + rowsHtml +
+            '<tr class="total-row">' +
+            '<td colspan="2" style="text-align:right;padding-right:15px;font-weight:800">TOTAL</td>' +
+            '<td class="num-col" style="background:#f8fafc;font-weight:800">' + totalSum.toFixed(2) + ' €</td>' +
+            '</tr></tbody></table>' +
+            '</div>' +
+            '<scr' + 'ipt>window.onload=function(){setTimeout(function(){window.print();window.close();},500);};<\/scr' + 'ipt>' +
+            '</body></html>';
+        printWindow.document.write(htmlGastos);
         printWindow.document.close();
     }
 }
