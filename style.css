@@ -721,7 +721,24 @@ select.input-control {
 [data-role="viewer"] .btn-add-circle,
 [data-role="viewer"] .btn-edit,
 [data-role="viewer"] .btn-delete,
-[data-role="viewer"] .btn-delete-expense {
+[data-role="viewer"] .btn-delete-expense,
+[data-role="viewer"] .btn-delete-manual {
     display: none !important;
+}
+
+/* Editor Role UI Restrictions */
+[data-role="editor"] #btn-new-manual,
+[data-role="editor"] .btn-delete-manual {
+    display: none !important;
+}
+
+/* Dashboard Footer Style */
+.dashboard-footer {
+    padding: 10px 0;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    border-top: 1px solid var(--border-glass);
+    width: 80%;
+    margin: 40px auto 10px auto;
 }
 

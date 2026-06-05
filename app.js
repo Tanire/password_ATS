@@ -6,8 +6,8 @@
 // App State
 const state = {
     vault: {
-        version: "4.01",
-        company_name: "SEC ATS",
+        version: "1.02",
+        company_name: "ATS TEC",
         theme: "default",
         entries: [],       // General passwords
         subscribers: [],   // Alarm/Recorder subscriber accounts
@@ -157,16 +157,17 @@ function setupEventListeners() {
     });
     document.getElementById("btn-gen-sub-pass").addEventListener("click", () => {
         const type = document.getElementById("sub-type").value;
+        const len = parseInt(document.getElementById("sub-pass-length").value) || 6;
         let pass = "";
         if (type === "alarm") {
-            pass = generateNumericPassword(4);
+            pass = generateNumericPassword(len);
         } else if (type === "recorder") {
-            pass = generateAlphanumericPassword(8);
+            pass = generateAlphanumericPassword(len);
         } else {
-            pass = generateComplexPassword(12);
+            pass = generateComplexPassword(len);
         }
         document.getElementById("sub-password").value = pass;
-        showToast(`Clave para equipo (${type}) generada`);
+        showToast(`Clave para equipo (${type}, ${len} caracteres) generada`);
     });
 
     // Form Submissions
@@ -174,12 +175,14 @@ function setupEventListeners() {
     els.formSubscriber.addEventListener("submit", saveSubscriberEntry);
     els.formExpense.addEventListener("submit", saveExpenseEntry);
     document.getElementById("form-user").addEventListener("submit", saveUserAction);
+    document.getElementById("form-manual").addEventListener("submit", saveManualAction);
 
     // New item buttons
     document.getElementById("btn-new-password").addEventListener("click", () => openPasswordForm(null));
     document.getElementById("btn-new-subscriber").addEventListener("click", () => openSubscriberForm(null));
     document.getElementById("btn-new-expense").addEventListener("click", () => openExpenseForm());
     document.getElementById("btn-add-user").addEventListener("click", () => openUserForm(null));
+    document.getElementById("btn-new-manual").addEventListener("click", () => openManualForm(null));
 
     // Back buttons
     document.getElementById("btn-back-passwords").addEventListener("click", () => switchScreen("passwords"));
@@ -188,6 +191,10 @@ function setupEventListeners() {
     document.getElementById("btn-back-manuals-list").addEventListener("click", () => switchScreen("manuals-list"));
     document.getElementById("btn-back-expenses").addEventListener("click", () => switchScreen("expenses"));
     document.getElementById("btn-back-settings").addEventListener("click", () => switchScreen("settings"));
+    document.getElementById("btn-back-manuals-list-form").addEventListener("click", () => switchScreen("manuals-list"));
+    
+    // Delete actions
+    document.getElementById("btn-delete-manual").addEventListener("click", deleteManualEntry);
 
     // Settings save
     els.btnSaveSettings.addEventListener("click", saveSettingsAction);
@@ -693,9 +700,16 @@ function renderManualsList() {
 
 // Show specific manual details
 function openManualView(m) {
+    state.activeManual = m;
+    
     document.getElementById("manual-view-title").textContent = m.title;
     document.getElementById("manual-view-category").textContent = m.category;
     document.getElementById("manual-view-body").textContent = m.content || "(Sin contenido)";
+    
+    const deleteBtn = document.getElementById("btn-delete-manual");
+    if (deleteBtn) {
+        deleteBtn.style.display = (state.currentUser && state.currentUser.role === "admin") ? "flex" : "none";
+    }
     
     const fileContainer = document.getElementById("manual-view-file-container");
     if (m.file_path) {
@@ -1205,11 +1219,11 @@ function adaptLoginFields() {
     const userCount = Object.keys(state.usersMetadata || {}).length;
     if (userCount > 0) {
         if (usernameGroup) usernameGroup.style.display = "block";
-        if (loginSubtitle) loginSubtitle.textContent = "Introduce tus credenciales para acceder a SEC ATS.";
+        if (loginSubtitle) loginSubtitle.textContent = "Introduce tus credenciales para acceder a ATS TEC.";
         if (loginPassInput) loginPassInput.placeholder = "Contraseña";
     } else {
         if (usernameGroup) usernameGroup.style.display = "none";
-        if (loginSubtitle) loginSubtitle.textContent = "Introduce tu Clave Maestra para descifrar la base de datos de SEC ATS.";
+        if (loginSubtitle) loginSubtitle.textContent = "Introduce tu Clave Maestra para descifrar la base de datos de ATS TEC.";
         if (loginPassInput) loginPassInput.placeholder = "Clave Maestra";
     }
 }
@@ -1504,6 +1518,121 @@ async function deleteUser(username) {
         } catch (err) {
             console.error("Delete user error:", err);
             showToast("Error al eliminar usuario");
+        } finally {
+            showLoading(false);
+        }
+    }
+}
+
+// Manuals Administration: Open Form
+function openManualForm(m = null) {
+    const form = document.getElementById("form-manual");
+    form.reset();
+    
+    const title = document.getElementById("manual-form-title");
+    const categorySelect = document.getElementById("manual-category");
+    const titleInput = document.getElementById("manual-title-input");
+    const contentInput = document.getElementById("manual-content-input");
+    const fileInput = document.getElementById("manual-file-input");
+    const editId = document.getElementById("manual-edit-id");
+    
+    if (m) {
+        title.textContent = "Editar Manual";
+        categorySelect.value = m.category || "General";
+        titleInput.value = m.title || "";
+        contentInput.value = m.content || "";
+        fileInput.value = m.file_path || "";
+        editId.value = m.id;
+    } else {
+        title.textContent = "Nuevo Manual";
+        categorySelect.value = state.activeCategory || "General";
+        titleInput.value = "";
+        contentInput.value = "";
+        fileInput.value = "";
+        editId.value = "";
+    }
+    
+    switchScreen("form-manual");
+}
+
+// Manuals Administration: Save
+async function saveManualAction(evt) {
+    evt.preventDefault();
+    if (state.currentUser && state.currentUser.role !== "admin") {
+        showToast("Operación no permitida: se requiere rol Admin");
+        return;
+    }
+    
+    const editId = document.getElementById("manual-edit-id").value;
+    const category = document.getElementById("manual-category").value;
+    const title = document.getElementById("manual-title-input").value.trim();
+    const content = document.getElementById("manual-content-input").value.trim();
+    const file_path = document.getElementById("manual-file-input").value.trim();
+    
+    if (!title || !content) {
+        showToast("Por favor, rellena título y contenido");
+        return;
+    }
+    
+    showLoading(true, "Guardando manual...");
+    
+    try {
+        const manualData = { category, title, content, file_path };
+        
+        if (!state.vault.manuals) {
+            state.vault.manuals = [];
+        }
+        
+        if (editId) {
+            const idx = state.vault.manuals.findIndex(m => m.id == editId);
+            if (idx !== -1) {
+                state.vault.manuals[idx] = { ...state.vault.manuals[idx], ...manualData };
+            }
+        } else {
+            manualData.id = Date.now();
+            state.vault.manuals.unshift(manualData);
+        }
+        
+        setSyncStatus(false);
+        switchScreen("manuals-list");
+        renderManualsList();
+        showToast("Manual guardado");
+        
+        await syncWithCloud();
+    } catch (err) {
+        console.error("Save manual error:", err);
+        showToast("Error al guardar manual");
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Manuals Administration: Delete
+async function deleteManualEntry() {
+    if (state.currentUser && state.currentUser.role !== "admin") {
+        showToast("Operación no permitida: se requiere rol Admin");
+        return;
+    }
+    
+    const m = state.activeManual;
+    if (!m || !m.id) {
+        showToast("No hay manual activo para eliminar");
+        return;
+    }
+    
+    if (confirm(`¿Estás seguro de que deseas eliminar el manual "${m.title}"?`)) {
+        showLoading(true, "Eliminando manual...");
+        try {
+            state.vault.manuals = state.vault.manuals.filter(item => item.id !== m.id);
+            setSyncStatus(false);
+            switchScreen("manuals-list");
+            renderManualsList();
+            showToast("Manual eliminado");
+            
+            await syncWithCloud();
+        } catch (err) {
+            console.error("Delete manual error:", err);
+            showToast("Error al eliminar manual");
         } finally {
             showLoading(false);
         }

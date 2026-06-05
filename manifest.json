@@ -1,7 +1,7 @@
 {
-  "name": "SEC ATS",
-  "short_name": "SEC ATS",
-  "description": "Bóveda cifrada y documentación técnica sincronizada con GitHub - SEC ATS",
+  "name": "ATS TEC",
+  "short_name": "ATS TEC",
+  "description": "Bóveda cifrada y documentación técnica sincronizada con GitHub - ATS TEC",
   "start_url": "index.html",
   "display": "standalone",
   "orientation": "portrait",

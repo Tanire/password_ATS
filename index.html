@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>SEC ATS</title>
+    <title>ATS TEC</title>
     <!-- Web App Manifest & iOS support -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -29,7 +29,7 @@
         <div id="screen-login" class="screen active">
             <div class="login-box anim-fade">
                 <div class="login-logo-container" style="text-align: center; margin-bottom: 20px;">
-                    <img src="logo.png" alt="SEC ATS Logo" style="max-width: 180px; height: auto;">
+                    <img src="logo.png" alt="ATS TEC Logo" style="max-width: 180px; height: auto;">
                 </div>
                 <h2>Bóveda Segura</h2>
                 <p id="login-box-subtitle">Introduce tu Clave Maestra para descifrar la base de datos de JMSystems.</p>
@@ -53,7 +53,7 @@
             <header>
                 <div class="header-logo">
                     <img src="logo.png" alt="Logo" style="height: 24px; width: auto; object-fit: contain;">
-                    <h1 id="lbl-company-name">SEC ATS</h1>
+                    <h1 id="lbl-company-name">ATS TEC</h1>
                 </div>
                 <div class="sync-badge" id="btn-sync-trigger" title="Forzar Sincronización">
                     <span class="sync-dot synced" id="sync-status-dot"></span>
@@ -87,6 +87,9 @@
                             <span class="card-icon" style="color: #ef4444;">💰</span>
                             <span class="card-title">Gastos</span>
                         </div>
+                    </div>
+                    <div style="text-align: center; margin-top: 40px; font-size: 0.8rem; color: var(--text-secondary);" class="dashboard-footer">
+                        Versión 1.02 - JMSYSTEMAS
                     </div>
                 </div>
 
@@ -201,7 +204,11 @@
                         <div class="form-group">
                             <label>Clave Acceso</label>
                             <div class="input-with-action">
-                                <input type="text" id="sub-password" class="input-control" required>
+                                <input type="text" id="sub-password" class="input-control" required style="flex: 1;">
+                                <select id="sub-pass-length" class="input-control" style="width: 110px; font-size: 0.85rem; padding-right: 25px; background-position: right 10px center;">
+                                    <option value="4">4 dígitos</option>
+                                    <option value="6" selected>6 dígitos</option>
+                                </select>
                                 <button type="button" class="btn-icon" id="btn-gen-sub-pass" title="Generar Clave de Equipo"><i class="bx bx-bolt-circle"></i></button>
                             </div>
                         </div>
@@ -224,8 +231,11 @@
                 <!-- G. MANUALS LIST SCREEN -->
                 <div id="screen-manuals-list" class="screen">
                     <div class="list-header">
-                        <h2 id="manuals-list-title">Manuales</h2>
-                        <button class="btn-icon" id="btn-back-manuals-brands"><i class="bx bx-arrow-back"></i></button>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <button class="btn-icon" id="btn-back-manuals-brands"><i class="bx bx-arrow-back"></i></button>
+                            <h2 id="manuals-list-title">Manuales</h2>
+                        </div>
+                        <button class="btn-add-circle" id="btn-new-manual" title="Nuevo Manual">+</button>
                     </div>
                     <div class="search-container">
                         <i class="bx bx-search search-icon"></i>
@@ -239,8 +249,11 @@
                 <!-- H. MANUAL VIEW SCREEN -->
                 <div id="screen-manual-view" class="screen">
                     <div class="list-header">
-                        <h2 id="manual-view-title">Manual</h2>
-                        <button class="btn-icon" id="btn-back-manuals-list"><i class="bx bx-arrow-back"></i></button>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <button class="btn-icon" id="btn-back-manuals-list"><i class="bx bx-arrow-back"></i></button>
+                            <h2 id="manual-view-title">Manual</h2>
+                        </div>
+                        <button class="btn-icon btn-delete-manual" id="btn-delete-manual" style="color: var(--danger);" title="Eliminar Manual"><i class="bx bx-trash"></i></button>
                     </div>
                     <div class="anim-fade" style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 20px; flex: 1; display: flex; flex-direction: column;">
                         <div style="font-size: 0.8rem; color: var(--accent); font-weight: 600; text-transform: uppercase; margin-bottom: 10px;" id="manual-view-category">Categoría</div>
@@ -361,10 +374,7 @@
                                 <option value="green">Verde Matrix</option>
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label>Nombre de la Empresa</label>
-                            <input type="text" id="set-company-name" class="input-control" placeholder="Ej. JMSystems">
-                        </div>
+                        <input type="hidden" id="set-company-name" value="ATS TEC">
 
                         <button id="btn-save-settings" class="btn-premium" style="margin-top: 10px;">
                             <i class="bx bx-save"></i> GUARDAR AJUSTES
@@ -455,6 +465,45 @@
                 </div>
                 <button type="submit" class="btn-premium" style="margin-top: 10px;">
                     <i class="bx bx-save"></i> GUARDAR USUARIO
+                </button>
+            </form>
+        </div>
+        
+        <!-- M. EDIT MANUAL FORM -->
+        <div id="screen-form-manual" class="screen">
+            <div class="list-header">
+                <h2 id="manual-form-title">Nuevo Manual</h2>
+                <button class="btn-icon" id="btn-back-manuals-list-form"><i class="bx bx-arrow-back"></i></button>
+            </div>
+            <form id="form-manual" class="anim-fade" style="padding-bottom: 80px;">
+                <input type="hidden" id="manual-edit-id">
+                <div class="form-group">
+                    <label>Marca / Categoría</label>
+                    <select id="manual-category" class="input-control">
+                        <option value="Ademco">Ademco</option>
+                        <option value="DSC">DSC</option>
+                        <option value="Paradox">Paradox</option>
+                        <option value="Risco">Risco</option>
+                        <option value="Galaxy">Galaxy</option>
+                        <option value="Ajax">Ajax</option>
+                        <option value="Texecom">Texecom</option>
+                        <option value="General">General</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Título del Manual</label>
+                    <input type="text" id="manual-title-input" class="input-control" placeholder="Ej. Reset de Fábrica Ajax Hub" required>
+                </div>
+                <div class="form-group">
+                    <label>Contenido / Procedimiento Técnico</label>
+                    <textarea id="manual-content-input" class="input-control" rows="8" placeholder="Escribe los pasos técnicos..." required style="resize: vertical; min-height: 120px; font-family: var(--font-sans);"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Ruta de Archivo Adjunto (Opcional)</label>
+                    <input type="text" id="manual-file-input" class="input-control" placeholder="Ej. manuals/pdf/ajax_reset.pdf">
+                </div>
+                <button type="submit" class="btn-premium" style="margin-top: 10px;">
+                    <i class="bx bx-save"></i> GUARDAR MANUAL
                 </button>
             </form>
         </div>
