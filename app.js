@@ -228,9 +228,10 @@ async function handleUnlock() {
     const gitToken = GIT_CONFIG.token;
     const gitPath = GIT_CONFIG.path;
 
-    let decryptedData = null;
+    let encryptedPayloadStr = null;
+    let isOffline = false;
 
-    // Pull from GitHub using hardcoded config
+    // 1. Pull data from GitHub or fall back to local offline cache
     if (gitUser && gitRepo && gitToken) {
         try {
             showLoading(true, "Conectando con GitHub...");
@@ -239,86 +240,69 @@ async function handleUnlock() {
 
             if (fileData) {
                 state.gitSha = fileData.sha;
-                showLoading(true, "Descifrando datos...");
-                
-                const encryptedPayload = JSON.parse(fileData.content);
-                decryptedData = await decryptData(
-                    encryptedPayload.ciphertext,
-                    password,
-                    encryptedPayload.salt,
-                    encryptedPayload.iv
-                );
-
-                // Save locally to offline cache
+                encryptedPayloadStr = fileData.content;
+                // Cache locally for offline availability
                 localStorage.setItem(STORAGE_KEYS.VAULT_CACHE, fileData.content);
                 setSyncStatus(true);
             } else {
-                // File doesn't exist on GitHub. We initialize a new vault.
-                showToast("Archivo no encontrado. Inicializando bóveda vacía.");
-                decryptedData = JSON.stringify(state.vault);
-                setSyncStatus(false);
+                showLoading(false);
+                showToast("Archivo no encontrado en GitHub.");
+                return;
             }
         } catch (error) {
-            console.error("Cloud unlock failed, trying local cache...", error);
-            showToast("GitHub error. Cargando copia local fuera de línea.");
-            decryptedData = await attemptUnlockFromCache(password);
+            console.error("Cloud connection failed, checking cache...", error);
+            encryptedPayloadStr = localStorage.getItem(STORAGE_KEYS.VAULT_CACHE);
+            if (!encryptedPayloadStr) {
+                showLoading(false);
+                showToast("Error de conexión y no hay copia local guardada.");
+                return;
+            }
+            isOffline = true;
+            setSyncStatus("offline");
         }
     } else {
-        decryptedData = await attemptUnlockFromCache(password);
-    }
-
-    showLoading(false);
-
-    if (decryptedData) {
-        try {
-            state.vault = JSON.parse(decryptedData);
-            
-            // Apply vault configs
-            if (state.vault.theme) {
-                applyTheme(state.vault.theme);
-                els.setTheme.value = state.vault.theme;
-            }
-            if (state.vault.company_name) {
-                els.lblCompanyName.textContent = state.vault.company_name;
-                els.setCompanyName.value = state.vault.company_name;
-            }
-
-            // Unlock and load
-            els.screenLogin.style.display = "none";
-            els.appBody.style.display = "flex";
-            switchScreen("dashboard");
-            showToast("Bóveda abierta correctamente");
-        } catch (e) {
-            console.error(e);
-            showToast("Error crítico al procesar datos del JSON descifrado");
-            state.masterPassword = "";
+        encryptedPayloadStr = localStorage.getItem(STORAGE_KEYS.VAULT_CACHE);
+        if (!encryptedPayloadStr) {
+            showLoading(false);
+            showToast("Error: Sin conexión y no hay copia local.");
+            return;
         }
-    } else {
-        state.masterPassword = "";
-    }
-}
-
-// Offline backup decryption
-async function attemptUnlockFromCache(password) {
-    const cachedEncryptedStr = localStorage.getItem(STORAGE_KEYS.VAULT_CACHE);
-    if (!cachedEncryptedStr) {
-        showToast("Error: Sin conexión y no hay copia local guardada.");
-        return null;
+        isOffline = true;
+        setSyncStatus("offline");
     }
 
+    // 2. Decrypt data using the master password
     try {
-        const encryptedPayload = JSON.parse(cachedEncryptedStr);
-        const decrypted = await decryptData(
+        showLoading(true, "Descifrando datos...");
+        const encryptedPayload = JSON.parse(encryptedPayloadStr);
+        const decryptedData = await decryptData(
             encryptedPayload.ciphertext,
             password,
             encryptedPayload.salt,
             encryptedPayload.iv
         );
-        setSyncStatus("offline");
-        return decrypted;
+
+        state.vault = JSON.parse(decryptedData);
+        
+        // Apply configs
+        if (state.vault.theme) {
+            applyTheme(state.vault.theme);
+            els.setTheme.value = state.vault.theme;
+        }
+        if (state.vault.company_name) {
+            els.lblCompanyName.textContent = state.vault.company_name;
+            els.setCompanyName.value = state.vault.company_name;
+        }
+
+        els.screenLogin.style.display = "none";
+        els.appBody.style.display = "flex";
+        switchScreen("dashboard");
+        showToast(isOffline ? "Bóveda abierta fuera de línea" : "Bóveda abierta correctamente");
     } catch (e) {
-        showToast("Clave maestra incorrecta o datos corruptos");
-        return null;
+        console.error("Decryption failed:", e);
+        showToast("Clave maestra incorrecta");
+    } finally {
+        showLoading(false);
     }
 }
 
