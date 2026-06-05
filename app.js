@@ -40,6 +40,13 @@ const els = {
     loginPass: document.getElementById("login-password"),
     btnLogin: document.getElementById("btn-login"),
     
+    loginGitToken: document.getElementById("login-git-token"),
+    loginGitUser: document.getElementById("login-git-user"),
+    loginGitRepo: document.getElementById("login-git-repo"),
+    btnLoginSetupGit: document.getElementById("btn-login-setup-git"),
+    btnLoginSaveGit: document.getElementById("btn-login-save-git"),
+    loginGitSetupPanel: document.getElementById("login-git-setup-panel"),
+    
     lblCompanyName: document.getElementById("lbl-company-name"),
     syncDot: document.getElementById("sync-status-dot"),
     syncText: document.getElementById("sync-status-text"),
@@ -92,15 +99,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Load settings into UI fields
 function loadSettingsFromStorage() {
-    els.setGitUser.value = localStorage.getItem(STORAGE_KEYS.GIT_USER) || "";
-    els.setGitRepo.value = localStorage.getItem(STORAGE_KEYS.GIT_REPO) || "";
+    const user = localStorage.getItem(STORAGE_KEYS.GIT_USER) || "";
+    const repo = localStorage.getItem(STORAGE_KEYS.GIT_REPO) || "";
+    const token = localStorage.getItem(STORAGE_KEYS.GIT_TOKEN) || "";
+    
+    els.setGitUser.value = user;
+    els.setGitRepo.value = repo;
     els.setGitPath.value = localStorage.getItem(STORAGE_KEYS.GIT_PATH) || "vault_v4.enc";
-    els.setGitToken.value = localStorage.getItem(STORAGE_KEYS.GIT_TOKEN) || "";
+    els.setGitToken.value = token;
+    
+    els.loginGitUser.value = user;
+    els.loginGitRepo.value = repo;
+    els.loginGitToken.value = token;
+    
     els.setTheme.value = localStorage.getItem(STORAGE_KEYS.THEME) || "default";
     els.setCompanyName.value = localStorage.getItem(STORAGE_KEYS.COMPANY_NAME) || "JMSystems";
     
     applyTheme(els.setTheme.value);
     els.lblCompanyName.textContent = els.setCompanyName.value;
+    
+    // Automatically open connection setup if not configured
+    if (!user || !repo || !token) {
+        els.loginGitSetupPanel.style.display = "block";
+    }
 }
 
 // Global Event Routing
@@ -109,6 +130,34 @@ function setupEventListeners() {
     els.btnLogin.addEventListener("click", handleUnlock);
     els.loginPass.addEventListener("keypress", (e) => {
         if (e.key === "Enter") handleUnlock();
+    });
+
+    els.btnLoginSetupGit.addEventListener("click", (e) => {
+        e.preventDefault();
+        const display = els.loginGitSetupPanel.style.display;
+        els.loginGitSetupPanel.style.display = display === "none" ? "block" : "none";
+    });
+
+    els.btnLoginSaveGit.addEventListener("click", () => {
+        const user = els.loginGitUser.value.trim();
+        const repo = els.loginGitRepo.value.trim();
+        const token = els.loginGitToken.value.trim();
+
+        localStorage.setItem(STORAGE_KEYS.GIT_USER, user);
+        localStorage.setItem(STORAGE_KEYS.GIT_REPO, repo);
+        localStorage.setItem(STORAGE_KEYS.GIT_TOKEN, token);
+
+        els.setGitUser.value = user;
+        els.setGitRepo.value = repo;
+        els.setGitToken.value = token;
+
+        const path = localStorage.getItem(STORAGE_KEYS.GIT_PATH) || "vault_v4.enc";
+        if (user && repo && token) {
+            state.gitClient = new GitHubClient(user, repo, token, path);
+        }
+
+        els.loginGitSetupPanel.style.display = "none";
+        showToast("Conexión de GitHub guardada");
     });
 
     // Navigation Tab Switching
