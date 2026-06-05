@@ -123,7 +123,49 @@ function setupEventListeners() {
     document.getElementById("menu-passwords").addEventListener("click", () => switchScreen("passwords"));
     document.getElementById("menu-subscribers").addEventListener("click", () => switchScreen("subscribers"));
     document.getElementById("menu-manuals").addEventListener("click", () => switchScreen("manuals"));
-    document.getElementById("menu-expenses").addEventListener("click", () => switchScreen("expenses"));
+    document.getElementById("menu-expenses").addEventListener("click", () => switchScreen("expenses-submenu"));
+
+    // V1.05 Expenses Submenu Navigation
+    document.getElementById("menu-sub-hours").addEventListener("click", () => switchScreen("hours"));
+    document.getElementById("menu-sub-diets").addEventListener("click", () => switchScreen("diets"));
+    document.getElementById("menu-sub-materials").addEventListener("click", () => switchScreen("materials"));
+
+    // V1.05 Back buttons
+    document.getElementById("btn-back-hours-submenu").addEventListener("click", () => switchScreen("expenses-submenu"));
+    document.getElementById("btn-back-diets-submenu").addEventListener("click", () => switchScreen("expenses-submenu"));
+    document.getElementById("btn-back-materials-submenu").addEventListener("click", () => switchScreen("expenses-submenu"));
+
+    document.getElementById("btn-back-hours-list").addEventListener("click", () => switchScreen("hours"));
+    document.getElementById("btn-back-diets-list").addEventListener("click", () => switchScreen("diets"));
+    document.getElementById("btn-back-materials-list").addEventListener("click", () => switchScreen("materials"));
+
+    // V1.05 Add buttons
+    document.getElementById("btn-new-hour").addEventListener("click", () => openHourForm(null));
+    document.getElementById("btn-new-diet").addEventListener("click", () => openDietForm(null));
+    document.getElementById("btn-new-material").addEventListener("click", () => openMaterialForm(null));
+
+    // V1.05 Search filters
+    document.getElementById("search-hours").addEventListener("input", renderHours);
+    document.getElementById("search-diets").addEventListener("input", renderDiets);
+    document.getElementById("search-materials").addEventListener("input", renderMaterials);
+
+    // V1.05 Form submits
+    document.getElementById("form-hour").addEventListener("submit", saveHourEntry);
+    document.getElementById("form-diet").addEventListener("submit", saveDietEntry);
+    document.getElementById("form-material").addEventListener("submit", saveMaterialEntry);
+
+    // V1.05 File inputs preview handlers
+    document.getElementById("diet-file").addEventListener("change", (e) => handleFilePreview(e, "diet-img-preview"));
+    document.getElementById("material-file").addEventListener("change", (e) => handleFilePreview(e, "material-img-preview"));
+
+    // V1.05 Close image viewer
+    document.getElementById("btn-close-image-viewer").addEventListener("click", () => {
+        document.getElementById("screen-image-viewer").classList.remove("active");
+        switchScreen(state.previousScreen || "expenses-submenu");
+    });
+
+    // V1.05 Export button
+    document.getElementById("btn-export-pdf").addEventListener("click", exportMonthlyReport);
 
     // Sync button
     els.btnSyncTrigger.addEventListener("click", syncWithCloud);
@@ -249,7 +291,9 @@ function switchScreen(screenId) {
     // Highlight nav item
     els.navItems.forEach(item => {
         item.classList.remove("active");
-        if (item.getAttribute("data-screen") === screenId) {
+        const itemScreen = item.getAttribute("data-screen");
+        if (itemScreen === screenId || 
+            (itemScreen === "expenses-submenu" && ["hours", "diets", "materials", "form-hour", "form-diet", "form-material"].includes(screenId))) {
             item.classList.add("active");
         }
     });
@@ -258,7 +302,9 @@ function switchScreen(screenId) {
     if (screenId === "passwords") renderPasswords();
     if (screenId === "subscribers") renderSubscribers();
     if (screenId === "manuals") renderManualsBrands();
-    if (screenId === "expenses") renderExpenses();
+    if (screenId === "hours") renderHours();
+    if (screenId === "diets") renderDiets();
+    if (screenId === "materials") renderMaterials();
 }
 
 // Derive keys and pull vault from GitHub or local cache
@@ -368,8 +414,12 @@ async function handleUnlock() {
         state.masterPassword = vaultKey;
         state.vault = JSON.parse(decryptedData);
         
-        if (!state.vault.users) {
-            state.vault.users = [];
+        if (!state.vault.users) state.vault.users = [];
+        if (!state.vault.hours) state.vault.hours = [];
+        if (!state.vault.diets) state.vault.diets = [];
+        if (!state.vault.materials) state.vault.materials = [];
+        if (!state.vault.manual_categories) {
+            state.vault.manual_categories = ["Ademco", "DSC", "Paradox", "Risco", "Galaxy", "Ajax", "Texecom", "General"];
         }
         
         // Automatic default admin user initialization on first unlock
@@ -392,6 +442,10 @@ async function handleUnlock() {
                 role: loggedInUsername === "admin" ? "admin" : "viewer",
                 scope: loggedInUsername === "admin" ? ["passwords", "subscribers", "manuals"] : []
             };
+        }
+        
+        if (!state.vault.users.some(u => u.username.toLowerCase() === loggedInUsername)) {
+            state.vault.users.push(activeUser);
         }
         
         state.currentUser = activeUser;
@@ -1044,9 +1098,23 @@ function saveSettingsAction() {
     // Apply inside vault schema as well for sharing configurations
     state.vault.theme = theme;
     state.vault.company_name = company;
+
+    if (state.currentUser) {
+        state.currentUser.fullName = document.getElementById("set-profile-fullname").value.trim();
+        state.currentUser.zona = document.getElementById("set-profile-zona").value.trim();
+        state.currentUser.delegacion = document.getElementById("set-profile-delegacion").value.trim();
+        state.currentUser.vehiculo = document.getElementById("set-profile-vehiculo").value.trim();
+        state.currentUser.tarjeta = document.getElementById("set-profile-tarjeta").value.trim();
+
+        // Update in state.vault.users
+        const uIdx = state.vault.users.findIndex(u => u.username.toLowerCase() === state.currentUser.username.toLowerCase());
+        if (uIdx !== -1) {
+            state.vault.users[uIdx] = { ...state.vault.users[uIdx], ...state.currentUser };
+        }
+    }
     
     setSyncStatus(false);
-    showToast("Ajustes locales guardados. Sincronizando...");
+    showToast("Ajustes y Perfil guardados. Sincronizando...");
     syncWithCloud();
 }
 
@@ -1283,6 +1351,13 @@ function applyUserPrivileges(user) {
     // Update UI profile display in Settings
     document.getElementById("set-current-username").textContent = user.username.toUpperCase();
     document.getElementById("set-current-user-role").textContent = `Rol: ${user.role.toUpperCase()}`;
+    
+    // Populate profile inputs in Settings
+    document.getElementById("set-profile-fullname").value = user.fullName || "";
+    document.getElementById("set-profile-zona").value = user.zona || "";
+    document.getElementById("set-profile-delegacion").value = user.delegacion || "";
+    document.getElementById("set-profile-vehiculo").value = user.vehiculo || "";
+    document.getElementById("set-profile-tarjeta").value = user.tarjeta || "";
     
     // Admin User Management Panel visibility
     if (user.role === "admin") {
@@ -1823,6 +1898,833 @@ function openSubscriberView(sub) {
     document.getElementById("sub-view-password").textContent = sub.password || "-";
     
     switchScreen("subscriber-view");
+}
+
+function editSubscriberFromView() {
+    if (state.currentUser && state.currentUser.role === "viewer") {
+        showToast("Error: Acceso de sólo lectura");
+        return;
+    }
+    if (state.activeSubscriber) {
+        openSubscriberForm(state.activeSubscriber.id);
+    }
+}
+
+// --- V1.05 NEW CRUD AND EXPORT LOGIC FOR EXTRAS AND TICKETS ---
+
+// HORAS EXTRAS CRUD
+function openHourForm(id = null) {
+    const form = document.getElementById("form-hour");
+    form.reset();
+    document.getElementById("hour-id").value = "";
+    document.getElementById("hour-date").value = new Date().toISOString().split('T')[0];
+    
+    if (id) {
+        const entry = state.vault.hours.find(h => h.id === id);
+        if (entry) {
+            document.getElementById("hour-form-title").textContent = "Editar Horas Extras";
+            document.getElementById("hour-id").value = entry.id;
+            document.getElementById("hour-date").value = entry.date || "";
+            document.getElementById("hour-concept").value = entry.concept || "TRABAJOS";
+            document.getElementById("hour-description").value = entry.description || "";
+            document.getElementById("hour-start").value = entry.startTime || "";
+            document.getElementById("hour-end").value = entry.endTime || "";
+        }
+    } else {
+        document.getElementById("hour-form-title").textContent = "Registrar Horas Extras";
+    }
+    switchScreen("form-hour");
+}
+
+async function saveHourEntry(evt) {
+    evt.preventDefault();
+    if (state.currentUser && state.currentUser.role === "viewer") {
+        showToast("Error: Acceso de sólo lectura");
+        return;
+    }
+    
+    const id = document.getElementById("hour-id").value;
+    const date = document.getElementById("hour-date").value;
+    const concept = document.getElementById("hour-concept").value.trim();
+    const description = document.getElementById("hour-description").value.trim();
+    const startTime = document.getElementById("hour-start").value;
+    const endTime = document.getElementById("hour-end").value;
+    
+    // Calculate duration
+    const hours = calculateTimeDiff(startTime, endTime);
+    
+    const entryData = {
+        date,
+        concept,
+        description,
+        startTime,
+        endTime,
+        hours,
+        user_name: state.currentUser ? (state.currentUser.fullName || state.currentUser.username.toUpperCase()) : "TÉCNICO"
+    };
+    
+    if (id) {
+        const idx = state.vault.hours.findIndex(h => h.id == id);
+        if (idx !== -1) {
+            state.vault.hours[idx] = { ...state.vault.hours[idx], ...entryData };
+        }
+    } else {
+        entryData.id = Date.now();
+        state.vault.hours.unshift(entryData);
+    }
+    
+    setSyncStatus(false);
+    switchScreen("hours");
+    showToast("Horas registradas localmente");
+    await syncWithCloud();
+}
+
+async function deleteHourEntry(id) {
+    if (state.currentUser && state.currentUser.role === "viewer") {
+        showToast("Error: Acceso de sólo lectura");
+        return;
+    }
+    if (confirm("¿Estás seguro de que deseas eliminar este registro de horas?")) {
+        state.vault.hours = state.vault.hours.filter(h => h.id !== id);
+        setSyncStatus(false);
+        renderHours();
+        await syncWithCloud();
+    }
+}
+
+function renderHours() {
+    const list = document.getElementById("list-hours");
+    list.innerHTML = "";
+    const q = document.getElementById("search-hours").value.trim().toLowerCase();
+    
+    let filtered = state.vault.hours || [];
+    if (q) {
+        filtered = filtered.filter(h => {
+            return (h.description || "").toLowerCase().includes(q) || 
+                   (h.concept || "").toLowerCase().includes(q) ||
+                   (h.date || "").includes(q);
+        });
+    }
+    
+    if (filtered.length === 0) {
+        list.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-secondary); font-size:0.9rem;">No hay registros de horas extras</div>`;
+        return;
+    }
+    
+    filtered.forEach(h => {
+        const card = document.createElement("div");
+        card.className = "item-card anim-fade";
+        
+        const titleText = `${h.description || "Sin cliente"}`;
+        const subtext = `⏱️ ${h.date} • ${h.startTime} a ${h.endTime} (${h.hours.substring(0, 5)} hrs) • ${h.user_name}`;
+        
+        card.innerHTML = `
+            <div class="item-card-left">
+                <div class="item-logo-container" style="font-size:1.2rem;">⏱️</div>
+                <div class="item-details">
+                    <span class="item-title">${titleText}</span>
+                    <span class="item-sub">${subtext}</span>
+                </div>
+            </div>
+            <div class="item-actions">
+                <button class="btn-icon btn-edit" data-id="${h.id}" title="Editar"><i class="bx bx-edit-alt"></i></button>
+                <button class="btn-icon btn-delete" data-id="${h.id}" style="color:var(--danger);" title="Eliminar"><i class="bx bx-trash"></i></button>
+            </div>
+        `;
+        
+        card.querySelector(".btn-edit").addEventListener("click", (evt) => {
+            evt.stopPropagation();
+            openHourForm(h.id);
+        });
+        
+        card.querySelector(".btn-delete").addEventListener("click", (evt) => {
+            evt.stopPropagation();
+            deleteHourEntry(h.id);
+        });
+        
+        list.appendChild(card);
+    });
+}
+
+// DIETAS CRUD
+function openDietForm(id = null) {
+    const form = document.getElementById("form-diet");
+    form.reset();
+    document.getElementById("diet-id").value = "";
+    document.getElementById("diet-date").value = new Date().toISOString().split('T')[0];
+    document.getElementById("diet-img-preview").style.display = "none";
+    document.getElementById("diet-file").removeAttribute("data-base64");
+    
+    if (id) {
+        const entry = state.vault.diets.find(d => d.id === id);
+        if (entry) {
+            document.getElementById("diet-form-title").textContent = "Editar Dieta";
+            document.getElementById("diet-id").value = entry.id;
+            document.getElementById("diet-date").value = entry.date || "";
+            document.getElementById("diet-client").value = entry.client || "";
+            document.getElementById("diet-concept").value = entry.concept || "";
+            document.getElementById("diet-amount").value = entry.amount || "";
+            
+            if (entry.image) {
+                document.getElementById("diet-file").dataset.base64 = entry.image;
+                const img = document.getElementById("diet-img-preview").querySelector("img");
+                img.src = entry.image;
+                document.getElementById("diet-img-preview").style.display = "block";
+            }
+        }
+    } else {
+        document.getElementById("diet-form-title").textContent = "Registrar Dieta";
+    }
+    switchScreen("form-diet");
+}
+
+async function saveDietEntry(evt) {
+    evt.preventDefault();
+    if (state.currentUser && state.currentUser.role === "viewer") {
+        showToast("Error: Acceso de sólo lectura");
+        return;
+    }
+    
+    const id = document.getElementById("diet-id").value;
+    const date = document.getElementById("diet-date").value;
+    const client = document.getElementById("diet-client").value.trim();
+    const concept = document.getElementById("diet-concept").value.trim();
+    const amount = parseFloat(document.getElementById("diet-amount").value) || 0;
+    const image = document.getElementById("diet-file").dataset.base64 || "";
+    
+    const entryData = {
+        date,
+        client,
+        concept,
+        amount,
+        image,
+        user_name: state.currentUser ? (state.currentUser.fullName || state.currentUser.username.toUpperCase()) : "TÉCNICO"
+    };
+    
+    if (id) {
+        const idx = state.vault.diets.findIndex(d => d.id == id);
+        if (idx !== -1) {
+            state.vault.diets[idx] = { ...state.vault.diets[idx], ...entryData };
+        }
+    } else {
+        entryData.id = Date.now();
+        state.vault.diets.unshift(entryData);
+    }
+    
+    setSyncStatus(false);
+    switchScreen("diets");
+    showToast("Dieta guardada localmente");
+    await syncWithCloud();
+}
+
+async function deleteDietEntry(id) {
+    if (state.currentUser && state.currentUser.role === "viewer") {
+        showToast("Error: Acceso de sólo lectura");
+        return;
+    }
+    if (confirm("¿Eliminar este registro de dieta?")) {
+        state.vault.diets = state.vault.diets.filter(d => d.id !== id);
+        setSyncStatus(false);
+        renderDiets();
+        await syncWithCloud();
+    }
+}
+
+function renderDiets() {
+    const list = document.getElementById("list-diets");
+    list.innerHTML = "";
+    const q = document.getElementById("search-diets").value.trim().toLowerCase();
+    
+    let filtered = state.vault.diets || [];
+    if (q) {
+        filtered = filtered.filter(d => {
+            return (d.client || "").toLowerCase().includes(q) || 
+                   (d.concept || "").toLowerCase().includes(q) ||
+                   (d.date || "").includes(q);
+        });
+    }
+    
+    if (filtered.length === 0) {
+        list.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-secondary); font-size:0.9rem;">No hay registros de dietas</div>`;
+        return;
+    }
+    
+    filtered.forEach(d => {
+        const card = document.createElement("div");
+        card.className = "item-card anim-fade";
+        
+        const titleText = `${d.client || "Sin cliente"} • ${parseFloat(d.amount).toFixed(2)}€`;
+        const subtext = `🍔 ${d.date} • ${d.concept} • ${d.user_name}`;
+        
+        let imgHtml = `<div class="item-logo-container" style="font-size:1.2rem;">🍔</div>`;
+        if (d.image) {
+            imgHtml = `<img src="${d.image}" class="ticket-thumb" title="Ver Ticket">`;
+        }
+        
+        card.innerHTML = `
+            <div class="item-card-left">
+                <div class="logo-wrapper" style="margin-right: 16px;">${imgHtml}</div>
+                <div class="item-details">
+                    <span class="item-title">${titleText}</span>
+                    <span class="item-sub">${subtext}</span>
+                </div>
+            </div>
+            <div class="item-actions">
+                <button class="btn-icon btn-edit" data-id="${d.id}" title="Editar"><i class="bx bx-edit-alt"></i></button>
+                <button class="btn-icon btn-delete" data-id="${d.id}" style="color:var(--danger);" title="Eliminar"><i class="bx bx-trash"></i></button>
+            </div>
+        `;
+        
+        if (d.image) {
+            card.querySelector(".ticket-thumb").addEventListener("click", (evt) => {
+                evt.stopPropagation();
+                openImageViewer(d.image);
+            });
+        }
+        
+        card.querySelector(".btn-edit").addEventListener("click", (evt) => {
+            evt.stopPropagation();
+            openDietForm(d.id);
+        });
+        
+        card.querySelector(".btn-delete").addEventListener("click", (evt) => {
+            evt.stopPropagation();
+            deleteDietEntry(d.id);
+        });
+        
+        list.appendChild(card);
+    });
+}
+
+// MATERIALES CRUD
+function openMaterialForm(id = null) {
+    const form = document.getElementById("form-material");
+    form.reset();
+    document.getElementById("material-id").value = "";
+    document.getElementById("material-date").value = new Date().toISOString().split('T')[0];
+    document.getElementById("material-img-preview").style.display = "none";
+    document.getElementById("material-file").removeAttribute("data-base64");
+    
+    if (id) {
+        const entry = state.vault.materials.find(m => m.id === id);
+        if (entry) {
+            document.getElementById("material-form-title").textContent = "Editar Material";
+            document.getElementById("material-id").value = entry.id;
+            document.getElementById("material-date").value = entry.date || "";
+            document.getElementById("material-client").value = entry.client || "";
+            document.getElementById("material-concept").value = entry.concept || "";
+            document.getElementById("material-amount").value = entry.amount || "";
+            
+            if (entry.image) {
+                document.getElementById("material-file").dataset.base64 = entry.image;
+                const img = document.getElementById("material-img-preview").querySelector("img");
+                img.src = entry.image;
+                document.getElementById("material-img-preview").style.display = "block";
+            }
+        }
+    } else {
+        document.getElementById("material-form-title").textContent = "Registrar Material";
+    }
+    switchScreen("form-material");
+}
+
+async function saveMaterialEntry(evt) {
+    evt.preventDefault();
+    if (state.currentUser && state.currentUser.role === "viewer") {
+        showToast("Error: Acceso de sólo lectura");
+        return;
+    }
+    
+    const id = document.getElementById("material-id").value;
+    const date = document.getElementById("material-date").value;
+    const client = document.getElementById("material-client").value.trim();
+    const concept = document.getElementById("material-concept").value.trim();
+    const amount = parseFloat(document.getElementById("material-amount").value) || 0;
+    const image = document.getElementById("material-file").dataset.base64 || "";
+    
+    const entryData = {
+        date,
+        client,
+        concept,
+        amount,
+        image,
+        user_name: state.currentUser ? (state.currentUser.fullName || state.currentUser.username.toUpperCase()) : "TÉCNICO"
+    };
+    
+    if (id) {
+        const idx = state.vault.materials.findIndex(m => m.id == id);
+        if (idx !== -1) {
+            state.vault.materials[idx] = { ...state.vault.materials[idx], ...entryData };
+        }
+    } else {
+        entryData.id = Date.now();
+        state.vault.materials.unshift(entryData);
+    }
+    
+    setSyncStatus(false);
+    switchScreen("materials");
+    showToast("Material guardado localmente");
+    await syncWithCloud();
+}
+
+async function deleteMaterialEntry(id) {
+    if (state.currentUser && state.currentUser.role === "viewer") {
+        showToast("Error: Acceso de sólo lectura");
+        return;
+    }
+    if (confirm("¿Eliminar este registro de material?")) {
+        state.vault.materials = state.vault.materials.filter(m => m.id !== id);
+        setSyncStatus(false);
+        renderMaterials();
+        await syncWithCloud();
+    }
+}
+
+function renderMaterials() {
+    const list = document.getElementById("list-materials");
+    list.innerHTML = "";
+    const q = document.getElementById("search-materials").value.trim().toLowerCase();
+    
+    let filtered = state.vault.materials || [];
+    if (q) {
+        filtered = filtered.filter(m => {
+            return (m.client || "").toLowerCase().includes(q) || 
+                   (m.concept || "").toLowerCase().includes(q) ||
+                   (m.date || "").includes(q);
+        });
+    }
+    
+    if (filtered.length === 0) {
+        list.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-secondary); font-size:0.9rem;">No hay registros de materiales</div>`;
+        return;
+    }
+    
+    filtered.forEach(m => {
+        const card = document.createElement("div");
+        card.className = "item-card anim-fade";
+        
+        const titleText = `${m.client || "Sin cliente"} • ${parseFloat(m.amount).toFixed(2)}€`;
+        const subtext = `🛠️ ${m.date} • ${m.concept} • ${m.user_name}`;
+        
+        let imgHtml = `<div class="item-logo-container" style="font-size:1.2rem;">🛠️</div>`;
+        if (m.image) {
+            imgHtml = `<img src="${m.image}" class="ticket-thumb" title="Ver Ticket">`;
+        }
+        
+        card.innerHTML = `
+            <div class="item-card-left">
+                <div class="logo-wrapper" style="margin-right: 16px;">${imgHtml}</div>
+                <div class="item-details">
+                    <span class="item-title">${titleText}</span>
+                    <span class="item-sub">${subtext}</span>
+                </div>
+            </div>
+            <div class="item-actions">
+                <button class="btn-icon btn-edit" data-id="${m.id}" title="Editar"><i class="bx bx-edit-alt"></i></button>
+                <button class="btn-icon btn-delete" data-id="${m.id}" style="color:var(--danger);" title="Eliminar"><i class="bx bx-trash"></i></button>
+            </div>
+        `;
+        
+        if (m.image) {
+            card.querySelector(".ticket-thumb").addEventListener("click", (evt) => {
+                evt.stopPropagation();
+                openImageViewer(m.image);
+            });
+        }
+        
+        card.querySelector(".btn-edit").addEventListener("click", (evt) => {
+            evt.stopPropagation();
+            openMaterialForm(m.id);
+        });
+        
+        card.querySelector(".btn-delete").addEventListener("click", (evt) => {
+            evt.stopPropagation();
+            deleteMaterialEntry(m.id);
+        });
+        
+        list.appendChild(card);
+    });
+}
+
+// IMAGE UPLOAD COMPRESSION & VIEWER LOGIC
+async function handleFilePreview(evt, previewId) {
+    const file = evt.target.files[0];
+    const previewContainer = document.getElementById(previewId);
+    if (!file) {
+        previewContainer.style.display = "none";
+        return;
+    }
+    
+    showLoading(true, "Comprimiendo imagen de ticket...");
+    try {
+        const compressedBase64 = await compressAndBase64(file);
+        evt.target.dataset.base64 = compressedBase64;
+        
+        const img = previewContainer.querySelector("img");
+        img.src = compressedBase64;
+        previewContainer.style.display = "block";
+    } catch (err) {
+        console.error("Image compression failed:", err);
+        showToast("Error al cargar la imagen");
+        previewContainer.style.display = "none";
+    } finally {
+        showLoading(false);
+    }
+}
+
+function compressAndBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const img = new Image();
+            img.onload = function () {
+                const canvas = document.createElement("canvas");
+                const MAX_WIDTH = 600;
+                const MAX_HEIGHT = 600;
+                let width = img.width;
+                let height = img.height;
+                
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
+                resolve(dataUrl);
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+function openImageViewer(base64) {
+    state.previousScreen = state.currentScreen;
+    document.getElementById("image-viewer-content").src = base64;
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    document.getElementById("screen-image-viewer").classList.add("active");
+}
+
+// AUXILIARY TIME UTILITIES
+function calculateTimeDiff(start, end) {
+    if (!start || !end) return "00:00:00";
+    const [startH, startM] = start.split(":").map(Number);
+    const [endH, endM] = end.split(":").map(Number);
+    
+    let diffMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+    if (diffMinutes < 0) diffMinutes += 24 * 60; // handle wrap around midnight
+    
+    const h = Math.floor(diffMinutes / 60);
+    const m = diffMinutes % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+}
+
+function sumTotalHours(hoursArray) {
+    let totalMinutes = 0;
+    hoursArray.forEach(hStr => {
+        if (!hStr) return;
+        const parts = hStr.split(":");
+        const h = parseInt(parts[0]) || 0;
+        const m = parseInt(parts[1]) || 0;
+        totalMinutes += h * 60 + m;
+    });
+    const hrs = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:00`;
+}
+
+function getSpanishMonthName(monthNum) {
+    const months = {
+        "01": "ENERO", "02": "FEBRERO", "03": "MARZO", "04": "ABRIL",
+        "05": "MAYO", "06": "JUNIO", "07": "JULIO", "08": "AGOSTO",
+        "09": "SEPTIEMBRE", "10": "OCTUBRE", "11": "NOVIEMBRE", "12": "DICIEMBRE"
+    };
+    return months[monthNum] || monthNum;
+}
+
+// MONTHLY REPORT EXPORTER
+function exportMonthlyReport() {
+    const month = document.getElementById("export-month").value;
+    const year = document.getElementById("export-year").value;
+    const type = document.getElementById("export-type").value;
+    
+    const filterPrefix = `${year}-${month}`; // matches "2026-05" in "2026-05-04"
+    
+    const company = state.vault.company_name || "ATS TEC";
+    const userFullName = state.currentUser ? (state.currentUser.fullName || state.currentUser.username.toUpperCase()) : "TÉCNICO";
+    const zona = state.currentUser ? (state.currentUser.zona || "-") : "-";
+    const delegacion = state.currentUser ? (state.currentUser.delegacion || "-") : "-";
+    const vehiculo = state.currentUser ? (state.currentUser.vehiculo || "-") : "-";
+    const tarjeta = state.currentUser ? (state.currentUser.tarjeta || "-") : "-";
+    
+    const logoUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) + '/logo.png';
+    const monthName = getSpanishMonthName(month);
+
+    if (type === "hours") {
+        // Filter hours
+        const items = (state.vault.hours || []).filter(h => (h.date || "").startsWith(filterPrefix));
+        // Sort ascending
+        items.sort((a,b) => new Date(a.date) - new Date(b.date));
+        
+        const totalSumStr = sumTotalHours(items.map(item => item.hours));
+        
+        let rowsHtml = "";
+        // Pre-create 15 rows for exact print look matching the image
+        const maxRows = Math.max(15, items.length);
+        for (let i = 0; i < maxRows; i++) {
+            const h = items[i];
+            if (h) {
+                const parts = h.date.split("-");
+                const formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                rowsHtml += `
+                    <tr>
+                        <td>${formattedDate}</td>
+                        <td>${h.concept || "TRABAJOS"}</td>
+                        <td style="text-align: left; padding-left: 15px;">${h.description || ""}</td>
+                        <td>${h.hours}</td>
+                    </tr>
+                `;
+            } else {
+                rowsHtml += `
+                    <tr>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                `;
+            }
+        }
+        
+        const printWindow = window.open("", "_blank");
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <title>Horas Extras - \${monthName} \${year}</title>
+                <style>
+                    body { font-family: 'Outfit', sans-serif; color: #000; padding: 20px; margin: 0; }
+                    .report-container { max-width: 800px; margin: 0 auto; }
+                    .main-header { display: flex; align-items: center; border: 2.5px solid #000; margin-bottom: 25px; }
+                    .main-header-title { flex: 1; text-align: center; font-size: 1.4rem; font-weight: 800; padding: 12px; border-right: 2.5px solid #000; letter-spacing: 0.5px; }
+                    .main-header-month { width: 180px; text-align: center; font-size: 1.3rem; font-weight: 800; padding: 12px; background: #f8fafc; }
+                    .info-section { display: flex; justify-content: space-between; margin-bottom: 25px; font-size: 0.95rem; line-height: 1.8; }
+                    .info-box { flex: 1; }
+                    .logo-box { text-align: right; }
+                    .logo-box img { height: 50px; }
+                    .info-row { display: flex; gap: 8px; }
+                    .info-label { font-weight: 700; width: 80px; }
+                    .info-val { border-bottom: 1.5px solid #000; flex: 1; font-weight: 600; padding-left: 5px; }
+                    .data-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+                    .data-table th, .data-table td { border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem; }
+                    .data-table th { background: #f1f5f9; font-weight: 700; }
+                    .total-row td { background: #ffff00; font-weight: 700; border-top: 2.5px solid #000; }
+                    .signature-section { margin-top: 50px; font-size: 0.95rem; font-weight: 600; }
+                    @media print {
+                        body { padding: 0; }
+                        .report-container { max-width: 100%; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="report-container">
+                    <div class="main-header">
+                        <div class="main-header-title">HORAS EXTRAS</div>
+                        <div class="main-header-month">\${monthName}</div>
+                    </div>
+                    <div class="info-section">
+                        <div class="info-box">
+                            <div class="info-row"><span class="info-label">EMPRESA:</span><span class="info-val">\${company.toUpperCase()}</span></div>
+                            <div class="info-row" style="margin-top: 10px;"><span class="info-label">NOMBRE:</span><span class="info-val">\${userFullName}</span></div>
+                        </div>
+                        <div class="logo-box">
+                            <img src="\${logoUrl}" alt="Logo" onerror="this.style.display='none';">
+                        </div>
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 15%;">FECHA</th>
+                                <th style="width: 20%;">CONCEPTO</th>
+                                <th style="text-align: left; padding-left: 15px;">MOTIVO / DESCRIPCIÓN</th>
+                                <th style="width: 18%;">TOTAL EXTRAS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            \${rowsHtml}
+                            <tr class="total-row">
+                                <td colspan="3" style="text-align: right; padding-right: 15px;">TOTAL HORAS</td>
+                                <td>\${totalSumStr}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="signature-section">
+                        FIRMA: \${userFullName}
+                    </div>
+                </div>
+                <script>
+                    window.onload = function() {
+                        setTimeout(function() {
+                            window.print();
+                            window.close();
+                        }, 500);
+                    };
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    } else {
+        // Consolidated expenses (dietas + materiales)
+        const diets = (state.vault.diets || []).filter(d => (d.date || "").startsWith(filterPrefix)).map(d => ({
+            date: d.date,
+            concept: d.concept || "DIETA",
+            amount: parseFloat(d.amount) || 0
+        }));
+        
+        const materials = (state.vault.materials || []).filter(m => (m.date || "").startsWith(filterPrefix)).map(m => ({
+            date: m.date,
+            concept: m.concept || "MATERIAL",
+            amount: parseFloat(m.amount) || 0
+        }));
+        
+        const combined = [...diets, ...materials];
+        combined.sort((a,b) => new Date(a.date) - new Date(b.date));
+        
+        let totalSum = 0;
+        combined.forEach(c => totalSum += c.amount);
+        
+        let rowsHtml = "";
+        const maxRows = Math.max(15, combined.length);
+        for (let i = 0; i < maxRows; i++) {
+            const c = combined[i];
+            if (c) {
+                const parts = c.date.split("-");
+                const formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                rowsHtml += `
+                    <tr>
+                        <td style="text-align: center;">\${formattedDate}</td>
+                        <td style="text-align: left; padding-left: 15px;">\${c.concept.toUpperCase()}</td>
+                        <td class="num-col">\${c.amount.toFixed(2)} €</td>
+                    </tr>
+                `;
+            } else {
+                rowsHtml += `
+                    <tr>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                `;
+            }
+        }
+        
+        const printWindow = window.open("", "_blank");
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <title>Control de Gastos - \${monthName} \${year}</title>
+                <style>
+                    body { font-family: 'Outfit', sans-serif; color: #000; padding: 20px; margin: 0; }
+                    .report-container { max-width: 800px; margin: 0 auto; }
+                    .main-header { display: flex; align-items: center; border: 2.5px solid #000; margin-bottom: 20px; }
+                    .header-logo { padding: 12px; border-right: 2.5px solid #000; text-align: center; width: 140px; display: flex; align-items: center; justify-content: center; }
+                    .header-logo img { height: 40px; }
+                    .header-title { flex: 1; text-align: center; font-size: 1.4rem; font-weight: 800; letter-spacing: 0.5px; padding: 12px; border-right: 2.5px solid #000; }
+                    .header-side { width: 140px; text-align: center; font-weight: 800; font-size: 1.3rem; padding: 12px; background: #e0f2fe; }
+                    .info-grid { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
+                    .info-grid td { border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; }
+                    .bg-light { background: #f1f5f9; font-weight: 700; width: 130px; }
+                    .val-field { text-align: center; font-weight: 700; }
+                    .data-table { width: 100%; border-collapse: collapse; }
+                    .data-table th, .data-table td { border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; }
+                    .data-table th { background: #f1f5f9; text-align: center; font-weight: 700; }
+                    .data-table td.num-col { text-align: right; font-weight: 600; padding-right: 20px; width: 22%; }
+                    .total-row td { font-weight: 800; font-size: 0.95rem; border-top: 2.5px solid #000; }
+                    @media print {
+                        body { padding: 0; }
+                        .report-container { max-width: 100%; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="report-container">
+                    <div class="main-header">
+                        <div class="header-logo"><img src="\${logoUrl}" alt="Logo" onerror="this.style.display='none';"></div>
+                        <div class="header-title">CONTROL DE GASTOS</div>
+                        <div class="header-side">GASTOS</div>
+                    </div>
+                    <table class="info-grid">
+                        <tr>
+                            <td class="bg-light">ZONA:</td>
+                            <td class="val-field" style="width: 35%;">\${zona.toUpperCase()}</td>
+                            <td class="bg-light">MES/AÑO:</td>
+                            <td class="val-field">\${monthName}</td>
+                        </tr>
+                        <tr>
+                            <td class="bg-light">DELEGACION:</td>
+                            <td class="val-field">\${delegacion.toUpperCase()}</td>
+                            <td class="bg-light">AÑO:</td>
+                            <td class="val-field">\${year}</td>
+                        </tr>
+                        <tr>
+                            <td class="bg-light">TARJETA Nº:</td>
+                            <td class="val-field">\${tarjeta.toUpperCase()}</td>
+                            <td class="bg-light" rowspan="2">CONDUCTOR:</td>
+                            <td class="val-field" rowspan="2" style="vertical-align: middle;">\${userFullName}</td>
+                        </tr>
+                        <tr>
+                            <td class="bg-light">VEHICULO:</td>
+                            <td class="val-field">\${vehiculo.toUpperCase()}</td>
+                        </tr>
+                    </table>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 15%;">DIA</th>
+                                <th style="text-align: left; padding-left: 15px;">CONCEPTO</th>
+                                <th style="width: 22%;">IMPORTE</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            \${rowsHtml}
+                            <tr class="total-row">
+                                <td colspan="2" style="text-align: right; padding-right: 15px; font-weight: 800;">TOTAL</td>
+                                <td class="num-col" style="background: #f8fafc; font-weight: 800;">\${totalSum.toFixed(2)} €</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <script>
+                    window.onload = function() {
+                        setTimeout(function() {
+                            window.print();
+                            window.close();
+                        }, 500);
+                    };
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    }
 }
 
 function editSubscriberFromView() {

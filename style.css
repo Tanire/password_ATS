@@ -805,3 +805,26 @@ select.input-control {
     display: none !important;
 }
 
+/* Ticket Thumbnail styles for V1.05 */
+.ticket-thumb {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-glass);
+    object-fit: cover;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.ticket-thumb:active {
+    transform: scale(0.95);
+}
+
+/* Image preview in forms */
+#diet-img-preview img,
+#material-img-preview img {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border-glass);
+}
+

@@ -83,13 +83,13 @@
                             <span class="card-icon" style="color: #f59e0b;">📚</span>
                             <span class="card-title">Manuales</span>
                         </div>
-                        <div class="menu-card" id="menu-expenses" style="display: none;">
+                        <div class="menu-card" id="menu-expenses">
                             <span class="card-icon" style="color: #ef4444;">💰</span>
                             <span class="card-title">Gastos</span>
                         </div>
                     </div>
                     <div style="text-align: center; margin-top: 40px; font-size: 0.8rem; color: var(--text-secondary);" class="dashboard-footer">
-                        Versión 1.04 - JMSYSTEMAS
+                        Versión 1.05 - JMSYSTEMAS
                     </div>
                 </div>
 
@@ -377,7 +377,33 @@
                         </div>
                         <input type="hidden" id="set-company-name" value="ATS TEC">
 
-                        <button id="btn-save-settings" class="btn-premium" style="margin-top: 10px;">
+                        <h3 style="font-size: 0.95rem; margin-top: 25px; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Perfil Técnico</h3>
+                        <div class="form-group">
+                            <label>Nombre Completo</label>
+                            <input type="text" id="set-profile-fullname" class="input-control" placeholder="Ej. Jeremías Bentos">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Zona</label>
+                                <input type="text" id="set-profile-zona" class="input-control" placeholder="Ej. Levante">
+                            </div>
+                            <div class="form-group">
+                                <label>Delegación</label>
+                                <input type="text" id="set-profile-delegacion" class="input-control" placeholder="Ej. Valencia">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Vehículo / Matrícula</label>
+                                <input type="text" id="set-profile-vehiculo" class="input-control" placeholder="Ej. 1234ABC">
+                            </div>
+                            <div class="form-group">
+                                <label>Tarjeta Nº</label>
+                                <input type="text" id="set-profile-tarjeta" class="input-control" placeholder="Ej. 1234 5678 ...">
+                            </div>
+                        </div>
+
+                        <button id="btn-save-settings" class="btn-premium" style="margin-top: 20px;">
                             <i class="bx bx-save"></i> GUARDAR AJUSTES
                         </button>
                         
@@ -536,6 +562,241 @@
                     <i class="bx bx-edit-alt"></i> EDITAR ABONADO
                 </button>
             </div>
+        <!-- I. EXPENSES SUBMENU SCREEN -->
+        <div id="screen-expenses-submenu" class="screen">
+            <div class="list-header">
+                <h2>Gestión de Gastos</h2>
+            </div>
+            <div class="menu-grid anim-fade" style="margin-top: 10px;">
+                <div class="menu-card" id="menu-sub-hours" style="background: var(--bg-glass); border: 1px solid var(--border-glass);">
+                    <span class="card-icon" style="color: #3b82f6;">⏱️</span>
+                    <span class="card-title">Horas Extras</span>
+                </div>
+                <div class="menu-card" id="menu-sub-diets" style="background: var(--bg-glass); border: 1px solid var(--border-glass);">
+                    <span class="card-icon" style="color: #10b981;">🍔</span>
+                    <span class="card-title">Dietas</span>
+                </div>
+                <div class="menu-card" id="menu-sub-materials" style="background: var(--bg-glass); border: 1px solid var(--border-glass);">
+                    <span class="card-icon" style="color: #a855f7;">🛠️</span>
+                    <span class="card-title">Materiales</span>
+                </div>
+            </div>
+            
+            <div class="anim-fade" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border-glass);">
+                <h3 style="font-size: 0.95rem; margin-bottom: 15px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Exportación Mensual</h3>
+                <div style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+                    <div class="form-row">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label>Mes</label>
+                            <select id="export-month" class="input-control" style="padding: 10px 14px; font-size: 0.9rem;">
+                                <option value="01">Enero</option>
+                                <option value="02">Febrero</option>
+                                <option value="03">Marzo</option>
+                                <option value="04">Abril</option>
+                                <option value="05">Mayo</option>
+                                <option value="06">Junio</option>
+                                <option value="07">Julio</option>
+                                <option value="08">Agosto</option>
+                                <option value="09">Septiembre</option>
+                                <option value="10">Octubre</option>
+                                <option value="11">Noviembre</option>
+                                <option value="12">Diciembre</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label>Año</label>
+                            <select id="export-year" class="input-control" style="padding: 10px 14px; font-size: 0.9rem;">
+                                <option value="2025">2025</option>
+                                <option value="2026" selected>2026</option>
+                                <option value="2027">2027</option>
+                                <option value="2028">2028</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>Tipo de Reporte</label>
+                        <select id="export-type" class="input-control" style="padding: 10px 14px; font-size: 0.9rem;">
+                            <option value="hours">Horas Extras (PDF)</option>
+                            <option value="expenses">Control de Gastos - Dietas/Materiales (PDF)</option>
+                        </select>
+                    </div>
+                    <button id="btn-export-pdf" type="button" class="btn-premium" style="padding: 12px; font-size: 0.9rem;">
+                        <i class="bx bx-download"></i> GENERAR REPORTE
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- J. HOURS LIST SCREEN -->
+        <div id="screen-hours" class="screen">
+            <div class="list-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <button class="btn-icon" id="btn-back-hours-submenu"><i class="bx bx-arrow-back"></i></button>
+                    <h2>Horas Extras</h2>
+                </div>
+                <button class="btn-add-circle" id="btn-new-hour">+</button>
+            </div>
+            <div class="search-container">
+                <i class="bx bx-search search-icon"></i>
+                <input type="text" id="search-hours" class="search-input" placeholder="Buscar por cliente o motivo...">
+            </div>
+            <div class="items-list" id="list-hours">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+
+        <!-- K. HOUR FORM SCREEN -->
+        <div id="screen-form-hour" class="screen">
+            <div class="list-header">
+                <h2 id="hour-form-title">Registrar Horas Extras</h2>
+                <button class="btn-icon" id="btn-back-hours-list"><i class="bx bx-arrow-back"></i></button>
+            </div>
+            <form id="form-hour" class="anim-fade">
+                <input type="hidden" id="hour-id">
+                <div class="form-group">
+                    <label>Fecha</label>
+                    <input type="date" id="hour-date" class="input-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Concepto</label>
+                    <input type="text" id="hour-concept" class="input-control" value="TRABAJOS" required>
+                </div>
+                <div class="form-group">
+                    <label>Cliente (Motivo / Descripción)</label>
+                    <input type="text" id="hour-description" class="input-control" placeholder="Ej. AVERIAS CACSA" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Hora Inicio</label>
+                        <input type="time" id="hour-start" class="input-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Hora Fin</label>
+                        <input type="time" id="hour-end" class="input-control" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn-premium" style="margin-top: 10px;">
+                    <i class="bx bx-save"></i> GUARDAR REGISTRO
+                </button>
+            </form>
+        </div>
+
+        <!-- L. DIETS LIST SCREEN -->
+        <div id="screen-diets" class="screen">
+            <div class="list-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <button class="btn-icon" id="btn-back-diets-submenu"><i class="bx bx-arrow-back"></i></button>
+                    <h2>Tickets de Dietas</h2>
+                </div>
+                <button class="btn-add-circle" id="btn-new-diet">+</button>
+            </div>
+            <div class="search-container">
+                <i class="bx bx-search search-icon"></i>
+                <input type="text" id="search-diets" class="search-input" placeholder="Buscar por cliente o concepto...">
+            </div>
+            <div class="items-list" id="list-diets">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+
+        <!-- M. DIET FORM SCREEN -->
+        <div id="screen-form-diet" class="screen">
+            <div class="list-header">
+                <h2 id="diet-form-title">Registrar Dieta</h2>
+                <button class="btn-icon" id="btn-back-diets-list"><i class="bx bx-arrow-back"></i></button>
+            </div>
+            <form id="form-diet" class="anim-fade">
+                <input type="hidden" id="diet-id">
+                <div class="form-group">
+                    <label>Fecha</label>
+                    <input type="date" id="diet-date" class="input-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Cliente</label>
+                    <input type="text" id="diet-client" class="input-control" placeholder="Ej. CACSA" required>
+                </div>
+                <div class="form-group">
+                    <label>Concepto (ej. Comida, Desayuno)</label>
+                    <input type="text" id="diet-concept" class="input-control" placeholder="Ej. COMIDA ALICANTE" required>
+                </div>
+                <div class="form-group">
+                    <label>Importe (€)</label>
+                    <input type="number" step="0.01" id="diet-amount" class="input-control" placeholder="0.00" required>
+                </div>
+                <div class="form-group">
+                    <label>Foto del Ticket (Cámara)</label>
+                    <input type="file" id="diet-file" class="input-control" accept="image/*" capture="environment">
+                    <div id="diet-img-preview" style="margin-top: 10px; display: none; text-align: center;">
+                        <img src="" style="max-width: 100%; max-height: 150px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass);">
+                    </div>
+                </div>
+                <button type="submit" class="btn-premium" style="margin-top: 10px;">
+                    <i class="bx bx-save"></i> GUARDAR DIETA
+                </button>
+            </form>
+        </div>
+
+        <!-- N. MATERIALS LIST SCREEN -->
+        <div id="screen-materials" class="screen">
+            <div class="list-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <button class="btn-icon" id="btn-back-materials-submenu"><i class="bx bx-arrow-back"></i></button>
+                    <h2>Tickets de Materiales</h2>
+                </div>
+                <button class="btn-add-circle" id="btn-new-material">+</button>
+            </div>
+            <div class="search-container">
+                <i class="bx bx-search search-icon"></i>
+                <input type="text" id="search-materials" class="search-input" placeholder="Buscar por cliente o material...">
+            </div>
+            <div class="items-list" id="list-materials">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+
+        <!-- O. MATERIAL FORM SCREEN -->
+        <div id="screen-form-material" class="screen">
+            <div class="list-header">
+                <h2 id="material-form-title">Registrar Material</h2>
+                <button class="btn-icon" id="btn-back-materials-list"><i class="bx bx-arrow-back"></i></button>
+            </div>
+            <form id="form-material" class="anim-fade">
+                <input type="hidden" id="material-id">
+                <div class="form-group">
+                    <label>Fecha</label>
+                    <input type="date" id="material-date" class="input-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Cliente</label>
+                    <input type="text" id="material-client" class="input-control" placeholder="Ej. PEDRALBA" required>
+                </div>
+                <div class="form-group">
+                    <label>Qué Material (Concepto)</label>
+                    <input type="text" id="material-concept" class="input-control" placeholder="Ej. COMPRA DE CABLE" required>
+                </div>
+                <div class="form-group">
+                    <label>Importe (€)</label>
+                    <input type="number" step="0.01" id="material-amount" class="input-control" placeholder="0.00" required>
+                </div>
+                <div class="form-group">
+                    <label>Foto del Ticket (Cámara)</label>
+                    <input type="file" id="material-file" class="input-control" accept="image/*" capture="environment">
+                    <div id="material-img-preview" style="margin-top: 10px; display: none; text-align: center;">
+                        <img src="" style="max-width: 100%; max-height: 150px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass);">
+                    </div>
+                </div>
+                <button type="submit" class="btn-premium" style="margin-top: 10px;">
+                    <i class="bx bx-save"></i> GUARDAR MATERIAL
+                </button>
+            </form>
+        </div>
+
+        <!-- P. TICKET IMAGE VIEWER SCREEN -->
+        <div id="screen-image-viewer" class="screen" style="justify-content: center; align-items: center; background: rgba(0,0,0,0.95); position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 200;">
+            <div style="position: absolute; top: 20px; right: 20px; z-index: 10;">
+                <button class="btn-icon" id="btn-close-image-viewer" style="background: rgba(255,255,255,0.15); border: none; font-size: 1.5rem;"><i class="bx bx-x"></i></button>
+            </div>
+            <img id="image-viewer-content" src="" style="max-width: 95%; max-height: 85vh; object-fit: contain; border-radius: var(--radius-sm); box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
         </div>
 
     </main>
@@ -554,7 +815,7 @@
             <i class="bx bx-bell"></i>
             <span>Abonados</span>
         </div>
-        <div class="nav-item" data-screen="expenses" style="display: none;">
+        <div class="nav-item" data-screen="expenses-submenu">
             <i class="bx bx-wallet"></i>
             <span>Gastos</span>
         </div>
