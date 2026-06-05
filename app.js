@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.05.04",
+        version: "1.05.05",
         company_name: "ATS TEC",
         theme: "default",
         entries: [],       // General passwords
@@ -1379,8 +1379,8 @@ function applyUserPrivileges(user) {
         };
     }
     
-    // Admin-only: show/hide User Management panel
-    if (user.role === "admin") {
+    // Admin and Responsable Técnico: show/hide User Management panel
+    if (user.role === "admin" || user.role === "responsable_tecnico") {
         document.getElementById("admin-user-panel").style.display = "block";
         renderAdminUsers();
     } else {
@@ -1595,6 +1595,13 @@ function openUserForm(u = null) {
     const roleSelect = document.getElementById("user-role-select");
     const editId = document.getElementById("user-edit-id");
     
+    // Disable role and scope fields if the current user is not admin and not responsable_tecnico
+    const canManageRoles = state.currentUser && (state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico");
+    roleSelect.disabled = !canManageRoles;
+    document.getElementById("user-scope-passwords").disabled = !canManageRoles;
+    document.getElementById("user-scope-subscribers").disabled = !canManageRoles;
+    document.getElementById("user-scope-manuals").disabled = !canManageRoles;
+    
     if (u) {
         title.textContent = "Editar Usuario";
         nameInput.value = u.username;
@@ -1641,7 +1648,9 @@ function openUserForm(u = null) {
 // User Administration: Form Submission Save
 async function saveUserAction(evt) {
     evt.preventDefault();
-    if (state.currentUser && state.currentUser.role !== "admin") {
+    const canManageRoles = state.currentUser && (state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico");
+    
+    if (!canManageRoles) {
         // Allow a user to edit their own profile
         const editId = document.getElementById("user-edit-id").value;
         if (!editId || editId.toLowerCase() !== state.currentUser.username.toLowerCase()) {
@@ -1678,8 +1687,8 @@ async function saveUserAction(evt) {
         if (editId) {
             const idx = state.vault.users.findIndex(u => u.username.toLowerCase() === editId.toLowerCase());
             if (idx !== -1) {
-                // Only admin can change role/scope
-                if (state.currentUser.role === "admin") {
+                // Only admin and responsable_tecnico can change role/scope
+                if (canManageRoles) {
                     state.vault.users[idx].role = role;
                     state.vault.users[idx].scope = scope;
                 }
@@ -1729,7 +1738,8 @@ async function saveUserAction(evt) {
 
 // User Administration: Delete User Action
 async function deleteUser(username) {
-    if (state.currentUser && state.currentUser.role !== "admin") return;
+    const canManage = state.currentUser && (state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico");
+    if (!canManage) return;
     if (username.toLowerCase() === state.currentUser.username.toLowerCase()) {
         showToast("No puedes eliminar a tu propio usuario");
         return;
