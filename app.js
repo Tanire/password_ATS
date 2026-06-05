@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.04",
+        version: "1.05.03",
         company_name: "ATS TEC",
         theme: "default",
         entries: [],       // General passwords
@@ -1350,21 +1350,52 @@ function applyUserPrivileges(user) {
     
     // Update UI profile display in Settings
     document.getElementById("set-current-username").textContent = user.username.toUpperCase();
-    document.getElementById("set-current-user-role").textContent = `Rol: ${user.role.toUpperCase()}`;
     
-    // Populate profile inputs in Settings
-    document.getElementById("set-profile-fullname").value = user.fullName || "";
-    document.getElementById("set-profile-zona").value = user.zona || "";
-    document.getElementById("set-profile-delegacion").value = user.delegacion || "";
-    document.getElementById("set-profile-vehiculo").value = user.vehiculo || "";
-    document.getElementById("set-profile-tarjeta").value = user.tarjeta || "";
+    const roleLabels = {
+        admin: "Administrador",
+        editor: "Técnico",
+        responsable_tecnico: "Responsable Técnico",
+        viewer: "Solo Lectura"
+    };
+    document.getElementById("set-current-user-role").textContent = `Rol: ${roleLabels[user.role] || user.role.toUpperCase()}`;
     
-    // Admin User Management Panel visibility
+    // Update profile summary card (read-only)
+    const setEl = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val || "—";
+    };
+    setEl("prof-summary-name", user.fullName);
+    setEl("prof-summary-zona", user.zona);
+    setEl("prof-summary-delegacion", user.delegacion);
+    setEl("prof-summary-vehiculo", user.vehiculo);
+    setEl("prof-summary-tarjeta", user.tarjeta);
+    
+    // "Editar mi perfil" button wires to openUserForm with own user object
+    const btnEditProfile = document.getElementById("btn-edit-my-profile");
+    if (btnEditProfile) {
+        btnEditProfile.onclick = () => {
+            const self = state.vault.users.find(u => u.username.toLowerCase() === user.username.toLowerCase());
+            openUserForm(self || user);
+        };
+    }
+    
+    // Admin-only: show/hide User Management panel
     if (user.role === "admin") {
         document.getElementById("admin-user-panel").style.display = "block";
         renderAdminUsers();
     } else {
         document.getElementById("admin-user-panel").style.display = "none";
+    }
+    
+    // Export tech selector: visible for admin and responsable_tecnico
+    const techSelectorWrap = document.getElementById("export-tech-selector-wrap");
+    if (techSelectorWrap) {
+        if (canSeeAllExpenses(user)) {
+            techSelectorWrap.style.display = "block";
+            populateExportTechSelector();
+        } else {
+            techSelectorWrap.style.display = "none";
+        }
     }
     
     // Filter Dashboard categories and bottom navigation based on scopes
@@ -1380,6 +1411,25 @@ function applyUserPrivileges(user) {
     document.querySelector('nav [data-screen="subscribers"]').style.display = hasSubs ? "flex" : "none";
     
     document.getElementById("menu-manuals").style.display = hasManuals ? "flex" : "none";
+}
+
+// Helper: returns true if user can see all technicians' expenses
+function canSeeAllExpenses(user) {
+    return user && (user.role === "admin" || user.role === "responsable_tecnico");
+}
+
+// Populate export tech selector with all users that have expense records
+function populateExportTechSelector() {
+    const sel = document.getElementById("export-tech-select");
+    if (!sel) return;
+    sel.innerHTML = '<option value="all">— Todos los técnicos —</option>';
+    const users = state.vault.users || [];
+    users.forEach(u => {
+        const opt = document.createElement("option");
+        opt.value = u.username;
+        opt.textContent = (u.fullName || u.username.toUpperCase()) + " (" + u.username + ")";
+        sel.appendChild(opt);
+    });
 }
 
 // Browser geolocation for subscriber form address auto-fill
@@ -1537,21 +1587,35 @@ function openUserForm(u = null) {
         roleSelect.value = u.role;
         editId.value = u.username;
         
-        document.getElementById("user-scope-passwords").checked = u.scope.includes("passwords");
-        document.getElementById("user-scope-subscribers").checked = u.scope.includes("subscribers");
-        document.getElementById("user-scope-manuals").checked = u.scope.includes("manuals");
+        document.getElementById("user-scope-passwords").checked = u.scope ? u.scope.includes("passwords") : true;
+        document.getElementById("user-scope-subscribers").checked = u.scope ? u.scope.includes("subscribers") : true;
+        document.getElementById("user-scope-manuals").checked = u.scope ? u.scope.includes("manuals") : true;
+        
+        // Profile fields
+        document.getElementById("user-profile-fullname").value = u.fullName || "";
+        document.getElementById("user-profile-zona").value = u.zona || "";
+        document.getElementById("user-profile-delegacion").value = u.delegacion || "";
+        document.getElementById("user-profile-vehiculo").value = u.vehiculo || "";
+        document.getElementById("user-profile-tarjeta").value = u.tarjeta || "";
     } else {
         title.textContent = "Nuevo Usuario";
         nameInput.value = "";
         nameInput.disabled = false;
         passInput.placeholder = "Contraseña de acceso";
         passInput.required = true;
-        roleSelect.value = "viewer";
+        roleSelect.value = "editor";
         editId.value = "";
         
         document.getElementById("user-scope-passwords").checked = true;
         document.getElementById("user-scope-subscribers").checked = true;
         document.getElementById("user-scope-manuals").checked = true;
+        
+        // Clear profile fields
+        document.getElementById("user-profile-fullname").value = "";
+        document.getElementById("user-profile-zona").value = "";
+        document.getElementById("user-profile-delegacion").value = "";
+        document.getElementById("user-profile-vehiculo").value = "";
+        document.getElementById("user-profile-tarjeta").value = "";
     }
     
     switchScreen("form-user");
@@ -1561,8 +1625,12 @@ function openUserForm(u = null) {
 async function saveUserAction(evt) {
     evt.preventDefault();
     if (state.currentUser && state.currentUser.role !== "admin") {
-        showToast("Operación no permitida");
-        return;
+        // Allow a user to edit their own profile
+        const editId = document.getElementById("user-edit-id").value;
+        if (!editId || editId.toLowerCase() !== state.currentUser.username.toLowerCase()) {
+            showToast("Operación no permitida");
+            return;
+        }
     }
     
     const editId = document.getElementById("user-edit-id").value;
@@ -1575,6 +1643,13 @@ async function saveUserAction(evt) {
     if (document.getElementById("user-scope-subscribers").checked) scope.push("subscribers");
     if (document.getElementById("user-scope-manuals").checked) scope.push("manuals");
     
+    // Profile fields
+    const fullName = document.getElementById("user-profile-fullname").value.trim();
+    const zona = document.getElementById("user-profile-zona").value.trim();
+    const delegacion = document.getElementById("user-profile-delegacion").value.trim();
+    const vehiculo = document.getElementById("user-profile-vehiculo").value.trim();
+    const tarjeta = document.getElementById("user-profile-tarjeta").value.trim();
+    
     if (!username) {
         showToast("Escribe un nombre de usuario");
         return;
@@ -1586,12 +1661,27 @@ async function saveUserAction(evt) {
         if (editId) {
             const idx = state.vault.users.findIndex(u => u.username.toLowerCase() === editId.toLowerCase());
             if (idx !== -1) {
-                state.vault.users[idx].role = role;
-                state.vault.users[idx].scope = scope;
+                // Only admin can change role/scope
+                if (state.currentUser.role === "admin") {
+                    state.vault.users[idx].role = role;
+                    state.vault.users[idx].scope = scope;
+                }
+                // Any user can update own profile fields
+                state.vault.users[idx].fullName = fullName;
+                state.vault.users[idx].zona = zona;
+                state.vault.users[idx].delegacion = delegacion;
+                state.vault.users[idx].vehiculo = vehiculo;
+                state.vault.users[idx].tarjeta = tarjeta;
                 
                 if (password) {
                     const wrappedKey = await encryptData(state.masterPassword, password);
                     state.usersMetadata[editId.toLowerCase()] = wrappedKey;
+                }
+                
+                // Update currentUser in state if editing own profile
+                if (editId.toLowerCase() === state.currentUser.username.toLowerCase()) {
+                    state.currentUser = { ...state.currentUser, fullName, zona, delegacion, vehiculo, tarjeta };
+                    applyUserPrivileges(state.currentUser);
                 }
             }
         } else {
@@ -1601,7 +1691,7 @@ async function saveUserAction(evt) {
                 return;
             }
             
-            state.vault.users.push({ username, role, scope });
+            state.vault.users.push({ username, role, scope, fullName, zona, delegacion, vehiculo, tarjeta });
             
             const wrappedKey = await encryptData(state.masterPassword, password);
             state.usersMetadata[username] = wrappedKey;
@@ -1960,13 +2050,17 @@ async function saveHourEntry(evt) {
         startTime,
         endTime,
         hours,
+        owner: state.currentUser ? state.currentUser.username : "admin",
         user_name: state.currentUser ? (state.currentUser.fullName || state.currentUser.username.toUpperCase()) : "TÉCNICO"
     };
     
     if (id) {
         const idx = state.vault.hours.findIndex(h => h.id == id);
         if (idx !== -1) {
+            // Preserve owner if already set
+            const existingOwner = state.vault.hours[idx].owner;
             state.vault.hours[idx] = { ...state.vault.hours[idx], ...entryData };
+            if (existingOwner) state.vault.hours[idx].owner = existingOwner;
         }
     } else {
         entryData.id = Date.now();
@@ -1998,6 +2092,13 @@ function renderHours() {
     const q = document.getElementById("search-hours").value.trim().toLowerCase();
     
     let filtered = state.vault.hours || [];
+    
+    // Isolation: technicians only see their own records
+    if (!canSeeAllExpenses(state.currentUser)) {
+        const me = state.currentUser ? state.currentUser.username : null;
+        filtered = filtered.filter(h => !h.owner || h.owner === me);
+    }
+    
     if (q) {
         filtered = filtered.filter(h => {
             return (h.description || "").toLowerCase().includes(q) || 
@@ -2098,13 +2199,16 @@ async function saveDietEntry(evt) {
         concept,
         amount,
         image,
+        owner: state.currentUser ? state.currentUser.username : "admin",
         user_name: state.currentUser ? (state.currentUser.fullName || state.currentUser.username.toUpperCase()) : "TÉCNICO"
     };
     
     if (id) {
         const idx = state.vault.diets.findIndex(d => d.id == id);
         if (idx !== -1) {
+            const existingOwner = state.vault.diets[idx].owner;
             state.vault.diets[idx] = { ...state.vault.diets[idx], ...entryData };
+            if (existingOwner) state.vault.diets[idx].owner = existingOwner;
         }
     } else {
         entryData.id = Date.now();
@@ -2136,6 +2240,13 @@ function renderDiets() {
     const q = document.getElementById("search-diets").value.trim().toLowerCase();
     
     let filtered = state.vault.diets || [];
+    
+    // Isolation: technicians only see their own records
+    if (!canSeeAllExpenses(state.currentUser)) {
+        const me = state.currentUser ? state.currentUser.username : null;
+        filtered = filtered.filter(d => !d.owner || d.owner === me);
+    }
+    
     if (q) {
         filtered = filtered.filter(d => {
             return (d.client || "").toLowerCase().includes(q) || 
@@ -2248,13 +2359,16 @@ async function saveMaterialEntry(evt) {
         concept,
         amount,
         image,
+        owner: state.currentUser ? state.currentUser.username : "admin",
         user_name: state.currentUser ? (state.currentUser.fullName || state.currentUser.username.toUpperCase()) : "TÉCNICO"
     };
     
     if (id) {
         const idx = state.vault.materials.findIndex(m => m.id == id);
         if (idx !== -1) {
+            const existingOwner = state.vault.materials[idx].owner;
             state.vault.materials[idx] = { ...state.vault.materials[idx], ...entryData };
+            if (existingOwner) state.vault.materials[idx].owner = existingOwner;
         }
     } else {
         entryData.id = Date.now();
@@ -2286,6 +2400,13 @@ function renderMaterials() {
     const q = document.getElementById("search-materials").value.trim().toLowerCase();
     
     let filtered = state.vault.materials || [];
+    
+    // Isolation: technicians only see their own records
+    if (!canSeeAllExpenses(state.currentUser)) {
+        const me = state.currentUser ? state.currentUser.username : null;
+        filtered = filtered.filter(m => !m.owner || m.owner === me);
+    }
+    
     if (q) {
         filtered = filtered.filter(m => {
             return (m.client || "").toLowerCase().includes(q) || 
@@ -2462,22 +2583,48 @@ function exportMonthlyReport() {
     const year = document.getElementById("export-year").value;
     const type = document.getElementById("export-type").value;
     
-    const filterPrefix = `${year}-${month}`; // matches "2026-05" in "2026-05-04"
+    const filterPrefix = `${year}-${month}`;
     
     const company = state.vault.company_name || "ATS TEC";
-    const userFullName = state.currentUser ? (state.currentUser.fullName || state.currentUser.username.toUpperCase()) : "TÉCNICO";
-    const zona = state.currentUser ? (state.currentUser.zona || "-") : "-";
-    const delegacion = state.currentUser ? (state.currentUser.delegacion || "-") : "-";
-    const vehiculo = state.currentUser ? (state.currentUser.vehiculo || "-") : "-";
-    const tarjeta = state.currentUser ? (state.currentUser.tarjeta || "-") : "-";
-    
-    const logoUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) + '/logo.png';
     const monthName = getSpanishMonthName(month);
+    const logoUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) + '/logo.png';
+    
+    // Determine which technician's data to export
+    let targetOwner = null; // null = current user (self), 'all' = everyone
+    let exportUser = state.currentUser;
+    
+    if (canSeeAllExpenses(state.currentUser)) {
+        const sel = document.getElementById("export-tech-select");
+        const selected = sel ? sel.value : "all";
+        if (selected === "all") {
+            targetOwner = "all";
+            // Use generic label
+            exportUser = { fullName: "Todos los Técnicos", zona: "", delegacion: "", vehiculo: "", tarjeta: "" };
+        } else {
+            targetOwner = selected;
+            const found = (state.vault.users || []).find(u => u.username === selected);
+            exportUser = found || state.currentUser;
+        }
+    } else {
+        targetOwner = state.currentUser ? state.currentUser.username : null;
+    }
+    
+    const userFullName = exportUser ? (exportUser.fullName || (exportUser.username || "").toUpperCase()) : "TÉCNICO";
+    const zona = exportUser ? (exportUser.zona || "-") : "-";
+    const delegacion = exportUser ? (exportUser.delegacion || "-") : "-";
+    const vehiculo = exportUser ? (exportUser.vehiculo || "-") : "-";
+    const tarjeta = exportUser ? (exportUser.tarjeta || "-") : "-";
+    
+    // Owner filter helper
+    const ownerMatch = (entry) => {
+        if (targetOwner === "all") return true;
+        if (!entry.owner) return canSeeAllExpenses(state.currentUser); // legacy records visible only to admin
+        return entry.owner === targetOwner;
+    };
 
     if (type === "hours") {
-        // Filter hours
-        const items = (state.vault.hours || []).filter(h => (h.date || "").startsWith(filterPrefix));
-        // Sort ascending
+        // Filter hours by date prefix AND owner
+        const items = (state.vault.hours || []).filter(h => (h.date || "").startsWith(filterPrefix) && ownerMatch(h));
         items.sort((a,b) => new Date(a.date) - new Date(b.date));
         
         const totalSumStr = sumTotalHours(items.map(item => item.hours));
@@ -2565,14 +2712,14 @@ function exportMonthlyReport() {
         printWindow.document.write(htmlHours);
         printWindow.document.close();
     } else {
-        // Consolidated expenses (dietas + materiales)
-        const diets = (state.vault.diets || []).filter(d => (d.date || "").startsWith(filterPrefix)).map(d => ({
+        // Consolidated expenses (dietas + materiales) filtered by owner
+        const diets = (state.vault.diets || []).filter(d => (d.date || "").startsWith(filterPrefix) && ownerMatch(d)).map(d => ({
             date: d.date,
             concept: d.concept || "DIETA",
             amount: parseFloat(d.amount) || 0
         }));
         
-        const materials = (state.vault.materials || []).filter(m => (m.date || "").startsWith(filterPrefix)).map(m => ({
+        const materials = (state.vault.materials || []).filter(m => (m.date || "").startsWith(filterPrefix) && ownerMatch(m)).map(m => ({
             date: m.date,
             concept: m.concept || "MATERIAL",
             amount: parseFloat(m.amount) || 0

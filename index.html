@@ -377,33 +377,24 @@
                         </div>
                         <input type="hidden" id="set-company-name" value="ATS TEC">
 
-                        <h3 style="font-size: 0.95rem; margin-top: 25px; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Perfil Técnico</h3>
-                        <div class="form-group">
-                            <label>Nombre Completo</label>
-                            <input type="text" id="set-profile-fullname" class="input-control" placeholder="Ej. Jeremías Bentos">
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Zona</label>
-                                <input type="text" id="set-profile-zona" class="input-control" placeholder="Ej. Levante">
+                        <!-- Profile summary card (read-only, populated from user object) -->
+                        <div id="profile-summary-card" style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 6px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Perfil Técnico</span>
+                                <button type="button" id="btn-edit-my-profile" class="btn-icon" title="Editar mi perfil" style="font-size: 0.8rem; padding: 4px 10px; border-radius: 6px; display: flex; align-items: center; gap: 5px;">
+                                    <i class="bx bx-edit-alt"></i> <span style="font-size: 0.78rem;">Editar</span>
+                                </button>
                             </div>
-                            <div class="form-group">
-                                <label>Delegación</label>
-                                <input type="text" id="set-profile-delegacion" class="input-control" placeholder="Ej. Valencia">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Vehículo / Matrícula</label>
-                                <input type="text" id="set-profile-vehiculo" class="input-control" placeholder="Ej. 1234ABC">
-                            </div>
-                            <div class="form-group">
-                                <label>Tarjeta Nº</label>
-                                <input type="text" id="set-profile-tarjeta" class="input-control" placeholder="Ej. 1234 5678 ...">
+                            <div style="font-size: 0.88rem; line-height: 1.8; color: var(--text-primary);">
+                                <div><span style="color: var(--text-secondary); width: 80px; display: inline-block;">Nombre:</span> <span id="prof-summary-name" style="font-weight: 600;">—</span></div>
+                                <div><span style="color: var(--text-secondary); width: 80px; display: inline-block;">Zona:</span> <span id="prof-summary-zona">—</span></div>
+                                <div><span style="color: var(--text-secondary); width: 80px; display: inline-block;">Delegación:</span> <span id="prof-summary-delegacion">—</span></div>
+                                <div><span style="color: var(--text-secondary); width: 80px; display: inline-block;">Vehículo:</span> <span id="prof-summary-vehiculo">—</span></div>
+                                <div><span style="color: var(--text-secondary); width: 80px; display: inline-block;">Tarjeta:</span> <span id="prof-summary-tarjeta">—</span></div>
                             </div>
                         </div>
 
-                        <button id="btn-save-settings" class="btn-premium" style="margin-top: 20px;">
+                        <button id="btn-save-settings" class="btn-premium" style="margin-top: 4px;">
                             <i class="bx bx-save"></i> GUARDAR AJUSTES
                         </button>
                         
@@ -454,7 +445,8 @@
                     <label>Rol</label>
                     <select id="user-role-select" class="input-control">
                         <option value="viewer">Solo Ver (Lector)</option>
-                        <option value="editor">Editar (Editor)</option>
+                        <option value="editor">Técnico (Editor)</option>
+                        <option value="responsable_tecnico">Responsable Técnico</option>
                         <option value="admin">Administrador</option>
                     </select>
                 </div>
@@ -472,6 +464,34 @@
                         </label>
                     </div>
                 </div>
+
+                <!-- Technician Profile Fields (within user form) -->
+                <h3 style="font-size: 0.85rem; margin-top: 18px; margin-bottom: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Perfil Técnico</h3>
+                <div class="form-group">
+                    <label>Nombre Completo</label>
+                    <input type="text" id="user-profile-fullname" class="input-control" placeholder="Ej. Juan García">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Zona</label>
+                        <input type="text" id="user-profile-zona" class="input-control" placeholder="Ej. Levante">
+                    </div>
+                    <div class="form-group">
+                        <label>Delegación</label>
+                        <input type="text" id="user-profile-delegacion" class="input-control" placeholder="Ej. Valencia">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Vehículo / Matrícula</label>
+                        <input type="text" id="user-profile-vehiculo" class="input-control" placeholder="Ej. 1234ABC">
+                    </div>
+                    <div class="form-group">
+                        <label>Tarjeta Nº</label>
+                        <input type="text" id="user-profile-tarjeta" class="input-control" placeholder="Ej. 1234 5678...">
+                    </div>
+                </div>
+
                 <button type="submit" class="btn-premium" style="margin-top: 10px;">
                     <i class="bx bx-save"></i> GUARDAR USUARIO
                 </button>
@@ -619,6 +639,13 @@
                         <select id="export-type" class="input-control" style="padding: 10px 14px; font-size: 0.9rem;">
                             <option value="hours">Horas Extras (PDF)</option>
                             <option value="expenses">Control de Gastos - Dietas/Materiales (PDF)</option>
+                        </select>
+                    </div>
+                    <!-- Tech selector: visible only for admin / responsable_tecnico (toggled via JS) -->
+                    <div class="form-group" id="export-tech-selector-wrap" style="margin-bottom: 0; display: none;">
+                        <label>Técnico</label>
+                        <select id="export-tech-select" class="input-control" style="padding: 10px 14px; font-size: 0.9rem;">
+                            <option value="all">— Todos los técnicos —</option>
                         </select>
                     </div>
                     <button id="btn-export-pdf" type="button" class="btn-premium" style="padding: 12px; font-size: 0.9rem;">
