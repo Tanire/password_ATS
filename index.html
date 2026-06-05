@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ATS Gestión V4.0 - JMSystems</title>
+    <!-- Web App Manifest & iOS support -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2913/2913990.png">
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Boxicons for modern premium icons -->
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <!-- Main Style Sheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="app-container">
+        
+        <!-- Loading Overlay -->
+        <div id="loading-overlay">
+            <div class="spinner"></div>
+            <div id="loading-text" style="font-size: 0.9rem; color: var(--text-secondary);">Cargando...</div>
+        </div>
+
+        <!-- 1. LOGIN SCREEN (MASTER KEY ENTRY) -->
+        <div id="screen-login" class="screen active">
+            <div class="login-box anim-fade">
+                <div class="login-icon">
+                    <i class="bx bxs-shield-lock"></i>
+                </div>
+                <h2>Bóveda Segura</h2>
+                <p>Introduce tu Clave Maestra para descifrar la base de datos de JMSystems.</p>
+                <div class="form-group">
+                    <input type="password" id="login-password" class="input-control" placeholder="Clave Maestra" required>
+                </div>
+                <button id="btn-login" class="btn-premium">
+                    <i class="bx bx-key"></i> DESBLOQUEAR
+                </button>
+            </div>
+        </div>
+
+        <!-- APP BODY (HEADER, MAIN, NAV) - Hidden until unlocked -->
+        <div id="app-body" style="display: none; flex-direction: column; flex: 1; overflow: hidden;">
+            
+            <!-- App Header -->
+            <header>
+                <div class="header-logo">
+                    <i class="bx bx-shield-quarter" style="font-size: 1.5rem; color: var(--accent);"></i>
+                    <h1 id="lbl-company-name">ATS Gestión V4.0</h1>
+                </div>
+                <div class="sync-badge" id="btn-sync-trigger" title="Forzar Sincronización">
+                    <span class="sync-dot synced" id="sync-status-dot"></span>
+                    <span id="sync-status-text">Sincronizado</span>
+                </div>
+            </header>
+
+            <!-- Dynamic Screens Area -->
+            <main id="main-content">
+                
+                <!-- A. DASHBOARD SCREEN -->
+                <div id="screen-dashboard" class="screen">
+                    <div class="anim-fade" style="text-align: center; padding: 10px 0;">
+                        <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 5px;">Panel de Control</h2>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem;">Selecciona una sección técnica o administrativa.</p>
+                    </div>
+                    <div class="menu-grid anim-fade">
+                        <div class="menu-card" id="menu-passwords">
+                            <span class="card-icon" style="color: #3b82f6;">🌐</span>
+                            <span class="card-title">Contraseñas</span>
+                        </div>
+                        <div class="menu-card" id="menu-subscribers">
+                            <span class="card-icon" style="color: #10b981;">🔔</span>
+                            <span class="card-title">Abonados</span>
+                        </div>
+                        <div class="menu-card" id="menu-manuals">
+                            <span class="card-icon" style="color: #f59e0b;">📚</span>
+                            <span class="card-title">Manuales</span>
+                        </div>
+                        <div class="menu-card" id="menu-expenses">
+                            <span class="card-icon" style="color: #ef4444;">💰</span>
+                            <span class="card-title">Gastos</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- B. PASSWORDS LIST SCREEN -->
+                <div id="screen-passwords" class="screen">
+                    <div class="list-header">
+                        <h2>Contraseñas Internas</h2>
+                        <button class="btn-add-circle" id="btn-new-password">+</button>
+                    </div>
+                    <div class="search-container">
+                        <i class="bx bx-search search-icon"></i>
+                        <input type="text" id="search-passwords" class="search-input" placeholder="Buscar web o usuario...">
+                    </div>
+                    <div class="items-list" id="list-passwords">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- C. EDIT PASSWORD FORM -->
+                <div id="screen-form-password" class="screen">
+                    <div class="list-header">
+                        <h2 id="password-form-title">Nueva Contraseña</h2>
+                        <button class="btn-icon" id="btn-back-passwords"><i class="bx bx-arrow-back"></i></button>
+                    </div>
+                    <form id="form-password" class="anim-fade">
+                        <input type="hidden" id="pass-id">
+                        <div class="form-group">
+                            <label>Tipo</label>
+                            <select id="pass-type" class="input-control">
+                                <option value="web">Sitio Web</option>
+                                <option value="other">Otro</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Nombre / Cliente</label>
+                            <input type="text" id="pass-name" class="input-control" placeholder="Ej. Panel Hikvision o Cliente X" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Usuario</label>
+                            <input type="text" id="pass-username" class="input-control" placeholder="Correo o Nick" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Contraseña</label>
+                            <div class="input-with-action">
+                                <input type="text" id="pass-password" class="input-control" required>
+                                <button type="button" class="btn-icon" id="btn-gen-pass" title="Generar Contraseña Compleja"><i class="bx bx-bolt-circle"></i></button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>URL (para logos)</label>
+                            <input type="text" id="pass-url" class="input-control" placeholder="https://example.com">
+                        </div>
+                        <button type="submit" class="btn-premium" style="margin-top: 10px;">
+                            <i class="bx bx-save"></i> GUARDAR
+                        </button>
+                    </form>
+                </div>
+
+                <!-- D. SUBSCRIBERS LIST SCREEN -->
+                <div id="screen-subscribers" class="screen">
+                    <div class="list-header">
+                        <h2>Abonados Técnicos</h2>
+                        <button class="btn-add-circle" id="btn-new-subscriber">+</button>
+                    </div>
+                    <div class="search-container">
+                        <i class="bx bx-search search-icon"></i>
+                        <input type="text" id="search-subscribers" class="search-input" placeholder="Nº Abonado, Cliente o Dirección...">
+                    </div>
+                    <div class="items-list" id="list-subscribers">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- E. EDIT SUBSCRIBER FORM -->
+                <div id="screen-form-subscriber" class="screen">
+                    <div class="list-header">
+                        <h2 id="subscriber-form-title">Nuevo Abonado</h2>
+                        <button class="btn-icon" id="btn-back-subscribers"><i class="bx bx-arrow-back"></i></button>
+                    </div>
+                    <form id="form-subscriber" class="anim-fade">
+                        <input type="hidden" id="sub-id">
+                        <div class="form-group">
+                            <label>Tipo de Equipo</label>
+                            <select id="sub-type" class="input-control">
+                                <option value="alarm">Alarma</option>
+                                <option value="recorder">Grabador</option>
+                                <option value="camera">Cámara</option>
+                                <option value="system">Sistema</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Nº Abonado</label>
+                                <input type="text" id="sub-code" class="input-control" placeholder="Ej. A124">
+                            </div>
+                            <div class="form-group">
+                                <label>Cliente</label>
+                                <input type="text" id="sub-name" class="input-control" placeholder="Nombre Comercial" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Dirección</label>
+                            <input type="text" id="sub-address" class="input-control" placeholder="Calle, Número, Localidad">
+                        </div>
+                        <div class="form-group">
+                            <label>Usuario Técnico</label>
+                            <input type="text" id="sub-username" class="input-control" placeholder="Instalador / Admin" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Clave Acceso</label>
+                            <div class="input-with-action">
+                                <input type="text" id="sub-password" class="input-control" required>
+                                <button type="button" class="btn-icon" id="btn-gen-sub-pass" title="Generar Clave de Equipo"><i class="bx bx-bolt-circle"></i></button>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-premium" style="margin-top: 10px;">
+                            <i class="bx bx-save"></i> GUARDAR
+                        </button>
+                    </form>
+                </div>
+
+                <!-- F. MANUALS CATEGORIES SCREEN -->
+                <div id="screen-manuals" class="screen">
+                    <div class="list-header">
+                        <h2>Documentación</h2>
+                    </div>
+                    <div class="brand-grid" id="brand-grid-container">
+                        <!-- Dynamic brand grids -->
+                    </div>
+                </div>
+
+                <!-- G. MANUALS LIST SCREEN -->
+                <div id="screen-manuals-list" class="screen">
+                    <div class="list-header">
+                        <h2 id="manuals-list-title">Manuales</h2>
+                        <button class="btn-icon" id="btn-back-manuals-brands"><i class="bx bx-arrow-back"></i></button>
+                    </div>
+                    <div class="search-container">
+                        <i class="bx bx-search search-icon"></i>
+                        <input type="text" id="search-manuals" class="search-input" placeholder="Buscar por título o contenido...">
+                    </div>
+                    <div class="items-list" id="list-manuals">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- H. MANUAL VIEW SCREEN -->
+                <div id="screen-manual-view" class="screen">
+                    <div class="list-header">
+                        <h2 id="manual-view-title">Manual</h2>
+                        <button class="btn-icon" id="btn-back-manuals-list"><i class="bx bx-arrow-back"></i></button>
+                    </div>
+                    <div class="anim-fade" style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 20px; flex: 1; display: flex; flex-direction: column;">
+                        <div style="font-size: 0.8rem; color: var(--accent); font-weight: 600; text-transform: uppercase; margin-bottom: 10px;" id="manual-view-category">Categoría</div>
+                        <div id="manual-view-body" style="font-size: 0.95rem; line-height: 1.6; color: var(--text-primary); white-space: pre-wrap; overflow-y: auto; flex: 1;">Contenido...</div>
+                        <div id="manual-view-file-container" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border-glass); display: none;">
+                            <a id="manual-view-file-link" href="#" target="_blank" style="color: var(--accent); font-weight: 500; font-size: 0.9rem; text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                                <i class="bx bx-paperclip"></i> Ver archivo adjunto
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- I. EXPENSES LIST SCREEN -->
+                <div id="screen-expenses" class="screen">
+                    <div class="list-header">
+                        <h2>Control de Gastos</h2>
+                        <button class="btn-add-circle" id="btn-new-expense">+</button>
+                    </div>
+                    <div class="expenses-summary anim-fade">
+                        <div class="expenses-summary-title">Gasto Total de Combustible</div>
+                        <div class="expenses-summary-value" id="expenses-total-value">0.00 €</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Filtrar por Categoría</label>
+                        <select id="filter-expenses-category" class="input-control">
+                            <option value="Todas">Todas las Categorías</option>
+                            <option value="Combustible">Combustible / Repostajes</option>
+                            <option value="Dietas">Dietas</option>
+                            <option value="Material">Material</option>
+                            <option value="Otros">Otros</option>
+                        </select>
+                    </div>
+                    <div class="items-list" id="list-expenses">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- J. ADD EXPENSE FORM -->
+                <div id="screen-form-expense" class="screen">
+                    <div class="list-header">
+                        <h2>Nuevo Gasto</h2>
+                        <button class="btn-icon" id="btn-back-expenses"><i class="bx bx-arrow-back"></i></button>
+                    </div>
+                    <form id="form-expense" class="anim-fade">
+                        <div class="form-group">
+                            <label>Fecha</label>
+                            <input type="date" id="exp-date" class="input-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Categoría</label>
+                            <select id="exp-category" class="input-control">
+                                <option value="Combustible">Combustible / Repostaje</option>
+                                <option value="Dietas">Dietas</option>
+                                <option value="Material">Material</option>
+                                <option value="Otros">Otros</option>
+                            </select>
+                        </div>
+                        
+                        <!-- DYNAMIC FUEL FIELDS -->
+                        <div id="fuel-fields-container">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Matrícula Vehículo</label>
+                                    <input type="text" id="exp-vehicle" class="input-control" placeholder="Ej. 1234ABC">
+                                </div>
+                                <div class="form-group">
+                                    <label>Kilómetros</label>
+                                    <input type="number" step="0.1" id="exp-kilometers" class="input-control" placeholder="Ej. 145200">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Ubicación</label>
+                                <div class="input-with-action">
+                                    <input type="text" id="exp-location" class="input-control" placeholder="Ubicación Geográfica">
+                                    <button type="button" class="btn-icon" id="btn-get-location" title="Obtener Ubicación Actual"><i class="bx bx-map-pin"></i></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Concepto / Detalle</label>
+                            <input type="text" id="exp-concept" class="input-control" placeholder="Ej. Llenado gasoil" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Importe (€)</label>
+                            <input type="number" step="0.01" id="exp-amount" class="input-control" placeholder="0.00" required>
+                        </div>
+                        <button type="submit" class="btn-premium" style="margin-top: 10px;">
+                            <i class="bx bx-save"></i> GUARDAR
+                        </button>
+                    </form>
+                </div>
+
+                <!-- K. SETTINGS SCREEN -->
+                <div id="screen-settings" class="screen">
+                    <div class="list-header">
+                        <h2>Configuración</h2>
+                    </div>
+                    
+                    <div class="user-profile anim-fade">
+                        <div class="user-avatar">
+                            <i class="bx bx-cog"></i>
+                        </div>
+                        <div>
+                            <div style="font-weight: 600; font-size: 1rem;">Administrador</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">JMSystems - Tanire</div>
+                        </div>
+                    </div>
+
+                    <div class="anim-fade" style="padding-bottom: 80px;">
+                        <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Sincronización GitHub</h3>
+                        
+                        <div class="form-group">
+                            <label>Usuario de GitHub</label>
+                            <input type="text" id="set-git-user" class="input-control" placeholder="Tu Usuario">
+                        </div>
+                        <div class="form-group">
+                            <label>Repositorio de GitHub</label>
+                            <input type="text" id="set-git-repo" class="input-control" placeholder="Nombre-del-repo">
+                        </div>
+                        <div class="form-group">
+                            <label>Ruta del archivo</label>
+                            <input type="text" id="set-git-path" class="input-control" placeholder="Ej. vault_v4.enc">
+                        </div>
+                        <div class="form-group">
+                            <label>Personal Access Token (PAT)</label>
+                            <input type="password" id="set-git-token" class="input-control" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+                        </div>
+                        
+                        <h3 style="font-size: 0.95rem; margin-top: 25px; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Apariencia</h3>
+                        <div class="form-group">
+                            <label>Tema de Color</label>
+                            <select id="set-theme" class="input-control">
+                                <option value="default">Oscuro Cyber</option>
+                                <option value="blue">Azul Océano</option>
+                                <option value="purple">Morado Nebulosa</option>
+                                <option value="green">Verde Matrix</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Nombre de la Empresa</label>
+                            <input type="text" id="set-company-name" class="input-control" placeholder="Ej. JMSystems">
+                        </div>
+
+                        <button id="btn-save-settings" class="btn-premium" style="margin-top: 10px;">
+                            <i class="bx bx-save"></i> GUARDAR AJUSTES
+                        </button>
+                        
+                        <button id="btn-logout" class="btn-premium btn-secondary" style="margin-top: 12px; margin-bottom: 20px;">
+                            <i class="bx bx-lock-alt"></i> CERRAR BÓVEDA
+                        </button>
+                    </div>
+                </div>
+
+            </main>
+
+            <!-- Bottom Navigation Bar -->
+            <nav>
+                <div class="nav-item active" data-screen="dashboard">
+                    <i class="bx bx-grid-alt"></i>
+                    <span>Inicio</span>
+                </div>
+                <div class="nav-item" data-screen="passwords">
+                    <i class="bx bx-globe"></i>
+                    <span>Webs</span>
+                </div>
+                <div class="nav-item" data-screen="subscribers">
+                    <i class="bx bx-bell"></i>
+                    <span>Abonados</span>
+                </div>
+                <div class="nav-item" data-screen="expenses">
+                    <i class="bx bx-wallet"></i>
+                    <span>Gastos</span>
+                </div>
+                <div class="nav-item" data-screen="settings">
+                    <i class="bx bx-cog"></i>
+                    <span>Ajustes</span>
+                </div>
+            </nav>
+
+        </div>
+
+        <!-- Sync Toast Alert -->
+        <div id="toast">Notificación...</div>
+
+    </div>
+
+    <!-- Crypto, GitHub API, and App Controller Logic -->
+    <script src="crypto.js"></script>
+    <script src="github.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
