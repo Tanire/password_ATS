@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.05.03",
+        version: "1.05.04",
         company_name: "ATS TEC",
         theme: "default",
         entries: [],       // General passwords
@@ -1418,6 +1418,23 @@ function canSeeAllExpenses(user) {
     return user && (user.role === "admin" || user.role === "responsable_tecnico");
 }
 
+// Helper: check if a record belongs to a specific user (handles legacy logs without owner property)
+function isOwnerOf(entry, user) {
+    if (!user) return false;
+    const me = user.username.toLowerCase();
+    if (entry.owner) {
+        return entry.owner.toLowerCase() === me;
+    }
+    // Legacy fallback (no owner field): try to match by user_name
+    if (entry.user_name) {
+        const uName = entry.user_name.toLowerCase();
+        const myFullName = user.fullName ? user.fullName.toLowerCase() : null;
+        const myUpperName = user.username.toUpperCase();
+        return uName === me || uName === myFullName || entry.user_name === myUpperName;
+    }
+    return false;
+}
+
 // Populate export tech selector with all users that have expense records
 function populateExportTechSelector() {
     const sel = document.getElementById("export-tech-select");
@@ -2095,8 +2112,7 @@ function renderHours() {
     
     // Isolation: technicians only see their own records
     if (!canSeeAllExpenses(state.currentUser)) {
-        const me = state.currentUser ? state.currentUser.username : null;
-        filtered = filtered.filter(h => !h.owner || h.owner === me);
+        filtered = filtered.filter(h => isOwnerOf(h, state.currentUser));
     }
     
     if (q) {
@@ -2243,8 +2259,7 @@ function renderDiets() {
     
     // Isolation: technicians only see their own records
     if (!canSeeAllExpenses(state.currentUser)) {
-        const me = state.currentUser ? state.currentUser.username : null;
-        filtered = filtered.filter(d => !d.owner || d.owner === me);
+        filtered = filtered.filter(d => isOwnerOf(d, state.currentUser));
     }
     
     if (q) {
@@ -2403,8 +2418,7 @@ function renderMaterials() {
     
     // Isolation: technicians only see their own records
     if (!canSeeAllExpenses(state.currentUser)) {
-        const me = state.currentUser ? state.currentUser.username : null;
-        filtered = filtered.filter(m => !m.owner || m.owner === me);
+        filtered = filtered.filter(m => isOwnerOf(m, state.currentUser));
     }
     
     if (q) {
@@ -2618,8 +2632,14 @@ function exportMonthlyReport() {
     // Owner filter helper
     const ownerMatch = (entry) => {
         if (targetOwner === "all") return true;
-        if (!entry.owner) return canSeeAllExpenses(state.currentUser); // legacy records visible only to admin
-        return entry.owner === targetOwner;
+        if (canSeeAllExpenses(state.currentUser)) {
+            // Admin/responsable exporting a specific user
+            const targetUserObj = (state.vault.users || []).find(u => u.username.toLowerCase() === targetOwner.toLowerCase());
+            return isOwnerOf(entry, targetUserObj || { username: targetOwner });
+        } else {
+            // Technician exporting their own
+            return isOwnerOf(entry, state.currentUser);
+        }
     };
 
     if (type === "hours") {
