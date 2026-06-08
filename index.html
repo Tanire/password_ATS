@@ -89,7 +89,7 @@
                         </div>
                     </div>
                     <div style="text-align: center; margin-top: 40px; font-size: 0.8rem; color: var(--text-secondary);" class="dashboard-footer">
-                        Versión 1.05.05 - JMSYSTEMAS
+                        Versión 1.05.06 - JMSYSTEMAS
                     </div>
                 </div>
 
@@ -270,7 +270,10 @@
                 <!-- I. EXPENSES LIST SCREEN -->
                 <div id="screen-expenses" class="screen">
                     <div class="list-header">
-                        <h2>Control de Gastos</h2>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <button class="btn-icon" id="btn-back-expenses-submenu-general"><i class="bx bx-arrow-back"></i></button>
+                            <h2>Control de Gastos</h2>
+                        </div>
                         <button class="btn-add-circle" id="btn-new-expense">+</button>
                     </div>
                     <div class="expenses-summary anim-fade">
@@ -283,7 +286,6 @@
                             <option value="Todas">Todas las Categorías</option>
                             <option value="Combustible">Combustible / Repostajes</option>
                             <option value="Dietas">Dietas</option>
-                            <option value="Material">Material</option>
                             <option value="Otros">Otros</option>
                         </select>
                     </div>
@@ -308,7 +310,6 @@
                             <select id="exp-category" class="input-control">
                                 <option value="Combustible">Combustible / Repostaje</option>
                                 <option value="Dietas">Dietas</option>
-                                <option value="Material">Material</option>
                                 <option value="Otros">Otros</option>
                             </select>
                         </div>
@@ -599,7 +600,11 @@
                 </div>
                 <div class="menu-card" id="menu-sub-materials" style="background: var(--bg-glass); border: 1px solid var(--border-glass);">
                     <span class="card-icon" style="color: #a855f7;">🛠️</span>
-                    <span class="card-title">Materiales</span>
+                    <span class="card-title">Otros</span>
+                </div>
+                <div class="menu-card" id="menu-sub-expenses" style="background: var(--bg-glass); border: 1px solid var(--border-glass);">
+                    <span class="card-icon" style="color: #ef4444;">⛽</span>
+                    <span class="card-title">Combustible</span>
                 </div>
             </div>
             
@@ -637,8 +642,8 @@
                     <div class="form-group" style="margin-bottom: 0;">
                         <label>Tipo de Reporte</label>
                         <select id="export-type" class="input-control" style="padding: 10px 14px; font-size: 0.9rem;">
-                            <option value="hours">Horas Extras (PDF)</option>
-                            <option value="expenses">Control de Gastos - Dietas/Materiales (PDF)</option>
+                            <option value="hours">Horas Extras (PDF / Email)</option>
+                            <option value="expenses">Control de Gastos - Dietas/Otros (PDF / Email)</option>
                         </select>
                     </div>
                     <!-- Tech selector: visible only for admin / responsable_tecnico (toggled via JS) -->
@@ -769,13 +774,13 @@
             <div class="list-header">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <button class="btn-icon" id="btn-back-materials-submenu"><i class="bx bx-arrow-back"></i></button>
-                    <h2>Tickets de Materiales</h2>
+                    <h2>Otros Gastos</h2>
                 </div>
                 <button class="btn-add-circle" id="btn-new-material">+</button>
             </div>
             <div class="search-container">
                 <i class="bx bx-search search-icon"></i>
-                <input type="text" id="search-materials" class="search-input" placeholder="Buscar por cliente o material...">
+                <input type="text" id="search-materials" class="search-input" placeholder="Buscar por cliente o concepto...">
             </div>
             <div class="items-list" id="list-materials">
                 <!-- Populated dynamically -->
@@ -785,7 +790,7 @@
         <!-- O. MATERIAL FORM SCREEN -->
         <div id="screen-form-material" class="screen">
             <div class="list-header">
-                <h2 id="material-form-title">Registrar Material</h2>
+                <h2 id="material-form-title">Registrar Otro Gasto</h2>
                 <button class="btn-icon" id="btn-back-materials-list"><i class="bx bx-arrow-back"></i></button>
             </div>
             <form id="form-material" class="anim-fade">
@@ -799,8 +804,8 @@
                     <input type="text" id="material-client" class="input-control" placeholder="Ej. PEDRALBA" required>
                 </div>
                 <div class="form-group">
-                    <label>Qué Material (Concepto)</label>
-                    <input type="text" id="material-concept" class="input-control" placeholder="Ej. COMPRA DE CABLE" required>
+                    <label>Concepto / Detalle</label>
+                    <input type="text" id="material-concept" class="input-control" placeholder="Ej. Peaje o Herramientas" required>
                 </div>
                 <div class="form-group">
                     <label>Importe (€)</label>
@@ -814,7 +819,7 @@
                     </div>
                 </div>
                 <button type="submit" class="btn-premium" style="margin-top: 10px;">
-                    <i class="bx bx-save"></i> GUARDAR MATERIAL
+                    <i class="bx bx-save"></i> GUARDAR REGISTRO
                 </button>
             </form>
         </div>
