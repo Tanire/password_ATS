@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.05.07",
+        version: "1.05.08",
         company_name: "ATS TEC",
         theme: "default",
         entries: [],       // General passwords
@@ -2687,6 +2687,33 @@ function exportMonthlyReport() {
         }
     };
 
+    // Helper to generate pdf with html2pdf.js
+    const generatePdfFile = (htmlContent, fileName, downloadOnly = true) => {
+        const tempDiv = document.createElement("div");
+        tempDiv.style.position = "absolute";
+        tempDiv.style.left = "-9999px";
+        tempDiv.style.top = "-9999px";
+        tempDiv.style.width = "800px";
+        tempDiv.innerHTML = htmlContent;
+        document.body.appendChild(tempDiv);
+
+        const opt = {
+            margin:       10,
+            filename:     fileName,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(tempDiv).save().then(() => {
+            document.body.removeChild(tempDiv);
+        }).catch(err => {
+            console.error("PDF Generation error", err);
+            document.body.removeChild(tempDiv);
+            showToast("Error al generar PDF");
+        });
+    };
+
     if (type === "hours") {
         // Filter hours by date prefix AND owner
         const items = (state.vault.hours || []).filter(h => (h.date || "").startsWith(filterPrefix) && ownerMatch(h));
@@ -2694,108 +2721,87 @@ function exportMonthlyReport() {
         
         const totalSumStr = sumTotalHours(items.map(item => item.hours));
         
+        let rowsHtml = "";
+        const maxRows = Math.max(15, items.length);
+        for (let i = 0; i < maxRows; i++) {
+            const h = items[i];
+            if (h) {
+                const parts = h.date.split("-");
+                const formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                rowsHtml += `
+                    <tr>
+                        <td>${formattedDate}</td>
+                        <td>${h.concept || "TRABAJOS"}</td>
+                        <td style="text-align: left; padding-left: 15px;">${h.description || ""}</td>
+                        <td>${h.hours}</td>
+                    </tr>
+                `;
+            } else {
+                rowsHtml += `
+                    <tr>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                `;
+            }
+        }
+
+        const reportHtml = `
+            <div style="font-family: Arial, sans-serif; color: #000; padding: 10px;">
+                <div style="display: flex; align-items: center; border: 2.5px solid #000; margin-bottom: 25px;">
+                    <div style="flex: 1; text-align: center; font-size: 1.4rem; font-weight: 800; padding: 12px; border-right: 2.5px solid #000; letter-spacing: 0.5px;">HORAS EXTRAS</div>
+                    <div style="width: 180px; text-align: center; font-size: 1.3rem; font-weight: 800; padding: 12px; background: #f8fafc;">${monthName}</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 25px; font-size: 0.95rem; line-height: 1.8;">
+                    <div style="flex: 1;">
+                        <div style="display: flex; gap: 8px;"><span style="font-weight: 700; width: 80px;">EMPRESA:</span><span style="border-bottom: 1.5px solid #000; flex: 1; font-weight: 600; padding-left: 5px;">${company.toUpperCase()}</span></div>
+                        <div style="display: flex; gap: 8px; margin-top:10px"><span style="font-weight: 700; width: 80px;">NOMBRE:</span><span style="border-bottom: 1.5px solid #000; flex: 1; font-weight: 600; padding-left: 5px;">${userFullName}</span></div>
+                    </div>
+                    <div style="text-align: right;"><img src="${logoUrl}" alt="Logo" style="height: 50px;" onerror="this.style.display='none'"></div>
+                </div>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                    <thead>
+                        <tr>
+                            <th style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem; background: #f1f5f9; font-weight: 700; width:15%">FECHA</th>
+                            <th style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem; background: #f1f5f9; font-weight: 700; width:20%">CONCEPTO</th>
+                            <th style="border: 1.5px solid #000; padding: 9px; text-align: left; padding-left: 15px; font-size: 0.9rem; background: #f1f5f9; font-weight: 700;">MOTIVO / DESCRIPCIÓN</th>
+                            <th style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem; background: #f1f5f9; font-weight: 700; width:18%">TOTAL EXTRAS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                        <tr style="font-weight: 700; border-top: 2.5px solid #000;">
+                            <td colspan="3" style="border: 1.5px solid #000; padding: 9px; text-align: right; padding-right: 15px; background: #ffff00;">TOTAL HORAS</td>
+                            <td style="border: 1.5px solid #000; padding: 9px; text-align: center; background: #ffff00;">${totalSumStr}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div style="margin-top: 50px; font-size: 0.95rem; font-weight: 600;">FIRMA: ${userFullName}</div>
+            </div>
+        `;
+        
+        const fileName = `Horas_Extras_${monthName}_${year}_${userFullName.replace(/\s+/g, "_")}.pdf`;
+
         showExportChoices(
-            // Print callback
+            // Print / PDF download callback
             () => {
-                let rowsHtml = "";
-                // Pre-create 15 rows for exact print look matching the image
-                const maxRows = Math.max(15, items.length);
-                for (let i = 0; i < maxRows; i++) {
-                    const h = items[i];
-                    if (h) {
-                        const parts = h.date.split("-");
-                        const formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
-                        rowsHtml += `
-                            <tr>
-                                <td>${formattedDate}</td>
-                                <td>${h.concept || "TRABAJOS"}</td>
-                                <td style="text-align: left; padding-left: 15px;">${h.description || ""}</td>
-                                <td>${h.hours}</td>
-                            </tr>
-                        `;
-                    } else {
-                        rowsHtml += `
-                            <tr>
-                                <td>&nbsp;</td>
-                                <td>&nbsp;</td>
-                                <td>&nbsp;</td>
-                                <td>&nbsp;</td>
-                            </tr>
-                        `;
-                    }
-                }
-                
-                const printWindow = window.open("", "_blank");
-                const htmlHours = '<!DOCTYPE html>' +
-                    '<html lang="es"><head><meta charset="UTF-8">' +
-                    '<title>Horas Extras - ' + monthName + ' ' + year + '</title>' +
-                    '<style>' +
-                    'body { font-family: Arial, sans-serif; color: #000; padding: 20px; margin: 0; }' +
-                    '.report-container { max-width: 800px; margin: 0 auto; }' +
-                    '.main-header { display: flex; align-items: center; border: 2.5px solid #000; margin-bottom: 25px; }' +
-                    '.main-header-title { flex: 1; text-align: center; font-size: 1.4rem; font-weight: 800; padding: 12px; border-right: 2.5px solid #000; letter-spacing: 0.5px; }' +
-                    '.main-header-month { width: 180px; text-align: center; font-size: 1.3rem; font-weight: 800; padding: 12px; background: #f8fafc; }' +
-                    '.info-section { display: flex; justify-content: space-between; margin-bottom: 25px; font-size: 0.95rem; line-height: 1.8; }' +
-                    '.info-box { flex: 1; }' +
-                    '.logo-box { text-align: right; }' +
-                    '.logo-box img { height: 50px; }' +
-                    '.info-row { display: flex; gap: 8px; }' +
-                    '.info-label { font-weight: 700; width: 80px; }' +
-                    '.info-val { border-bottom: 1.5px solid #000; flex: 1; font-weight: 600; padding-left: 5px; }' +
-                    '.data-table { width: 100%; border-collapse: collapse; margin-top: 15px; }' +
-                    '.data-table th, .data-table td { border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem; }' +
-                    '.data-table th { background: #f1f5f9; font-weight: 700; }' +
-                    '.total-row td { background: #ffff00; font-weight: 700; border-top: 2.5px solid #000; }' +
-                    '.signature-section { margin-top: 50px; font-size: 0.95rem; font-weight: 600; }' +
-                    '@media print { body { padding: 0; } .report-container { max-width: 100%; } }' +
-                    '</style></head><body>' +
-                    '<div class="report-container">' +
-                    '<div class="main-header">' +
-                    '<div class="main-header-title">HORAS EXTRAS</div>' +
-                    '<div class="main-header-month">' + monthName + '</div>' +
-                    '</div>' +
-                    '<div class="info-section">' +
-                    '<div class="info-box">' +
-                    '<div class="info-row"><span class="info-label">EMPRESA:</span><span class="info-val">' + company.toUpperCase() + '</span></div>' +
-                    '<div class="info-row" style="margin-top:10px"><span class="info-label">NOMBRE:</span><span class="info-val">' + userFullName + '</span></div>' +
-                    '</div>' +
-                    '<div class="logo-box"><img src="' + logoUrl + '" alt="Logo" onerror="this.style.display=\'none\'"></div>' +
-                    '</div>' +
-                    '<table class="data-table">' +
-                    '<thead><tr>' +
-                    '<th style="width:15%">FECHA</th>' +
-                    '<th style="width:20%">CONCEPTO</th>' +
-                    '<th style="text-align:left;padding-left:15px">MOTIVO / DESCRIPCIÓN</th>' +
-                    '<th style="width:18%">TOTAL EXTRAS</th>' +
-                    '</tr></thead>' +
-                    '<tbody>' + rowsHtml +
-                    '<tr class="total-row">' +
-                    '<td colspan="3" style="text-align:right;padding-right:15px">TOTAL HORAS</td>' +
-                    '<td>' + totalSumStr + '</td>' +
-                    '</tr></tbody></table>' +
-                    '<div class="signature-section">FIRMA: ' + userFullName + '</div>' +
-                    '</div>' +
-                    '<script>window.onload=function(){setTimeout(function(){window.print();window.close();},500);};</script>' +
-                    '</body></html>';
-                printWindow.document.write(htmlHours);
-                printWindow.document.close();
+                showToast("Generando y descargando PDF...");
+                generatePdfFile(reportHtml, fileName);
             },
             // Email callback
             () => {
+                showToast("Descargando PDF y preparando email...");
+                generatePdfFile(reportHtml, fileName);
+                
                 const subject = `Horas Extras - ${monthName} ${year} - ${userFullName}`;
-                let body = `REPORTE DE HORAS EXTRAS\n`;
-                body += `Empresa: ${company.toUpperCase()}\n`;
-                body += `Técnico: ${userFullName}\n`;
-                body += `Mes: ${monthName} ${year}\n\n`;
-                body += `Fecha      | Concepto   | Motivo / Descripción\n`;
-                body += `------------------------------------------------------------\n`;
-                items.forEach(h => {
-                    const parts = h.date.split("-");
-                    const formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
-                    body += `${formattedDate.padEnd(10)} | ${(h.concept || "TRABAJOS").padEnd(10)} | ${h.description || ""}\n`;
-                });
-                body += `------------------------------------------------------------\n`;
-                body += `TOTAL HORAS EXTRAS: ${totalSumStr}\n`;
+                let body = `Hola,\n\nAdjunto a este correo el reporte de HORAS EXTRAS correspondiente a ${monthName} ${year}.\n\n`;
+                body += `Detalles del reporte:\n`;
+                body += `- Empresa: ${company.toUpperCase()}\n`;
+                body += `- Técnico: ${userFullName}\n`;
+                body += `- Horas Totales: ${totalSumStr}\n\n`;
+                body += `(Nota: El archivo PDF se ha descargado automáticamente en tu dispositivo. Por favor adjúntalo a este correo).`;
 
                 window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
             }
@@ -2826,120 +2832,107 @@ function exportMonthlyReport() {
         let totalSum = 0;
         combined.forEach(c => totalSum += c.amount);
         
+        let rowsHtml = "";
+        const maxRows = Math.max(15, combined.length);
+        for (let i = 0; i < maxRows; i++) {
+            const c = combined[i];
+            if (c) {
+                const parts = c.date.split("-");
+                const formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                rowsHtml += `
+                    <tr>
+                        <td style="border: 1.5px solid #000; padding: 9px; text-align:center; font-size: 0.9rem;">${formattedDate}</td>
+                        <td style="border: 1.5px solid #000; padding: 9px; text-align:left; padding-left:15px; font-size: 0.9rem;">${c.concept.toUpperCase()}</td>
+                        <td style="border: 1.5px solid #000; padding: 9px; text-align: right; padding-right: 20px; font-weight: 600; font-size: 0.9rem; width: 22%;">${c.amount.toFixed(2)} €</td>
+                    </tr>
+                `;
+            } else {
+                rowsHtml += `
+                    <tr>
+                        <td style="border: 1.5px solid #000; padding: 9px;">&nbsp;</td>
+                        <td style="border: 1.5px solid #000; padding: 9px;">&nbsp;</td>
+                        <td style="border: 1.5px solid #000; padding: 9px;">&nbsp;</td>
+                    </tr>
+                `;
+            }
+        }
+
+        const reportHtml = `
+            <div style="font-family: Arial, sans-serif; color: #000; padding: 10px;">
+                <div style="display: flex; align-items: center; border: 2.5px solid #000; margin-bottom: 20px;">
+                    <div style="padding: 12px; border-right: 2.5px solid #000; text-align: center; width: 140px; display: flex; align-items: center; justify-content: center;"><img src="${logoUrl}" alt="Logo" style="height: 40px;" onerror="this.style.display='none'"></div>
+                    <div style="flex: 1; text-align: center; font-size: 1.4rem; font-weight: 800; letter-spacing: 0.5px; padding: 12px; border-right: 2.5px solid #000;">CONTROL DE GASTOS</div>
+                    <div style="width: 140px; text-align: center; font-weight: 800; font-size: 1.3rem; padding: 12px; background: #e0f2fe;">GASTOS</div>
+                </div>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
+                    <tr>
+                        <td style="border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; background: #f1f5f9; font-weight: 700; width: 130px;">ZONA:</td>
+                        <td style="border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; text-align: center; font-weight: 700; width:35%">${zona.toUpperCase()}</td>
+                        <td style="border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; background: #f1f5f9; font-weight: 700; width: 130px;">MES/AÑO:</td>
+                        <td style="border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; text-align: center; font-weight: 700;">${monthName}</td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; background: #f1f5f9; font-weight: 700;">DELEGACION:</td>
+                        <td style="border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; text-align: center; font-weight: 700;">${delegacion.toUpperCase()}</td>
+                        <td style="border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; background: #f1f5f9; font-weight: 700;">AÑO:</td>
+                        <td style="border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; text-align: center; font-weight: 700;">${year}</td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; background: #f1f5f9; font-weight: 700;">TARJETA Nº:</td>
+                        <td style="border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; text-align: center; font-weight: 700;">${tarjeta.toUpperCase()}</td>
+                        <td style="border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; background: #f1f5f9; font-weight: 700;" rowspan="2">CONDUCTOR:</td>
+                        <td style="border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; text-align: center; font-weight: 700; vertical-align:middle" rowspan="2">${userFullName}</td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; background: #f1f5f9; font-weight: 700;">VEHICULO:</td>
+                        <td style="border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; text-align: center; font-weight: 700;">${vehiculo.toUpperCase()}</td>
+                    </tr>
+                </table>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr>
+                            <th style="border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; background: #f1f5f9; text-align: center; font-weight: 700; width:15%">DIA</th>
+                            <th style="border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; background: #f1f5f9; text-align: left; padding-left:15px; font-weight: 700;">CONCEPTO</th>
+                            <th style="border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; background: #f1f5f9; text-align: center; font-weight: 700; width:22%">IMPORTE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                        <tr style="font-weight: 800; font-size: 0.95rem; border-top: 2.5px solid #000;">
+                            <td colspan="2" style="border: 1.5px solid #000; padding: 9px; text-align:right; padding-right:15px;">TOTAL</td>
+                            <td style="border: 1.5px solid #000; padding: 9px; text-align: right; padding-right: 20px; background:#f8fafc;">${totalSum.toFixed(2)} €</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        const fileName = `Control_Gastos_${monthName}_${year}_${userFullName.replace(/\s+/g, "_")}.pdf`;
+
         showExportChoices(
-            // Print callback
+            // Print / PDF download callback
             () => {
-                let rowsHtml = "";
-                const maxRows = Math.max(15, combined.length);
-                for (let i = 0; i < maxRows; i++) {
-                    const c = combined[i];
-                    if (c) {
-                        const parts = c.date.split("-");
-                        const formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
-                        rowsHtml += '<tr>' +
-                            '<td style="text-align:center">' + formattedDate + '</td>' +
-                            '<td style="text-align:left;padding-left:15px">' + c.concept.toUpperCase() + '</td>' +
-                            '<td class="num-col">' + c.amount.toFixed(2) + ' €</td>' +
-                            '</tr>';
-                    } else {
-                        rowsHtml += `
-                            <tr>
-                                <td>&nbsp;</td>
-                                <td>&nbsp;</td>
-                                <td>&nbsp;</td>
-                            </tr>
-                        `;
-                    }
-                }
-                
-                const printWindow = window.open("", "_blank");
-                const htmlGastos = '<!DOCTYPE html>' +
-                    '<html lang="es"><head><meta charset="UTF-8">' +
-                    '<title>Control de Gastos - ' + monthName + ' ' + year + '</title>' +
-                    '<style>' +
-                    'body { font-family: Arial, sans-serif; color: #000; padding: 20px; margin: 0; }' +
-                    '.report-container { max-width: 800px; margin: 0 auto; }' +
-                    '.main-header { display: flex; align-items: center; border: 2.5px solid #000; margin-bottom: 20px; }' +
-                    '.header-logo { padding: 12px; border-right: 2.5px solid #000; text-align: center; width: 140px; display: flex; align-items: center; justify-content: center; }' +
-                    '.header-logo img { height: 40px; }' +
-                    '.header-title { flex: 1; text-align: center; font-size: 1.4rem; font-weight: 800; letter-spacing: 0.5px; padding: 12px; border-right: 2.5px solid #000; }' +
-                    '.header-side { width: 140px; text-align: center; font-weight: 800; font-size: 1.3rem; padding: 12px; background: #e0f2fe; }' +
-                    '.info-grid { width: 100%; border-collapse: collapse; margin-bottom: 25px; }' +
-                    '.info-grid td { border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; }' +
-                    '.bg-light { background: #f1f5f9; font-weight: 700; width: 130px; }' +
-                    '.val-field { text-align: center; font-weight: 700; }' +
-                    '.data-table { width: 100%; border-collapse: collapse; }' +
-                    '.data-table th, .data-table td { border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; }' +
-                    '.data-table th { background: #f1f5f9; text-align: center; font-weight: 700; }' +
-                    '.data-table td.num-col { text-align: right; font-weight: 600; padding-right: 20px; width: 22%; }' +
-                    '.total-row td { font-weight: 800; font-size: 0.95rem; border-top: 2.5px solid #000; }' +
-                    '@media print { body { padding: 0; } .report-container { max-width: 100%; } }' +
-                    '</style></head><body>' +
-                    '<div class="report-container">' +
-                    '<div class="main-header">' +
-                    '<div class="header-logo"><img src="' + logoUrl + '" alt="Logo" onerror="this.style.display=\'none\'"></div>' +
-                    '<div class="header-title">CONTROL DE GASTOS</div>' +
-                    '<div class="header-side">GASTOS</div>' +
-                    '</div>' +
-                    '<table class="info-grid">' +
-                    '<tr>' +
-                    '<td class="bg-light">ZONA:</td>' +
-                    '<td class="val-field" style="width:35%">' + zona.toUpperCase() + '</td>' +
-                    '<td class="bg-light">MES/AÑO:</td>' +
-                    '<td class="val-field">' + monthName + '</td>' +
-                    '</tr><tr>' +
-                    '<td class="bg-light">DELEGACION:</td>' +
-                    '<td class="val-field">' + delegacion.toUpperCase() + '</td>' +
-                    '<td class="bg-light">AÑO:</td>' +
-                    '<td class="val-field">' + year + '</td>' +
-                    '</tr><tr>' +
-                    '<td class="bg-light">TARJETA Nº:</td>' +
-                    '<td class="val-field">' + tarjeta.toUpperCase() + '</td>' +
-                    '<td class="bg-light" rowspan="2">CONDUCTOR:</td>' +
-                    '<td class="val-field" rowspan="2" style="vertical-align:middle">' + userFullName + '</td>' +
-                    '</tr><tr>' +
-                    '<td class="bg-light">VEHICULO:</td>' +
-                    '<td class="val-field">' + vehiculo.toUpperCase() + '</td>' +
-                    '</tr></table>' +
-                    '<table class="data-table">' +
-                    '<thead><tr>' +
-                    '<th style="width:15%">DIA</th>' +
-                    '<th style="text-align:left;padding-left:15px">CONCEPTO</th>' +
-                    '<th style="width:22%">IMPORTE</th>' +
-                    '</tr></thead>' +
-                    '<tbody>' + rowsHtml +
-                    '<tr class="total-row">' +
-                    '<td colspan="2" style="text-align:right;padding-right:15px;font-weight:800">TOTAL</td>' +
-                    '<td class="num-col" style="background:#f8fafc;font-weight:800">' + totalSum.toFixed(2) + ' €</td>' +
-                    '</tr></tbody></table>' +
-                    '</div>' +
-                    '<script>window.onload=function(){setTimeout(function(){window.print();window.close();},500);};</script>' +
-                    '</body></html>';
-                printWindow.document.write(htmlGastos);
-                printWindow.document.close();
+                showToast("Generando y descargando PDF...");
+                generatePdfFile(reportHtml, fileName);
             },
             // Email callback
             () => {
+                showToast("Descargando PDF y preparando email...");
+                generatePdfFile(reportHtml, fileName);
+                
                 const subject = `Control de Gastos - ${monthName} ${year} - ${userFullName}`;
-                let body = `CONTROL DE GASTOS\n`;
-                body += `Conductor: ${userFullName}\n`;
-                body += `Mes/Año: ${monthName} / ${year}\n`;
-                body += `Zona: ${zona.toUpperCase()} | Delegación: ${delegacion.toUpperCase()}\n`;
-                body += `Vehículo: ${vehiculo.toUpperCase()} | Tarjeta: ${tarjeta.toUpperCase()}\n\n`;
-                body += `Día        | Concepto\n`;
-                body += `------------------------------------------------------------\n`;
-                combined.forEach(c => {
-                    const parts = c.date.split("-");
-                    const formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
-                    body += `${formattedDate.padEnd(10)} | ${c.concept.toUpperCase().padEnd(30)} | ${c.amount.toFixed(2)} €\n`;
-                });
-                body += `------------------------------------------------------------\n`;
-                body += `IMPORTE TOTAL: ${totalSum.toFixed(2)} €\n`;
+                let body = `Hola,\n\nAdjunto a este correo el reporte de CONTROL DE GASTOS correspondiente a ${monthName} ${year}.\n\n`;
+                body += `Detalles del reporte:\n`;
+                body += `- Conductor: ${userFullName}\n`;
+                body += `- Zona / Delegación: ${zona} / ${delegacion}\n`;
+                body += `- Importe Total: ${totalSum.toFixed(2)} €\n\n`;
+                body += `(Nota: El archivo PDF se ha descargado automáticamente en tu dispositivo. Por favor adjúntalo a este correo).`;
 
                 window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
             }
         );
     }
+}
 }
 
 // Dialog helper to select print vs email

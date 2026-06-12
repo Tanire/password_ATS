@@ -2,7 +2,7 @@
  * Service Worker for Offline Cache
  */
 
-const CACHE_NAME = "ats-tec-cache-v1.05.7";
+const CACHE_NAME = "ats-tec-cache-v1.05.8";
 const ASSETS = [
     "index.html",
     "style.css",
@@ -14,7 +14,8 @@ const ASSETS = [
     "https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css",
     "https://unpkg.com/boxicons@2.1.4/fonts/boxicons.woff2",
     "https://unpkg.com/boxicons@2.1.4/fonts/boxicons.woff",
-    "https://unpkg.com/boxicons@2.1.4/fonts/boxicons.ttf"
+    "https://unpkg.com/boxicons@2.1.4/fonts/boxicons.ttf",
+    "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"
 ];
 
 // Install: Cache resources
