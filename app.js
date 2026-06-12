@@ -2933,7 +2933,6 @@ function exportMonthlyReport() {
         );
     }
 }
-}
 
 // Dialog helper to select print vs email
 function showExportChoices(onPrint, onEmail) {
