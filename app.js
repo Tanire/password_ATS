@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.05.06",
+        version: "1.05.07",
         company_name: "ATS TEC",
         theme: "default",
         entries: [],       // General passwords
@@ -119,6 +119,15 @@ function setupEventListeners() {
         });
     });
 
+    // Subscriber password range update listener
+    const subRange = document.getElementById("sub-pass-length-range");
+    const subRangeVal = document.getElementById("sub-pass-length-val");
+    if (subRange && subRangeVal) {
+        subRange.addEventListener("input", (e) => {
+            subRangeVal.textContent = e.target.value;
+        });
+    }
+
     // Dashboard Cards Shortcuts
     document.getElementById("menu-passwords").addEventListener("click", () => switchScreen("passwords"));
     document.getElementById("menu-subscribers").addEventListener("click", () => switchScreen("subscribers"));
@@ -200,18 +209,15 @@ function setupEventListeners() {
         showToast("Contraseña compleja generada");
     });
     document.getElementById("btn-gen-sub-pass").addEventListener("click", () => {
-        const type = document.getElementById("sub-type").value;
-        const len = parseInt(document.getElementById("sub-pass-length").value) || 6;
-        let pass = "";
-        if (type === "alarm") {
-            pass = generateNumericPassword(len);
-        } else if (type === "recorder") {
-            pass = generateAlphanumericPassword(len);
-        } else {
-            pass = generateComplexPassword(len);
-        }
+        const len = parseInt(document.getElementById("sub-pass-length-range").value) || 6;
+        const useUpper = document.getElementById("sub-opt-upper").checked;
+        const useLower = document.getElementById("sub-opt-lower").checked;
+        const useNumber = document.getElementById("sub-opt-number").checked;
+        const useSymbol = document.getElementById("sub-opt-symbol").checked;
+
+        let pass = generateCustomPassword(len, { upper: useUpper, lower: useLower, number: useNumber, symbol: useSymbol });
         document.getElementById("sub-password").value = pass;
-        showToast(`Clave para equipo (${type}, ${len} caracteres) generada`);
+        showToast(`Clave generada (${len} caracteres)`);
     });
 
     // Form Submissions
@@ -973,6 +979,22 @@ function openSubscriberForm(id = null) {
     els.formSubscriber.reset();
     document.getElementById("sub-id").value = "";
 
+    // Reset password customization controls to default values
+    const passRange = document.getElementById("sub-pass-length-range");
+    const passRangeVal = document.getElementById("sub-pass-length-val");
+    if (passRange && passRangeVal) {
+        passRange.value = 6;
+        passRangeVal.textContent = 6;
+    }
+    const optUpper = document.getElementById("sub-opt-upper");
+    const optLower = document.getElementById("sub-opt-lower");
+    const optNumber = document.getElementById("sub-opt-number");
+    const optSymbol = document.getElementById("sub-opt-symbol");
+    if (optUpper) optUpper.checked = false;
+    if (optLower) optLower.checked = true;
+    if (optNumber) optNumber.checked = true;
+    if (optSymbol) optSymbol.checked = false;
+
     if (id) {
         const entry = state.vault.subscribers.find(e => e.id === id);
         if (entry) {
@@ -1251,6 +1273,28 @@ function setSyncStatus(status) {
 // CSS Variable themes switcher
 function applyTheme(theme) {
     document.getElementById("app-container").setAttribute("data-theme", theme);
+}
+
+function generateCustomPassword(length = 6, options = {}) {
+    const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const lowercase = "abcdefghijklmnopqrstuvwxyz";
+    const numbers = "0123456789";
+    const symbols = "!@#$%^&*()_+-=";
+
+    let pool = "";
+    if (options.upper) pool += uppercase;
+    if (options.lower) pool += lowercase;
+    if (options.number) pool += numbers;
+    if (options.symbol) pool += symbols;
+
+    // Fallback if none selected
+    if (!pool) pool = lowercase + numbers;
+
+    let password = "";
+    for (let i = 0; i < length; i++) {
+        password += pool.charAt(Math.floor(Math.random() * pool.length));
+    }
+    return password;
 }
 
 // --- PASSWORD GENERATION ENGINE ---

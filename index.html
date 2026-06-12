@@ -89,7 +89,7 @@
                         </div>
                     </div>
                     <div style="text-align: center; margin-top: 40px; font-size: 0.8rem; color: var(--text-secondary);" class="dashboard-footer">
-                        Versión 1.05.06 - JMSYSTEMAS
+                        Versión 1.05.07 - JMSYSTEMAS
                     </div>
                 </div>
 
@@ -203,13 +203,32 @@
                         </div>
                         <div class="form-group">
                             <label>Clave Acceso</label>
-                            <div class="input-with-action">
+                            <div class="input-with-action" style="margin-bottom: 10px;">
                                 <input type="text" id="sub-password" class="input-control" required style="flex: 1;">
-                                <select id="sub-pass-length" class="input-control" style="width: 110px; font-size: 0.85rem; padding-right: 25px; background-position: right 10px center;">
-                                    <option value="4">4 dígitos</option>
-                                    <option value="6" selected>6 dígitos</option>
-                                </select>
                                 <button type="button" class="btn-icon" id="btn-gen-sub-pass" title="Generar Clave de Equipo"><i class="bx bx-bolt-circle"></i></button>
+                            </div>
+                            <div class="pass-options-panel" style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                                    <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500;">Longitud (4-10):</span>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="range" id="sub-pass-length-range" min="4" max="10" value="6" style="accent-color: var(--accent); cursor: pointer; width: 100px;">
+                                        <span id="sub-pass-length-val" style="font-size: 0.85rem; font-weight: 600; min-width: 15px; text-align: center;">6</span>
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-primary); cursor: pointer; margin-bottom: 0;">
+                                        <input type="checkbox" id="sub-opt-upper" style="accent-color: var(--accent); width: 14px; height: 14px;"> Mayús (A-Z)
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-primary); cursor: pointer; margin-bottom: 0;">
+                                        <input type="checkbox" id="sub-opt-lower" checked style="accent-color: var(--accent); width: 14px; height: 14px;"> Minús (a-z)
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-primary); cursor: pointer; margin-bottom: 0;">
+                                        <input type="checkbox" id="sub-opt-number" checked style="accent-color: var(--accent); width: 14px; height: 14px;"> Números (0-9)
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-primary); cursor: pointer; margin-bottom: 0;">
+                                        <input type="checkbox" id="sub-opt-symbol" style="accent-color: var(--accent); width: 14px; height: 14px;"> Símbolos
+                                    </label>
+                                </div>
                             </div>
                         </div>
                         <button type="submit" class="btn-premium" style="margin-top: 10px;">
