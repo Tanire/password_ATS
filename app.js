@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.05.08",
+        version: "1.05.09",
         company_name: "ATS TEC",
         theme: "default",
         entries: [],       // General passwords
