@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.05.10",
+        version: "1.10.11",
         company_name: "ATS TEC",
         theme: "default",
         entries: [],       // General passwords
@@ -2703,7 +2703,7 @@ function exportMonthlyReport() {
             margin:       10,
             filename:     fileName,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0 },
+            html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0, windowWidth: 820 },
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
@@ -2714,6 +2714,8 @@ function exportMonthlyReport() {
             showToast("Error al generar PDF");
         });
     };
+
+    const isAllTechs = targetOwner === "all";
 
     if (type === "hours") {
         // Filter hours by date prefix AND owner
@@ -2731,19 +2733,21 @@ function exportMonthlyReport() {
                 const formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
                 rowsHtml += `
                     <tr>
-                        <td>${formattedDate}</td>
-                        <td>${h.concept || "TRABAJOS"}</td>
-                        <td style="text-align: left; padding-left: 15px;">${h.description || ""}</td>
-                        <td>${h.hours}</td>
+                        <td style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem;">${formattedDate}</td>
+                        ${isAllTechs ? `<td style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem;">${h.user_name}</td>` : ''}
+                        <td style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem;">${h.concept || "TRABAJOS"}</td>
+                        <td style="border: 1.5px solid #000; padding: 9px; text-align: left; padding-left: 15px; font-size: 0.9rem;">${h.description || ""}</td>
+                        <td style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem;">${h.hours}</td>
                     </tr>
                 `;
             } else {
                 rowsHtml += `
                     <tr>
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
+                        <td style="border: 1.5px solid #000; padding: 9px;">&nbsp;</td>
+                        ${isAllTechs ? `<td style="border: 1.5px solid #000; padding: 9px;">&nbsp;</td>` : ''}
+                        <td style="border: 1.5px solid #000; padding: 9px;">&nbsp;</td>
+                        <td style="border: 1.5px solid #000; padding: 9px;">&nbsp;</td>
+                        <td style="border: 1.5px solid #000; padding: 9px;">&nbsp;</td>
                     </tr>
                 `;
             }
@@ -2766,6 +2770,7 @@ function exportMonthlyReport() {
                     <thead>
                         <tr>
                             <th style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem; background: #f1f5f9; font-weight: 700; width:15%">FECHA</th>
+                            ${isAllTechs ? '<th style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem; background: #f1f5f9; font-weight: 700; width:15%">TÉCNICO</th>' : ''}
                             <th style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem; background: #f1f5f9; font-weight: 700; width:20%">CONCEPTO</th>
                             <th style="border: 1.5px solid #000; padding: 9px; text-align: left; padding-left: 15px; font-size: 0.9rem; background: #f1f5f9; font-weight: 700;">MOTIVO / DESCRIPCIÓN</th>
                             <th style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem; background: #f1f5f9; font-weight: 700; width:18%">TOTAL EXTRAS</th>
@@ -2774,7 +2779,7 @@ function exportMonthlyReport() {
                     <tbody>
                         ${rowsHtml}
                         <tr style="font-weight: 700; border-top: 2.5px solid #000;">
-                            <td colspan="3" style="border: 1.5px solid #000; padding: 9px; text-align: right; padding-right: 15px; background: #ffff00;">TOTAL HORAS</td>
+                            <td colspan="${isAllTechs ? 4 : 3}" style="border: 1.5px solid #000; padding: 9px; text-align: right; padding-right: 15px; background: #ffff00;">TOTAL HORAS</td>
                             <td style="border: 1.5px solid #000; padding: 9px; text-align: center; background: #ffff00;">${totalSumStr}</td>
                         </tr>
                     </tbody>
@@ -2812,19 +2817,22 @@ function exportMonthlyReport() {
         const diets = (state.vault.diets || []).filter(d => (d.date || "").startsWith(filterPrefix) && ownerMatch(d)).map(d => ({
             date: d.date,
             concept: d.concept || "DIETA",
-            amount: parseFloat(d.amount) || 0
+            amount: parseFloat(d.amount) || 0,
+            user_name: d.user_name || "TÉCNICO"
         }));
         
         const materials = (state.vault.materials || []).filter(m => (m.date || "").startsWith(filterPrefix) && ownerMatch(m)).map(m => ({
             date: m.date,
             concept: m.concept || "OTROS GASTOS",
-            amount: parseFloat(m.amount) || 0
+            amount: parseFloat(m.amount) || 0,
+            user_name: m.user_name || "TÉCNICO"
         }));
 
         const fuel = (state.vault.expenses || []).filter(e => (e.date || "").startsWith(filterPrefix) && e.category === "Combustible" && ownerMatch(e)).map(e => ({
             date: e.date,
             concept: e.concept || "COMBUSTIBLE",
-            amount: parseFloat(e.amount) || 0
+            amount: parseFloat(e.amount) || 0,
+            user_name: e.user_name || "TÉCNICO"
         }));
         
         const combined = [...diets, ...materials, ...fuel];
@@ -2843,6 +2851,7 @@ function exportMonthlyReport() {
                 rowsHtml += `
                     <tr>
                         <td style="border: 1.5px solid #000; padding: 9px; text-align:center; font-size: 0.9rem;">${formattedDate}</td>
+                        ${isAllTechs ? `<td style="border: 1.5px solid #000; padding: 9px; text-align:center; font-size: 0.9rem;">${c.user_name}</td>` : ''}
                         <td style="border: 1.5px solid #000; padding: 9px; text-align:left; padding-left:15px; font-size: 0.9rem;">${c.concept.toUpperCase()}</td>
                         <td style="border: 1.5px solid #000; padding: 9px; text-align: right; padding-right: 20px; font-weight: 600; font-size: 0.9rem; width: 22%;">${c.amount.toFixed(2)} €</td>
                     </tr>
@@ -2851,6 +2860,7 @@ function exportMonthlyReport() {
                 rowsHtml += `
                     <tr>
                         <td style="border: 1.5px solid #000; padding: 9px;">&nbsp;</td>
+                        ${isAllTechs ? `<td style="border: 1.5px solid #000; padding: 9px;">&nbsp;</td>` : ''}
                         <td style="border: 1.5px solid #000; padding: 9px;">&nbsp;</td>
                         <td style="border: 1.5px solid #000; padding: 9px;">&nbsp;</td>
                     </tr>
@@ -2893,6 +2903,7 @@ function exportMonthlyReport() {
                     <thead>
                         <tr>
                             <th style="border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; background: #f1f5f9; text-align: center; font-weight: 700; width:15%">DIA</th>
+                            ${isAllTechs ? '<th style="border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; background: #f1f5f9; text-align: center; font-weight: 700; width:20%">TÉCNICO</th>' : ''}
                             <th style="border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; background: #f1f5f9; text-align: left; padding-left:15px; font-weight: 700;">CONCEPTO</th>
                             <th style="border: 1.5px solid #000; padding: 9px; font-size: 0.9rem; background: #f1f5f9; text-align: center; font-weight: 700; width:22%">IMPORTE</th>
                         </tr>
@@ -2900,7 +2911,7 @@ function exportMonthlyReport() {
                     <tbody>
                         ${rowsHtml}
                         <tr style="font-weight: 800; font-size: 0.95rem; border-top: 2.5px solid #000;">
-                            <td colspan="2" style="border: 1.5px solid #000; padding: 9px; text-align:right; padding-right:15px;">TOTAL</td>
+                            <td colspan="${isAllTechs ? 3 : 2}" style="border: 1.5px solid #000; padding: 9px; text-align:right; padding-right:15px;">TOTAL</td>
                             <td style="border: 1.5px solid #000; padding: 9px; text-align: right; padding-right: 20px; background:#f8fafc;">${totalSum.toFixed(2)} €</td>
                         </tr>
                     </tbody>
