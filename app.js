@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.05.09",
+        version: "1.05.10",
         company_name: "ATS TEC",
         theme: "default",
         entries: [],       // General passwords
@@ -668,7 +668,8 @@ function renderSubscribers() {
         else if (e.tipo === "system") emoji = "⚙️";
 
         const titleText = `[${e.subscriber_code || "?"}] ${e.nombre || "Sin Cliente"}`;
-        const subtext = `${emoji} ${e.tipo.toUpperCase()} • Usuario: ${e.usuario} ${e.address ? '• ' + e.address : ''}`;
+        const typeText = e.tipo.toUpperCase() + (e.tipo_detalle ? ` (${e.tipo_detalle.toUpperCase()})` : '');
+        const subtext = `${emoji} ${typeText} • Usuario: ${e.usuario} ${e.address ? '• ' + e.address : ''}`;
 
         card.innerHTML = `
             <div class="item-card-left">
@@ -978,6 +979,7 @@ async function deletePasswordEntry(id) {
 function openSubscriberForm(id = null) {
     els.formSubscriber.reset();
     document.getElementById("sub-id").value = "";
+    document.getElementById("sub-type-detail").value = "";
 
     // Reset password customization controls to default values
     const passRange = document.getElementById("sub-pass-length-range");
@@ -1001,6 +1003,7 @@ function openSubscriberForm(id = null) {
             document.getElementById("subscriber-form-title").textContent = "Editar Abonado";
             document.getElementById("sub-id").value = entry.id;
             document.getElementById("sub-type").value = entry.tipo || "alarm";
+            document.getElementById("sub-type-detail").value = entry.tipo_detalle || "";
             document.getElementById("sub-code").value = entry.subscriber_code || "";
             document.getElementById("sub-name").value = entry.nombre || "";
             document.getElementById("sub-address").value = entry.address || "";
@@ -1021,13 +1024,14 @@ async function saveSubscriberEntry(evt) {
     }
     const id = document.getElementById("sub-id").value;
     const tipo = document.getElementById("sub-type").value;
+    const tipo_detalle = document.getElementById("sub-type-detail").value.trim();
     const subscriber_code = document.getElementById("sub-code").value.trim();
     const nombre = document.getElementById("sub-name").value.trim();
     const address = document.getElementById("sub-address").value.trim();
     const usuario = document.getElementById("sub-username").value.trim();
     const password = document.getElementById("sub-password").value.trim();
 
-    const entryData = { tipo, subscriber_code, nombre, address, usuario, password };
+    const entryData = { tipo, tipo_detalle, subscriber_code, nombre, address, usuario, password };
 
     if (id) {
         const idx = state.vault.subscribers.findIndex(s => s.id == id);
@@ -2044,7 +2048,13 @@ function openSubscriberView(sub) {
     
     document.getElementById("sub-view-icon").textContent = emoji;
     document.getElementById("sub-view-title").textContent = `[${sub.subscriber_code || "?"}] ${sub.nombre || "Sin Cliente"}`;
-    document.getElementById("sub-view-type").textContent = (sub.tipo || "alarm").toUpperCase();
+    
+    let typeText = (sub.tipo || "alarm").toUpperCase();
+    if (sub.tipo_detalle) {
+        typeText += ` - ${sub.tipo_detalle.toUpperCase()}`;
+    }
+    document.getElementById("sub-view-type").textContent = typeText;
+    
     document.getElementById("sub-view-address").textContent = sub.address || "(Sin dirección)";
     document.getElementById("sub-view-username").textContent = sub.usuario || "-";
     document.getElementById("sub-view-password").textContent = sub.password || "-";
@@ -2689,27 +2699,18 @@ function exportMonthlyReport() {
 
     // Helper to generate pdf with html2pdf.js
     const generatePdfFile = (htmlContent, fileName, downloadOnly = true) => {
-        const tempDiv = document.createElement("div");
-        tempDiv.style.position = "absolute";
-        tempDiv.style.left = "-9999px";
-        tempDiv.style.top = "-9999px";
-        tempDiv.style.width = "800px";
-        tempDiv.innerHTML = htmlContent;
-        document.body.appendChild(tempDiv);
-
         const opt = {
             margin:       10,
             filename:     fileName,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true },
+            html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0 },
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
-        html2pdf().set(opt).from(tempDiv).save().then(() => {
-            document.body.removeChild(tempDiv);
-        }).catch(err => {
+        const contentWithWidth = `<div style="width: 800px;">${htmlContent}</div>`;
+
+        html2pdf().set(opt).from(contentWithWidth).save().catch(err => {
             console.error("PDF Generation error", err);
-            document.body.removeChild(tempDiv);
             showToast("Error al generar PDF");
         });
     };
