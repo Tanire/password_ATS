@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.10.13",
+        version: "1.11.00",
         company_name: "ATS TEC",
         theme: "default",
         entries: [],       // General passwords
@@ -22,14 +22,16 @@ const state = {
     currentScreen: "dashboard",
     activeCategory: "General", // For manuals brand selection
     usersMetadata: {},   // Wrapped keys metadata
-    currentUser: null    // Current active user
+    currentUser: null,   // Current active user
+    isProcessingQueue: false // Prevent double processing of offline queue
 };
 
 // LocalStorage Keys
 const STORAGE_KEYS = {
     THEME: "ats_theme",
     COMPANY_NAME: "ats_company_name",
-    VAULT_CACHE: "ats_vault_encrypted_cache" // Local encrypted copy for offline use
+    VAULT_CACHE: "ats_vault_encrypted_cache", // Local encrypted copy for offline use
+    OFFLINE_QUEUE: "ats_offline_queue"
 };
 
 // GitHub Vault Connection Parameters (Hardcoded for security and ease of use)
@@ -103,6 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
     loadSettingsFromStorage();
     setupEventListeners();
     checkVaultUsersOnLoad();
+    inicializarSincronizacionAutomatica();
 });
 
 // Load settings into UI fields
@@ -497,7 +500,7 @@ async function handleUnlock() {
 }
 
 // Save encrypted JSON payload locally and commit/push to GitHub
-async function syncWithCloud() {
+async function syncWithCloud(isRetry = false) {
     if (!state.masterPassword) return;
 
     if (!state.gitClient) {
@@ -509,7 +512,11 @@ async function syncWithCloud() {
         );
     }
 
-    showLoading(true, "Cifrando base de datos...");
+    const showUi = !isRetry;
+
+    if (showUi) {
+        showLoading(true, "Cifrando base de datos...");
+    }
     setSyncStatus("syncing");
 
     try {
@@ -526,37 +533,60 @@ async function syncWithCloud() {
         localStorage.setItem(STORAGE_KEYS.VAULT_CACHE, encryptedStr);
 
         // 2. Fetch latest remote to prevent overwrite conflicts
-        showLoading(true, "Comprobando cambios en GitHub...");
+        if (showUi) {
+            showLoading(true, "Comprobando cambios en GitHub...");
+        }
         const remoteFile = await state.gitClient.fetchFile();
         
         let targetSha = state.gitSha;
         if (remoteFile) {
             if (state.gitSha && remoteFile.sha !== state.gitSha) {
                 // Conflict check
-                showLoading(false);
-                const overwrite = confirm("Conflicto detectado: El archivo en GitHub fue actualizado desde otro móvil. ¿Quieres sobrescribir los cambios remotos?");
-                if (!overwrite) {
-                    setSyncStatus(false);
-                    showToast("Sincronización cancelada por el usuario");
-                    return;
+                if (showUi) {
+                    showLoading(false);
+                    const overwrite = confirm("Conflicto detectado: El archivo en GitHub fue actualizado desde otro móvil. ¿Quieres sobrescribir los cambios remotos?");
+                    if (!overwrite) {
+                        setSyncStatus(false);
+                        showToast("Sincronización cancelada por el usuario");
+                        return;
+                    }
+                } else {
+                    throw new Error("Conflict detected during background sync. Manual sync required.");
                 }
             }
             targetSha = remoteFile.sha;
         }
 
         // 3. Upload/Push encrypted file
-        showLoading(true, "Subiendo cambios a GitHub...");
+        if (showUi) {
+            showLoading(true, "Subiendo cambios a GitHub...");
+        }
         const newSha = await state.gitClient.saveFile(encryptedStr, targetSha);
         state.gitSha = newSha;
 
         setSyncStatus(true);
-        showToast("¡Base de datos sincronizada con GitHub!");
+        if (showUi) {
+            showToast("¡Base de datos sincronizada con GitHub!");
+        }
+
+        // Process any pending offline tasks now that we are successfully online and synced
+        queueProcess();
     } catch (error) {
         console.error(error);
         setSyncStatus("error");
-        showToast("Error de sincronización: " + error.message);
+        if (showUi) {
+            showToast("Error de sincronización: " + error.message);
+        }
+        
+        if (!isRetry) {
+            queueAdd("github", {});
+        } else {
+            throw error;
+        }
     } finally {
-        showLoading(false);
+        if (showUi) {
+            showLoading(false);
+        }
     }
 }
 
@@ -1169,8 +1199,104 @@ function escapeMarkdown(text) {
         .replace(/\]/g, '\\]');
 }
 
+// Add task to offline queue
+function queueAdd(type, payload) {
+    const queueJson = localStorage.getItem(STORAGE_KEYS.OFFLINE_QUEUE);
+    const queue = queueJson ? JSON.parse(queueJson) : [];
+    
+    // Check if an identical payload already exists in the queue to avoid duplicates
+    const payloadStr = JSON.stringify(payload);
+    const exists = queue.some(item => item.type === type && JSON.stringify(item.payload) === payloadStr);
+    
+    if (!exists) {
+        queue.push({
+            id: Date.now() + "_" + Math.random().toString(36).substr(2, 9),
+            type,
+            payload,
+            timestamp: Date.now()
+        });
+        localStorage.setItem(STORAGE_KEYS.OFFLINE_QUEUE, JSON.stringify(queue));
+        console.log(`Task added to offline queue (${type})`);
+    }
+}
+
+// Process pending tasks in the offline queue
+async function queueProcess() {
+    if (state.isProcessingQueue) return;
+    state.isProcessingQueue = true;
+
+    try {
+        const queueJson = localStorage.getItem(STORAGE_KEYS.OFFLINE_QUEUE);
+        if (!queueJson) return;
+        const queue = JSON.parse(queueJson);
+        if (queue.length === 0) return;
+
+        console.log(`Processing offline queue: ${queue.length} items pending.`);
+        const remainingQueue = [];
+        let networkFailed = false;
+
+        for (const item of queue) {
+            if (networkFailed) {
+                remainingQueue.push(item);
+                continue;
+            }
+
+            try {
+                if (item.type === "telegram") {
+                    await enviarAlertaTelegram(item.payload.tipo, item.payload.datos, true);
+                } else if (item.type === "google_sheets") {
+                    await enviarAlertaGoogleSheets(item.payload.modulo, item.payload.datos, true);
+                } else if (item.type === "github") {
+                    await syncWithCloud(true);
+                }
+                console.log(`Task ${item.id} (${item.type}) processed successfully.`);
+            } catch (err) {
+                console.warn(`Task ${item.id} of type ${item.type} failed:`, err);
+                networkFailed = true;
+                remainingQueue.push(item);
+            }
+        }
+
+        if (remainingQueue.length === 0) {
+            localStorage.removeItem(STORAGE_KEYS.OFFLINE_QUEUE);
+            console.log("Offline queue completely processed.");
+        } else {
+            localStorage.setItem(STORAGE_KEYS.OFFLINE_QUEUE, JSON.stringify(remainingQueue));
+            console.log(`Offline queue processed. ${remainingQueue.length} items remaining.`);
+        }
+    } catch (e) {
+        console.error("Error processing offline queue:", e);
+    } finally {
+        state.isProcessingQueue = false;
+    }
+}
+
+// Initialize automated background sync listeners
+function inicializarSincronizacionAutomatica() {
+    // 1. Process queue when the device goes online
+    window.addEventListener("online", () => {
+        console.log("Device is online. Processing offline queue...");
+        showToast("Conexión restablecida. Sincronizando datos pendientes...");
+        queueProcess();
+    });
+
+    // 2. Periodically check and process queue if online
+    setInterval(() => {
+        if (navigator.onLine) {
+            queueProcess();
+        }
+    }, 30000); // Check every 30 seconds
+
+    // 3. Initial check on load
+    setTimeout(() => {
+        if (navigator.onLine) {
+            queueProcess();
+        }
+    }, 5000);
+}
+
 // Reusable function to send alerts to Telegram channel
-async function enviarAlertaTelegram(tipo, datos) {
+async function enviarAlertaTelegram(tipo, datos, isRetry = false) {
     if (!TELEGRAM_CONFIG.token || !TELEGRAM_CONFIG.chatId) {
         console.warn("Telegram configurations are missing.");
         return;
@@ -1245,11 +1371,16 @@ async function enviarAlertaTelegram(tipo, datos) {
         }
     } catch (err) {
         console.error("Network error sending Telegram notification:", err);
+        if (!isRetry) {
+            queueAdd("telegram", { tipo, datos });
+        } else {
+            throw err;
+        }
     }
 }
 
 // Reusable function to synchronize data with Google Sheets via Webhook
-async function enviarAlertaGoogleSheets(modulo, datos) {
+async function enviarAlertaGoogleSheets(modulo, datos, isRetry = false) {
     if (!GOOGLE_CONFIG.webhookUrl || GOOGLE_CONFIG.webhookUrl === "YOUR_GOOGLE_APPS_SCRIPT_WEBHOOK_URL") {
         console.log("Google Sheets Webhook URL is not configured.");
         return;
@@ -1286,6 +1417,11 @@ async function enviarAlertaGoogleSheets(modulo, datos) {
         }
     } catch (err) {
         console.error("Network or parsing error syncing with Google Sheets:", err);
+        if (!isRetry) {
+            queueAdd("google_sheets", { modulo, datos });
+        } else {
+            throw err;
+        }
     }
 }
 
