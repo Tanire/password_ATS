@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.11.00",
+        version: "1.11.01",
         company_name: "ATS TEC",
         theme: "default",
         entries: [],       // General passwords
@@ -3000,8 +3000,9 @@ function exportMonthlyReport() {
         const container = document.createElement("div");
         container.style.width = "800px";
         container.style.position = "absolute";
-        container.style.left = "-9999px";
+        container.style.left = "0";
         container.style.top = "0";
+        container.style.zIndex = "-9999";
         container.style.background = "#fff";
         container.innerHTML = htmlContent;
         document.body.appendChild(container);
