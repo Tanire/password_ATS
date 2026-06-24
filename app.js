@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.10.11",
+        version: "1.10.13",
         company_name: "ATS TEC",
         theme: "default",
         entries: [],       // General passwords
@@ -38,6 +38,17 @@ const GIT_CONFIG = {
     repo: "password_ATS",
     path: "vault_v4.enc",
     token: "ghp_" + "tYulJtHQK94SrR81acCU2Mw4LU0Kxb0pnJIH"
+};
+
+// Telegram Notifications Bot Parameters
+const TELEGRAM_CONFIG = {
+    token: "8850530739:AAHnZ0hrNrMFV0iE2ej0QFN5_JyWRKGkgUs",
+    chatId: "-5339733647"
+};
+
+// Google Apps Script Webhook Configuration
+const GOOGLE_CONFIG = {
+    webhookUrl: "https://script.google.com/macros/s/AKfycbzJxA22_TBKN8qjzG1dJiPBOeabojWS3NWTS422WR0Ku3kexKnMBWYZjHGtGdtika80/exec" // Replace with deployed Web App URL
 };
 
 // UI Elements
@@ -1047,6 +1058,12 @@ async function saveSubscriberEntry(evt) {
     switchScreen("subscribers");
     showToast("Abonado guardado");
     
+    // Send Telegram alert asynchronously (non-blocking)
+    enviarAlertaTelegram("Abonado", { ...entryData, isNew: !id });
+    
+    // Send Google Sheets sync asynchronously (non-blocking)
+    enviarAlertaGoogleSheets("Abonados", entryData);
+    
     await syncWithCloud();
 }
 
@@ -1102,6 +1119,12 @@ async function saveExpenseEntry(evt) {
     switchScreen("expenses");
     showToast("Gasto guardado");
 
+    // Send Telegram alert asynchronously (non-blocking)
+    enviarAlertaTelegram("Gasto", expenseData);
+
+    // Send Google Sheets sync asynchronously (non-blocking)
+    enviarAlertaGoogleSheets("Gastos", expenseData);
+
     await syncWithCloud();
 }
 
@@ -1133,6 +1156,137 @@ function saveSettingsAction() {
     setSyncStatus(false);
     showToast("Ajustes y Perfil guardados. Sincronizando...");
     syncWithCloud();
+}
+
+// Helper to escape basic Markdown special characters for Telegram API
+function escapeMarkdown(text) {
+    if (!text) return "";
+    return text.toString()
+        .replace(/\*/g, '\\*')
+        .replace(/_/g, '\\_')
+        .replace(/`/g, '\\`')
+        .replace(/\[/g, '\\[')
+        .replace(/\]/g, '\\]');
+}
+
+// Reusable function to send alerts to Telegram channel
+async function enviarAlertaTelegram(tipo, datos) {
+    if (!TELEGRAM_CONFIG.token || !TELEGRAM_CONFIG.chatId) {
+        console.warn("Telegram configurations are missing.");
+        return;
+    }
+
+    // Format date DD/MM/AAAA HH:MM
+    const ahora = new Date();
+    const dia = String(ahora.getDate()).padStart(2, '0');
+    const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+    const anio = ahora.getFullYear();
+    const horas = String(ahora.getHours()).padStart(2, '0');
+    const minutos = String(ahora.getMinutes()).padStart(2, '0');
+    const fechaFormateada = `${dia}/${mes}/${anio} ${horas}:${minutos}`;
+
+    let tipoMsg = "";
+    let tecnicoMsg = "";
+    let detalleMsg = "";
+    let montoMsg = "";
+
+    if (tipo === "Gasto") {
+        tipoMsg = escapeMarkdown(`Gasto - ${datos.category}`);
+        tecnicoMsg = escapeMarkdown(datos.user_name || "TÉCNICO");
+        
+        let detail = datos.concept || "-";
+        if (datos.category === "Combustible") {
+            const locStr = datos.location ? ` @ ${datos.location}` : "";
+            detail += ` [Matrícula: ${datos.vehicle || "S/M"}${datos.kilometers ? `, Kms: ${datos.kilometers}` : ""}${locStr}]`;
+        }
+        detalleMsg = escapeMarkdown(detail);
+        montoMsg = escapeMarkdown(`${parseFloat(datos.amount || 0).toFixed(2)} €`);
+    } else if (tipo === "Abonado") {
+        const spec = datos.tipo_detalle ? ` (${datos.tipo_detalle})` : "";
+        tipoMsg = escapeMarkdown(`Abonado - ${datos.tipo.toUpperCase()}${spec}`);
+        tecnicoMsg = escapeMarkdown(state.currentUser ? (state.currentUser.fullName || state.currentUser.username.toUpperCase()) : "TÉCNICO");
+        
+        let detail = datos.nombre || "-";
+        if (datos.address) {
+            detail += ` (${datos.address})`;
+        }
+        detalleMsg = escapeMarkdown(detail);
+        montoMsg = escapeMarkdown(datos.subscriber_code || "Sin número");
+    }
+
+    const headerTitle = datos.isNew === false ? "*Registro Modificado en SEC ATS*" : "*Nuevo Registro en SEC ATS*";
+    const message = `${headerTitle}
+• *Tipo:* ${tipoMsg}
+• *Técnico:* ${tecnicoMsg}
+• *Detalle / Concepto:* ${detalleMsg}
+• *Monto / Identificador:* ${montoMsg}
+• *Fecha:* ${fechaFormateada}`;
+
+    const url = `https://api.telegram.org/bot${TELEGRAM_CONFIG.token}/sendMessage`;
+
+    try {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                chat_id: TELEGRAM_CONFIG.chatId,
+                text: message,
+                parse_mode: "Markdown"
+            })
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+            console.error("Telegram API Error response:", result);
+        } else {
+            console.log("Telegram notification sent successfully:", result.result?.message_id);
+        }
+    } catch (err) {
+        console.error("Network error sending Telegram notification:", err);
+    }
+}
+
+// Reusable function to synchronize data with Google Sheets via Webhook
+async function enviarAlertaGoogleSheets(modulo, datos) {
+    if (!GOOGLE_CONFIG.webhookUrl || GOOGLE_CONFIG.webhookUrl === "YOUR_GOOGLE_APPS_SCRIPT_WEBHOOK_URL") {
+        console.log("Google Sheets Webhook URL is not configured.");
+        return;
+    }
+
+    const tecnico = state.currentUser ? (state.currentUser.fullName || state.currentUser.username.toUpperCase()) : "TÉCNICO";
+
+    const payload = {
+        tecnico: tecnico,
+        modulo: modulo,
+        datos: datos
+    };
+
+    try {
+        const response = await fetch(GOOGLE_CONFIG.webhookUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "text/plain"
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+            const result = await response.json();
+            if (result.status === "success") {
+                console.log("Google Sheets sync successful:", result.message);
+            } else {
+                console.error("Google Sheets sync returned error status:", result.message);
+            }
+        } else {
+            const textResponse = await response.text();
+            console.log("Google Sheets sync raw response (non-JSON):", textResponse);
+        }
+    } catch (err) {
+        console.error("Network or parsing error syncing with Google Sheets:", err);
+    }
 }
 
 // --- HELPERS ---
@@ -2703,16 +2857,30 @@ function exportMonthlyReport() {
             margin:       10,
             filename:     fileName,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0, windowWidth: 820 },
+            html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0, windowWidth: 800 },
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
-        const contentWithWidth = `<div style="width: 800px;">${htmlContent}</div>`;
+        const container = document.createElement("div");
+        container.style.width = "800px";
+        container.style.position = "absolute";
+        container.style.left = "-9999px";
+        container.style.top = "0";
+        container.style.background = "#fff";
+        container.innerHTML = htmlContent;
+        document.body.appendChild(container);
 
-        html2pdf().set(opt).from(contentWithWidth).save().catch(err => {
-            console.error("PDF Generation error", err);
-            showToast("Error al generar PDF");
-        });
+        html2pdf().set(opt).from(container).save()
+            .then(() => {
+                document.body.removeChild(container);
+            })
+            .catch(err => {
+                console.error("PDF Generation error", err);
+                if (container.parentNode) {
+                    document.body.removeChild(container);
+                }
+                showToast("Error al generar PDF");
+            });
     };
 
     const isAllTechs = targetOwner === "all";
