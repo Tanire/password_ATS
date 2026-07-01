@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.12.02",
+        version: "1.12.03",
         company_name: "ATS TEC",
         theme: "default",
         entries: [],       // General passwords
@@ -3229,15 +3229,15 @@ function exportMonthlyReport() {
     // Helper to generate pdf with html2pdf.js
     const generatePdfFile = (htmlContent, fileName, downloadOnly = true) => {
         const opt = {
-            margin:       0, // Margins handled inside HTML
+            margin:       10, // Standard 10mm margins
             filename:     fileName,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true },
+            html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0, windowWidth: 720 },
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
-        // 210mm is the exact physical width of an A4 page. Padding acts as document margins.
-        const contentWithWidth = `<div style="width: 210mm; min-height: 297mm; box-sizing: border-box; padding: 15mm 15mm; color: #000; background: #fff; font-family: Arial, sans-serif;">${htmlContent}</div>`;
+        // 700px width corresponds exactly to the ~190mm printable width of an A4 page (with 10mm margins on a 210mm A4 page)
+        const contentWithWidth = `<div style="width: 700px; color: #000; background: #fff; font-family: Arial, sans-serif; padding: 10px; box-sizing: border-box;">${htmlContent}</div>`;
 
         html2pdf().set(opt).from(contentWithWidth).save().catch(err => {
             console.error("PDF Generation error", err);
@@ -3996,7 +3996,7 @@ async function handlePdfGenerationAndSharing() {
         doc.setTextColor(100, 116, 139);
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(8.5);
-        doc.text(`Versión App: v1.12.02 by JMSYSTEMS`, 195, 16, { align: 'right' });
+        doc.text(`Versión App: v1.12.03 by JMSYSTEMS`, 195, 16, { align: 'right' });
         
         doc.setFontSize(11);
         doc.setFont('Helvetica', 'bold');
