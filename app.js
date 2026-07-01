@@ -3229,14 +3229,15 @@ function exportMonthlyReport() {
     // Helper to generate pdf with html2pdf.js
     const generatePdfFile = (htmlContent, fileName, downloadOnly = true) => {
         const opt = {
-            margin:       10,
+            margin:       0, // Margins handled inside HTML
             filename:     fileName,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0, windowWidth: 820 },
+            html2canvas:  { scale: 2, useCORS: true },
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
-        const contentWithWidth = `<div style="width: 800px; color: #000; background: #fff;">${htmlContent}</div>`;
+        // 210mm is the exact physical width of an A4 page. Padding acts as document margins.
+        const contentWithWidth = `<div style="width: 210mm; min-height: 297mm; box-sizing: border-box; padding: 15mm 15mm; color: #000; background: #fff; font-family: Arial, sans-serif;">${htmlContent}</div>`;
 
         html2pdf().set(opt).from(contentWithWidth).save().catch(err => {
             console.error("PDF Generation error", err);
