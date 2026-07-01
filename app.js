@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.12.03",
+        version: "1.13.00",
         company_name: "ATS TEC",
         theme: "default",
         entries: [],       // General passwords
@@ -28,6 +28,7 @@ const state = {
     
     // Commercial module state
     commercial: {
+        id: '', // Unique ID for historical tracking
         mode: '', // 'nueva' or 'migracion'
         logoBase64: '', // loaded on startup
         client: {
@@ -361,6 +362,7 @@ function setupEventListeners() {
     const btnModeNew = document.getElementById("btn-mode-new");
     if (btnModeNew) {
         btnModeNew.addEventListener("click", () => {
+            state.commercial.id = ''; // Reset ID since this is a new report
             state.commercial.mode = 'nueva';
             document.getElementById('client-title').innerText = 'Datos de Nueva Instalación';
             switchScreen('commercial-client-details');
@@ -369,6 +371,7 @@ function setupEventListeners() {
     const btnModeMigrate = document.getElementById("btn-mode-migrate");
     if (btnModeMigrate) {
         btnModeMigrate.addEventListener("click", () => {
+            state.commercial.id = ''; // Reset ID since this is a new report
             state.commercial.mode = 'migracion';
             document.getElementById('client-title').innerText = 'Datos de Auditoría / Migración';
             switchScreen('commercial-client-details');
@@ -503,7 +506,7 @@ function setupEventListeners() {
     }
     const btnBackSumEdit = document.getElementById('btn-back-summary-edit');
     if (btnBackSumEdit) {
-        btnWizPrev.addEventListener('click', () => {
+        btnBackSumEdit.addEventListener('click', () => {
             if (state.commercial.mode === 'nueva') {
                 state.commercial.currentDisciplineIndex = state.commercial.selectedDisciplines.length - 1;
                 switchScreen('commercial-wizard');
@@ -512,6 +515,28 @@ function setupEventListeners() {
                 switchScreen('commercial-migration');
             }
         });
+    }
+
+    // Commercial History Listeners
+    const btnCommHistory = document.getElementById("btn-commercial-history");
+    if (btnCommHistory) {
+        btnCommHistory.addEventListener("click", () => switchScreen("commercial-history"));
+    }
+    const btnBackCommHistory = document.getElementById("btn-back-commercial-history");
+    if (btnBackCommHistory) {
+        btnBackCommHistory.addEventListener("click", () => switchScreen("commercial-home"));
+    }
+    const searchCommHistory = document.getElementById("search-commercial-history");
+    if (searchCommHistory) {
+        searchCommHistory.addEventListener("input", renderCommercialHistory);
+    }
+    const btnSaveCommHistory = document.getElementById("btn-save-commercial-history");
+    if (btnSaveCommHistory) {
+        btnSaveCommHistory.addEventListener("click", saveCommercialReportToHistory);
+    }
+    const btnSharePdf = document.getElementById('btn-share-pdf');
+    if (btnSharePdf) {
+        btnSharePdf.addEventListener('click', handlePdfGenerationAndSharing);
     }
 }
 
@@ -556,6 +581,7 @@ function switchScreen(screenId) {
     if (screenId === "diets") renderDiets();
     if (screenId === "materials") renderMaterials();
     if (screenId === "expenses") renderExpenses();
+    if (screenId === "commercial-history") renderCommercialHistory();
 }
 
 // Derive keys and pull vault from GitHub or local cache
@@ -3996,7 +4022,7 @@ async function handlePdfGenerationAndSharing() {
         doc.setTextColor(100, 116, 139);
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(8.5);
-        doc.text(`Versión App: v1.12.03 by JMSYSTEMS`, 195, 16, { align: 'right' });
+        doc.text(`Versión App: v1.13.00 by JMSYSTEMS`, 195, 16, { align: 'right' });
         
         doc.setFontSize(11);
         doc.setFont('Helvetica', 'bold');
@@ -4353,6 +4379,201 @@ function escapeHtml(unsafe) {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+}
+
+// ==========================================
+// COMMERCIAL HISTORICAL METHODS
+// ==========================================
+
+async function saveCommercialReportToHistory() {
+    if (!state.commercial.client.name) {
+        showToast("Error: El cliente debe tener un nombre");
+        return;
+    }
+    
+    if (!state.vault.commercial_reports) {
+        state.vault.commercial_reports = [];
+    }
+    
+    const isNew = !state.commercial.id;
+    if (isNew) {
+        state.commercial.id = "comm_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+    }
+    
+    const reportData = {
+        id: state.commercial.id,
+        date: new Date().toISOString(),
+        author: state.currentUser ? state.currentUser.username : "admin",
+        mode: state.commercial.mode,
+        client: { ...state.commercial.client },
+        selectedDisciplines: [...state.commercial.selectedDisciplines],
+        intrusion: { ...state.commercial.intrusion },
+        cctv: { ...state.commercial.cctv },
+        incendios: { ...state.commercial.incendios },
+        generalPhotos: { ...state.commercial.generalPhotos },
+        migration: { ...state.commercial.migration },
+        inventory: JSON.parse(JSON.stringify(state.commercial.inventory || []))
+    };
+    
+    if (isNew) {
+        state.vault.commercial_reports.push(reportData);
+    } else {
+        const idx = state.vault.commercial_reports.findIndex(r => r.id === state.commercial.id);
+        if (idx !== -1) {
+            state.vault.commercial_reports[idx] = reportData;
+        } else {
+            state.vault.commercial_reports.push(reportData);
+        }
+    }
+    
+    try {
+        showToast("Guardando preventa...");
+        await syncWithCloud();
+        showToast("Preventa guardada en el histórico");
+        switchScreen("commercial-history");
+    } catch (err) {
+        console.error("Error saving to history:", err);
+        showToast("Error al sincronizar cambios");
+    }
+}
+
+function renderCommercialHistory() {
+    const container = document.getElementById("list-commercial-history");
+    if (!container) return;
+    
+    container.innerHTML = "";
+    const searchEl = document.getElementById("search-commercial-history");
+    const query = (searchEl ? searchEl.value : "").toLowerCase().trim();
+    
+    const reports = state.vault.commercial_reports || [];
+    let filtered = reports;
+    
+    if (query) {
+        filtered = reports.filter(r => {
+            const clientName = (r.client?.name || "").toLowerCase();
+            const delegacion = (r.client?.address || "").toLowerCase();
+            const author = (r.author || "").toLowerCase();
+            return clientName.includes(query) || delegacion.includes(query) || author.includes(query);
+        });
+    }
+    
+    // Sort by date descending
+    filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    if (filtered.length === 0) {
+        container.innerHTML = `<div class="empty-list" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No hay preventas guardadas${query ? ' que coincidan con la búsqueda' : ''}.</div>`;
+        return;
+    }
+    
+    filtered.forEach(r => {
+        const clientName = r.client?.name || "Sin nombre";
+        const dateStr = new Date(r.date).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const typeStr = r.mode === 'nueva' ? 'Nueva Instalación' : 'Migración / Auditoría';
+        const typeClass = r.mode === 'nueva' ? 'badge-new' : 'badge-migrate';
+        const authorStr = r.author || 'técnico';
+        
+        const card = document.createElement("div");
+        card.className = "list-card anim-fade";
+        card.style.background = "var(--bg-glass)";
+        card.style.border = "1px solid var(--border-glass)";
+        card.style.borderRadius = "var(--radius-md)";
+        card.style.padding = "16px";
+        card.style.marginBottom = "12px";
+        card.style.display = "flex";
+        card.style.flexDirection = "column";
+        card.style.gap = "10px";
+        
+        card.innerHTML = `
+            <div class="card-main" style="display: flex; flex-direction: column; gap: 4px;">
+                <div class="card-title-row" style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                    <span class="card-title" style="font-weight: 600; font-size: 1rem; color: var(--text-primary);">${escapeHtml(clientName)}</span>
+                    <span class="badge ${typeClass}" style="padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; color: #fff; background: ${r.mode === 'nueva' ? 'var(--accent)' : '#e0a800'};">${typeStr}</span>
+                </div>
+                <div class="card-detail-row" style="margin-top: 6px; font-size: 0.8rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 4px;">
+                    <div>📅 ${dateStr}</div>
+                    <div>👤 Creado por: <b>${escapeHtml(authorStr.toUpperCase())}</b></div>
+                </div>
+            </div>
+            <div class="card-actions" style="display: flex; gap: 8px; margin-top: 5px; border-top: 1px solid var(--border-glass); padding-top: 10px; justify-content: flex-end;">
+                <button class="btn-edit" title="Cargar y Editar" style="background: rgba(59, 130, 246, 0.2); color: #3b82f6; border: none; padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 0.8rem; font-weight: 600;"><i class="bx bx-edit" style="font-size: 1rem;"></i> Editar</button>
+                <button class="btn-delete" title="Eliminar" style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: none; padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 0.8rem; font-weight: 600;"><i class="bx bx-trash" style="font-size: 1rem;"></i> Borrar</button>
+            </div>
+        `;
+        
+        card.querySelector(".btn-edit").addEventListener("click", () => {
+            loadCommercialReportForEdit(r.id);
+        });
+        
+        card.querySelector(".btn-delete").addEventListener("click", () => {
+            deleteCommercialReport(r.id);
+        });
+        
+        container.appendChild(card);
+    });
+}
+
+function loadCommercialReportForEdit(id) {
+    const report = (state.vault.commercial_reports || []).find(r => r.id === id);
+    if (!report) {
+        showToast("Error: No se encontró la preventa");
+        return;
+    }
+    
+    // Load data back into state
+    state.commercial.id = report.id;
+    state.commercial.mode = report.mode;
+    state.commercial.client = { ...report.client };
+    state.commercial.selectedDisciplines = [...(report.selectedDisciplines || [])];
+    state.commercial.intrusion = { ...report.intrusion };
+    state.commercial.cctv = { ...report.cctv };
+    state.commercial.incendios = { ...report.incendios };
+    state.commercial.generalPhotos = { ...report.generalPhotos };
+    state.commercial.migration = { ...report.migration };
+    state.commercial.inventory = JSON.parse(JSON.stringify(report.inventory || []));
+    
+    // Set UI client form values
+    document.getElementById('input-client-name').value = state.commercial.client.name || '';
+    document.getElementById('input-client-phone').value = state.commercial.client.phone || '';
+    document.getElementById('input-client-email').value = state.commercial.client.email || '';
+    document.getElementById('input-client-address').value = state.commercial.client.address || '';
+    
+    if (state.commercial.mode === 'nueva') {
+        document.getElementById('client-title').innerText = 'Datos de Nueva Instalación';
+    } else {
+        document.getElementById('client-title').innerText = 'Datos de Auditoría / Migración';
+        // Set migration values
+        document.getElementById('input-mig-panel').value = state.commercial.migration.panelModel || '';
+        document.getElementById('select-mig-comms').value = state.commercial.migration.comms || 'IP';
+        document.getElementById('select-mig-cctv').value = state.commercial.migration.cctvStatus || 'Buen estado';
+        document.getElementById('textarea-mig-notes').value = state.commercial.migration.notes || '';
+    }
+    
+    // Generate summary and redirect to summary screen
+    generateSummary();
+    switchScreen("commercial-summary");
+    showToast("Preventa cargada para editar");
+}
+
+async function deleteCommercialReport(id) {
+    const report = (state.vault.commercial_reports || []).find(r => r.id === id);
+    if (!report) return;
+    
+    const clientName = report.client ? report.client.name : "Sin nombre";
+    if (!confirm(`¿Estás seguro de que deseas eliminar la preventa de "${clientName}"?`)) {
+        return;
+    }
+    
+    state.vault.commercial_reports = state.vault.commercial_reports.filter(r => r.id !== id);
+    
+    try {
+        showToast("Eliminando preventa...");
+        await syncWithCloud();
+        showToast("Preventa eliminada correctamente");
+        renderCommercialHistory();
+    } catch (err) {
+        console.error("Error deleting report:", err);
+        showToast("Error al sincronizar cambios");
+    }
 }
 
 
