@@ -16,6 +16,8 @@
     <link rel="stylesheet" href="style.css">
     <!-- html2pdf.js library for clean client-side PDF generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- jsPDF library for commercial reports -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -89,9 +91,13 @@
                             <span class="card-icon" style="color: #ef4444;">💰</span>
                             <span class="card-title">Gastos</span>
                         </div>
+                        <div class="menu-card" id="menu-commercial">
+                            <span class="card-icon" style="color: #ec4899;">📝</span>
+                            <span class="card-title">Comercial</span>
+                        </div>
                     </div>
                     <div style="text-align: center; margin-top: 40px; font-size: 0.8rem; color: var(--text-secondary);" class="dashboard-footer">
-                        Versión 1.11.01 - JMSYSTEMAS
+                        Versión 1.12.00 - JMSYSTEMAS
                     </div>
                 </div>
 
@@ -488,6 +494,9 @@
                         <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 0; cursor: pointer; color: var(--text-primary); font-weight: normal;">
                             <input type="checkbox" id="user-scope-manuals" checked style="width: 18px; height: 18px; accent-color: var(--accent);"> Manuales
                         </label>
+                        <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 0; cursor: pointer; color: var(--text-primary); font-weight: normal;">
+                            <input type="checkbox" id="user-scope-commercial" checked style="width: 18px; height: 18px; accent-color: var(--accent);"> Preventa / Comercial
+                        </label>
                     </div>
                 </div>
 
@@ -855,6 +864,432 @@
                 <button class="btn-icon" id="btn-close-image-viewer" style="background: rgba(255,255,255,0.15); border: none; font-size: 1.5rem;"><i class="bx bx-x"></i></button>
             </div>
             <img id="image-viewer-content" src="" style="max-width: 95%; max-height: 85vh; object-fit: contain; border-radius: var(--radius-sm); box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        </div>
+
+        <!-- SCREEN: COMMERCIAL HOME -->
+        <div id="screen-commercial-home" class="screen">
+            <div class="list-header">
+                <h2>Cuestionario Técnico Comercial</h2>
+                <button class="btn-icon" id="btn-back-commercial-home-dash"><i class="bx bx-arrow-back"></i></button>
+            </div>
+            <div class="glass-card anim-fade">
+                <h2 style="font-family: var(--font-sans); margin-bottom: 0.5rem; text-align: center; font-size: 1.25rem;">¿Qué tipo de visita estás realizando?</h2>
+                <p style="color: var(--text-secondary); font-size: 0.85rem; text-align: center; margin-bottom: 1.5rem;">Selecciona una opción para comenzar con el cuestionario técnico.</p>
+                
+                <div class="mode-selection" style="display: flex; flex-direction: column; gap: 15px;">
+                    <button id="btn-mode-new" class="mode-btn" type="button" style="background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 16px; display: flex; align-items: center; gap: 15px; text-align: left; cursor: pointer; color: var(--text-primary); width: 100%;">
+                        <div class="mode-icon" style="font-size: 1.8rem;">🚀</div>
+                        <div class="mode-info" style="display: flex; flex-direction: column;">
+                            <span class="mode-title" style="font-weight: 600; font-size: 1rem;">Instalación Nueva</span>
+                            <span class="mode-desc" style="font-size: 0.8rem; color: var(--text-secondary);">Diseño de sistemas desde cero para clientes nuevos.</span>
+                        </div>
+                    </button>
+                    
+                    <button id="btn-mode-migrate" class="mode-btn" type="button" style="background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 16px; display: flex; align-items: center; gap: 15px; text-align: left; cursor: pointer; color: var(--text-primary); width: 100%;">
+                        <div class="mode-icon" style="font-size: 1.8rem;">🔄</div>
+                        <div class="mode-info" style="display: flex; flex-direction: column;">
+                            <span class="mode-title" style="font-weight: 600; font-size: 1rem;">Migración de Sistema</span>
+                            <span class="mode-desc" style="font-size: 0.8rem; color: var(--text-secondary);">Auditoría técnica de equipos y plan de actualización.</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN: COMMERCIAL CLIENT DETAILS -->
+        <div id="screen-commercial-client-details" class="screen">
+            <div class="list-header">
+                <h2 id="client-title">Datos del Cliente</h2>
+                <button class="btn-icon" id="btn-back-client"><i class="bx bx-arrow-back"></i></button>
+            </div>
+            <div class="glass-card anim-fade">
+                <form id="client-form">
+                    <div class="form-group">
+                        <label>Nombre / Razón Social *</label>
+                        <input type="text" id="input-client-name" class="input-control" required placeholder="Ej. Juan Pérez / Empresa S.L.">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Teléfono de Contacto *</label>
+                        <input type="tel" id="input-client-phone" class="input-control" required placeholder="Ej. +34 600 000 000">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Email del Cliente *</label>
+                        <input type="email" id="input-client-email" class="input-control" required placeholder="Ej. cliente@correo.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Dirección de la Instalación</label>
+                        <input type="text" id="input-client-address" class="input-control" placeholder="Ej. Calle Mayor, 12, Madrid">
+                    </div>
+                    
+                    <div class="form-group" style="margin-top: 1.5rem;">
+                        <label>Foto del Plano del Cliente (Si se tuviera)</label>
+                        <div class="photo-uploader">
+                            <label for="input-client-blueprint" class="photo-input-label">📷 Adjuntar Plano</label>
+                            <input type="file" id="input-client-blueprint" accept="image/*">
+                            <div class="photo-previews" id="previews-blueprint"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="wizard-actions">
+                        <button type="button" id="btn-back-client-home" class="btn-premium btn-secondary">Atrás</button>
+                        <button type="submit" class="btn-premium">Siguiente</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- SCREEN: COMMERCIAL DISCIPLINES SELECTION -->
+        <div id="screen-commercial-disciplines" class="screen">
+            <div class="list-header">
+                <h2>Disciplinas a Presupuestar</h2>
+                <button class="btn-icon" id="btn-back-disciplines"><i class="bx bx-arrow-back"></i></button>
+            </div>
+            <div class="glass-card anim-fade">
+                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1.25rem;">Selecciona todas las especialidades requeridas para la nueva instalación.</p>
+                
+                <form id="disciplines-form">
+                    <div class="disciplines-grid">
+                        <div class="discipline-card" data-val="intrusion">
+                            <input type="checkbox" name="discipline" value="intrusion" id="chk-intrusion">
+                            <div class="discipline-icon">🚨</div>
+                            <div class="discipline-name">Intrusión</div>
+                        </div>
+                        
+                        <div class="discipline-card" data-val="cctv">
+                            <input type="checkbox" name="discipline" value="cctv" id="chk-cctv">
+                            <div class="discipline-icon">📹</div>
+                            <div class="discipline-name">CCTV</div>
+                        </div>
+                        
+                        <div class="discipline-card" data-val="incendios">
+                            <input type="checkbox" name="discipline" value="incendios" id="chk-incendios">
+                            <div class="discipline-icon">🔥</div>
+                            <div class="discipline-name">Incendios</div>
+                        </div>
+                        
+                        <div class="discipline-card" data-val="accesos">
+                            <input type="checkbox" name="discipline" value="accesos" id="chk-accesos">
+                            <div class="discipline-icon">🔑</div>
+                            <div class="discipline-name">Control Accesos</div>
+                        </div>
+                        
+                        <div class="discipline-card" data-val="videoporteros">
+                            <input type="checkbox" name="discipline" value="videoporteros" id="chk-videoporteros">
+                            <div class="discipline-icon">🔔</div>
+                            <div class="discipline-name">Videoporteros</div>
+                        </div>
+                        
+                        <div class="discipline-card" data-val="redes">
+                            <input type="checkbox" name="discipline" value="redes" id="chk-redes">
+                            <div class="discipline-icon">🌐</div>
+                            <div class="discipline-name">Redes</div>
+                        </div>
+                    </div>
+                    
+                    <div class="wizard-actions">
+                        <button type="button" id="btn-back-disciplines-client" class="btn-premium btn-secondary">Atrás</button>
+                        <button type="submit" class="btn-premium">Iniciar Cuestionario</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- SCREEN: COMMERCIAL WIZARD -->
+        <div id="screen-commercial-wizard" class="screen">
+            <div class="list-header">
+                <div style="display: flex; flex-direction: column;">
+                    <h2 id="wizard-discipline-title">Configuración</h2>
+                    <span id="wizard-step-info" style="font-size: 0.8rem; color: var(--text-secondary);">Paso 1 de 1</span>
+                </div>
+                <button class="btn-icon" id="btn-wizard-prev"><i class="bx bx-arrow-back"></i></button>
+            </div>
+            <div class="glass-card anim-fade">
+                <div class="wizard-progress-bar">
+                    <div class="wizard-progress-fill" id="wizard-progress-fill"></div>
+                </div>
+                
+                <form id="wizard-form">
+                    <!-- Dynamic Subsection: Intrusion -->
+                    <div id="section-intrusion" class="discipline-section">
+                        <div class="form-group">
+                            <label>Marca / Modelo de Central Propuesta</label>
+                            <input type="text" id="input-int-brand" class="input-control" placeholder="Ej. DSC Neo HS2016, Visonic PowerMaster...">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Normativa / Grado de Seguridad</label>
+                            <select id="select-int-grade" class="input-control">
+                                <option value="2">Grado 2 (Residencial / Comercial habitual)</option>
+                                <option value="3">Grado 3 (Establecimientos obligados / Alto riesgo)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="section-title">Equipamiento Estimado</div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Detectores (PIR)</label>
+                                <input type="number" id="input-int-pirs" class="input-control" min="0" placeholder="0">
+                            </div>
+                            <div class="form-group">
+                                <label>Contactos Magnéticos</label>
+                                <input type="number" id="input-int-contacts" class="input-control" min="0" placeholder="0">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Sirenas (Ext/Int)</label>
+                                <input type="number" id="input-int-sirens" class="input-control" min="0" placeholder="0">
+                            </div>
+                            <div class="form-group">
+                                <label>Teclados de Control</label>
+                                <input type="number" id="input-int-keypads" class="input-control" min="0" placeholder="0">
+                            </div>
+                        </div>
+                        
+                        <div class="section-title">Servicios Asociados</div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Conexión a CRA</label>
+                                <select id="select-int-cra" class="input-control">
+                                    <option value="no">No requerido</option>
+                                    <option value="yes">Sí, con CRA</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Mantenimiento Presencial</label>
+                                <select id="select-int-maintenance" class="input-control">
+                                    <option value="no">Solo preventivo obligatorio</option>
+                                    <option value="yes">Presencial + Bidireccional</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Photo Uploader -->
+                        <div class="section-title">Evidencias Fotográficas</div>
+                        <div class="photo-uploader">
+                            <label for="input-int-photos" class="photo-input-label">📷 Adjuntar Fotografías</label>
+                            <input type="file" id="input-int-photos" multiple accept="image/*">
+                            <div class="photo-previews" id="previews-intrusion"></div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Subsection: CCTV -->
+                    <div id="section-cctv" class="discipline-section">
+                        <div class="form-group">
+                            <label>Marca / Modelo de Grabador Propuesto</label>
+                            <input type="text" id="input-cctv-recorder-brand" class="input-control" placeholder="Ej. Dahua NVR4108-8P-4KS2, Hikvision...">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Marca / Modelo de Cámaras</label>
+                            <input type="text" id="input-cctv-camera-brand" class="input-control" placeholder="Ej. Dahua IPC-HFW1431S, Domo 4MP...">
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Cámaras de Interior</label>
+                                <input type="number" id="input-cctv-indoor" class="input-control" min="0" placeholder="0">
+                            </div>
+                            <div class="form-group">
+                                <label>Cámaras de Exterior</label>
+                                <input type="number" id="input-cctv-outdoor" class="input-control" min="0" placeholder="0">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Tecnología de Vídeo</label>
+                            <select id="select-cctv-tech" class="input-control">
+                                <option value="IP">Sistema IP Digital (Máxima Calidad)</option>
+                                <option value="HDCVI">HDCVI / Coaxial (Económico / Reutilización)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Días de Grabación Requeridos (Histórico)</label>
+                            <input type="number" id="input-cctv-storage" class="input-control" min="1" value="7">
+                        </div>
+
+                        <!-- Photo Uploader -->
+                        <div class="section-title">Evidencias Fotográficas</div>
+                        <div class="photo-uploader">
+                            <label for="input-cctv-photos" class="photo-input-label">📷 Adjuntar Fotografías</label>
+                            <input type="file" id="input-cctv-photos" multiple accept="image/*">
+                            <div class="photo-previews" id="previews-cctv"></div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Subsection: Incendios -->
+                    <div id="section-incendios" class="discipline-section">
+                        <div class="form-group">
+                            <label>Marca / Modelo de Central Propuesta</label>
+                            <input type="text" id="input-fire-brand" class="input-control" placeholder="Ej. Detnov CAD-150-1, Morley-IAS, Kilsen...">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Tipo de Sistema contra Incendios</label>
+                            <select id="select-fire-type" class="input-control">
+                                <option value="Convencional">Sistema Convencional (Zonas)</option>
+                                <option value="Analógico">Sistema Analógico Direccionable (Dirección única)</option>
+                                <option value="Vía Radio EN54">Vía Radio (Bajo Norma EN54)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Nº Detectores Estimados</label>
+                                <input type="number" id="input-fire-detectors" class="input-control" min="0" placeholder="0">
+                            </div>
+                            <div class="form-group">
+                                <label>Nº Pulsadores Manuales</label>
+                                <input type="number" id="input-fire-callpoints" class="input-control" min="0" placeholder="0">
+                            </div>
+                        </div>
+
+                        <!-- Photo Uploader -->
+                        <div class="section-title">Evidencias Fotográficas</div>
+                        <div class="photo-uploader">
+                            <label for="input-fire-photos" class="photo-input-label">📷 Adjuntar Fotografías</label>
+                            <input type="file" id="input-fire-photos" multiple accept="image/*">
+                            <div class="photo-previews" id="previews-incendios"></div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Subsection: General fallback for others (Control Accesos, Porteros, Redes) -->
+                    <div id="section-general" class="discipline-section">
+                        <div class="form-group">
+                            <label>Marca / Modelo de Equipos Propuestos</label>
+                            <input type="text" id="input-gen-brand" class="input-control" placeholder="Ej. Lector Hikvision, Switch PoE TP-Link...">
+                        </div>
+
+                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
+                            Introduce las necesidades específicas de equipamiento y cableado para la sección de <strong id="general-discipline-name">...</strong>:
+                        </p>
+                        <div class="form-group">
+                            <label>Especificaciones Técnicas / Unidades / Distancias</label>
+                            <textarea id="textarea-general-details" class="input-control" placeholder="Ej. Lector de huellas exterior, cerradura electromagnética, switches PoE 8 puertos..."></textarea>
+                        </div>
+
+                        <!-- Photo Uploader -->
+                        <div class="section-title">Evidencias Fotográficas</div>
+                        <div class="photo-uploader">
+                            <label for="input-gen-photos" class="photo-input-label">📷 Adjuntar Fotografías</label>
+                            <input type="file" id="input-gen-photos" multiple accept="image/*">
+                            <div class="photo-previews" id="previews-general"></div>
+                        </div>
+                    </div>
+
+                    <div class="wizard-actions">
+                        <button type="button" id="btn-wizard-back-control" class="btn-premium btn-secondary">Atrás</button>
+                        <button type="submit" class="btn-premium">Siguiente</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- SCREEN: COMMERCIAL MIGRATION AUDIT FORM -->
+        <div id="screen-commercial-migration" class="screen">
+            <div class="list-header">
+                <h2>Auditoría Técnica del Sistema</h2>
+                <button class="btn-icon" id="btn-back-migration"><i class="bx bx-arrow-back"></i></button>
+            </div>
+            <div class="glass-card anim-fade">
+                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1.25rem;">Registra los componentes actuales del cliente e identifica el estado para la migración.</p>
+                
+                <form id="migration-form">
+                    <div class="form-group">
+                        <label>Central Existente (Marca / Modelo)</label>
+                        <input type="text" id="input-mig-panel" class="input-control" placeholder="Ej. DSC HS2016, Honeywell, etc.">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Vía de Comunicación</label>
+                            <select id="select-mig-comms" class="input-control">
+                                <option value="GPRS/IP">GPRS + IP (Doble Vía)</option>
+                                <option value="IP">Solo IP / Fibra</option>
+                                <option value="GPRS">Solo GPRS / Móvil</option>
+                                <option value="RTB">Línea Telefónica RTB (Obsoleta)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Estado Grabador / Cámaras</label>
+                            <select id="select-mig-cctv" class="input-control">
+                                <option value="Dahua - Funcional">Dahua / Funcional</option>
+                                <option value="Hikvision - Funcional">Hikvision / Funcional</option>
+                                <option value="Obsoleto - Requiere sustituir">Obsoleto / Requiere cambiar</option>
+                                <option value="No aplica">No aplica (Sin cámaras)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="section-title">Inventariado de Elementos</div>
+                    <p style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 0.75rem;">Completa las cantidades y decide qué elementos se pueden conservar o se deben cambiar.</p>
+                    
+                    <div style="overflow-x: auto;">
+                        <table class="inventory-table">
+                            <thead>
+                                <tr>
+                                    <th>Elemento</th>
+                                    <th style="width: 70px;">Cant.</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventory-tbody">
+                                <!-- Generated via app.js -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 1.5rem;">
+                        <label>Notas Técnicas Adicionales</label>
+                        <textarea id="textarea-mig-notes" class="input-control" placeholder="Desperfectos observados, cableados aprovechables, alimentación auxiliar..."></textarea>
+                    </div>
+
+                    <!-- Photo Uploader -->
+                    <div class="section-title">Evidencias Fotográficas de la Auditoría</div>
+                    <div class="photo-uploader">
+                        <label for="input-mig-photos" class="photo-input-label">📷 Adjuntar Fotografías</label>
+                        <input type="file" id="input-mig-photos" multiple accept="image/*">
+                        <div class="photo-previews" id="previews-migration"></div>
+                    </div>
+
+                    <div class="wizard-actions">
+                        <button type="button" id="btn-back-migration-client" class="btn-premium btn-secondary">Atrás</button>
+                        <button type="submit" class="btn-premium">Ver Resumen</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- SCREEN: COMMERCIAL SUMMARY & PDF GENERATION -->
+        <div id="screen-commercial-summary" class="screen">
+            <div class="list-header">
+                <h2>Resumen Técnico del Informe</h2>
+                <button class="btn-icon" id="btn-back-summary"><i class="bx bx-arrow-back"></i></button>
+            </div>
+            <div class="glass-card anim-fade">
+                <p style="color: var(--text-secondary); font-size: 0.85rem; text-align: center; margin-bottom: 1.5rem;">Comprueba que los datos recopilados sean correctos antes de generar el PDF.</p>
+                
+                <div id="summary-content" style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-glass); margin-bottom: 1.5rem;">
+                    <!-- Generated dynamically via app.js -->
+                </div>
+                
+                <div style="text-align: center; margin-bottom: 1.5rem;">
+                    <button id="btn-share-pdf" class="btn-premium" style="width: 100%; padding: 1rem; font-size: 1.05rem;" type="button">
+                        ✉️ Generar PDF y Enviar
+                    </button>
+                </div>
+
+                <div style="text-align: center;">
+                    <button type="button" id="btn-back-summary-edit" class="btn-premium btn-secondary" style="width: 100%;">Editar Datos</button>
+                </div>
+            </div>
         </div>
 
     </main>

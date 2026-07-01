@@ -828,3 +828,209 @@ select.input-control {
     border: 1px solid var(--border-glass);
 }
 
+/* ==========================================================================
+   MODULE: PREVENTA / COMERCIAL
+   ========================================================================== */
+
+.disciplines-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+    margin-top: 10px;
+}
+
+.discipline-card {
+    position: relative;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    padding: 20px 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    user-select: none;
+}
+
+.discipline-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.15);
+    background: var(--bg-secondary);
+}
+
+.discipline-card.selected {
+    border-color: var(--accent);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(22, 24, 37, 0.4) 100%);
+    box-shadow: 0 0 15px var(--accent-glow);
+}
+
+.discipline-card input[type="checkbox"] {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    accent-color: var(--accent);
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.discipline-icon {
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.discipline-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Photo Upload Controls */
+.photo-uploader {
+    margin-top: 10px;
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px dashed var(--border-glass);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    text-align: center;
+}
+
+.photo-input-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    border: 1px solid var(--border-glass);
+}
+
+.photo-input-label:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--accent);
+}
+
+.photo-uploader input[type="file"] {
+    display: none;
+}
+
+.photo-previews {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.photo-preview-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 1px solid var(--border-glass);
+}
+
+.photo-preview-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.photo-preview-remove {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 20px;
+    height: 20px;
+    background: var(--danger);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+/* Wizard Navigation and Progress */
+.wizard-progress-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+    margin-bottom: 15px;
+    overflow: hidden;
+}
+
+.wizard-progress-fill {
+    height: 100%;
+    background: var(--accent-gradient);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.wizard-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+/* Dynamic wizard content containers */
+.discipline-section {
+    display: none;
+    animation: fadeIn 0.4s ease-out forwards;
+}
+
+.discipline-section.active {
+    display: block;
+}
+
+/* Table Style for inventory */
+.inventory-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 0.85rem;
+}
+
+.inventory-table th,
+.inventory-table td {
+    padding: 10px 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-glass);
+}
+
+.inventory-table th {
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.inventory-input-qty {
+    width: 50px !important;
+    padding: 6px !important;
+    text-align: center;
+}
+
+.inventory-select {
+    padding: 6px !important;
+    font-size: 0.8rem !important;
+}
+
+/* Role based visibility for commercial button */
+[data-role="viewer"] #menu-commercial {
+    display: none !important;
+}
+
+

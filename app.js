@@ -6,14 +6,15 @@
 // App State
 const state = {
     vault: {
-        version: "1.11.01",
+        version: "1.12.00",
         company_name: "ATS TEC",
         theme: "default",
         entries: [],       // General passwords
         subscribers: [],   // Alarm/Recorder subscriber accounts
         manuals: [],       // Technical manual notes
         expenses: [],      // Expense logs
-        users: []          // User list
+        users: [],         // User list
+        commercial_reports: [] // Technical-commercial reports
     },
     masterPassword: "",
     gitClient: null,
@@ -23,7 +24,65 @@ const state = {
     activeCategory: "General", // For manuals brand selection
     usersMetadata: {},   // Wrapped keys metadata
     currentUser: null,   // Current active user
-    isProcessingQueue: false // Prevent double processing of offline queue
+    isProcessingQueue: false, // Prevent double processing of offline queue
+    
+    // Commercial module state
+    commercial: {
+        mode: '', // 'nueva' or 'migracion'
+        logoBase64: '', // loaded on startup
+        client: {
+            name: '',
+            phone: '',
+            email: '',
+            address: '',
+            blueprintPhoto: ''
+        },
+        selectedDisciplines: [],
+        currentDisciplineIndex: 0,
+        intrusion: {
+            brand: '',
+            grade: '2',
+            pirs: 0,
+            contacts: 0,
+            sirens: 0,
+            keypads: 0,
+            cra: 'no',
+            maintenance: 'no',
+            photos: []
+        },
+        cctv: {
+            recorderBrand: '',
+            cameraBrand: '',
+            camerasIndoor: 0,
+            camerasOutdoor: 0,
+            tech: 'IP',
+            storage: 7,
+            photos: []
+        },
+        incendios: {
+            brand: '',
+            type: 'Convencional',
+            detectors: 0,
+            callpoints: 0,
+            photos: []
+        },
+        generalPhotos: {},
+        migration: {
+            panelModel: '',
+            comms: 'IP',
+            cctvStatus: 'Buen estado',
+            notes: '',
+            photos: []
+        },
+        inventory: [
+            { name: 'Detectores Volumétricos', qty: 0, status: 'Reutilizar' },
+            { name: 'Contactos Magnéticos', qty: 0, status: 'Reutilizar' },
+            { name: 'Teclados', qty: 0, status: 'Reutilizar' },
+            { name: 'Sirenas', qty: 0, status: 'Reutilizar' },
+            { name: 'Cámaras Analógicas', qty: 0, status: 'Reutilizar' },
+            { name: 'Grabador DVR/NVR', qty: 0, status: 'Sustituir' }
+        ]
+    }
 };
 
 // LocalStorage Keys
@@ -106,6 +165,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupEventListeners();
     checkVaultUsersOnLoad();
     inicializarSincronizacionAutomatica();
+    loadLogoAsBase64();
 });
 
 // Load settings into UI fields
@@ -286,6 +346,173 @@ function setupEventListeners() {
     // Settings save
     els.btnSaveSettings.addEventListener("click", saveSettingsAction);
     els.btnLogout.addEventListener("click", lockVault);
+
+    // ==========================================
+    // COMMERCIAL LISTENERS
+    // ==========================================
+    const menuComm = document.getElementById("menu-commercial");
+    if (menuComm) {
+        menuComm.addEventListener("click", () => switchScreen("commercial-home"));
+    }
+    const btnBackCommHome = document.getElementById("btn-back-commercial-home-dash");
+    if (btnBackCommHome) {
+        btnBackCommHome.addEventListener("click", () => switchScreen("dashboard"));
+    }
+    const btnModeNew = document.getElementById("btn-mode-new");
+    if (btnModeNew) {
+        btnModeNew.addEventListener("click", () => {
+            state.commercial.mode = 'nueva';
+            document.getElementById('client-title').innerText = 'Datos de Nueva Instalación';
+            switchScreen('commercial-client-details');
+        });
+    }
+    const btnModeMigrate = document.getElementById("btn-mode-migrate");
+    if (btnModeMigrate) {
+        btnModeMigrate.addEventListener("click", () => {
+            state.commercial.mode = 'migracion';
+            document.getElementById('client-title').innerText = 'Datos de Auditoría / Migración';
+            switchScreen('commercial-client-details');
+        });
+    }
+    const clientForm = document.getElementById('client-form');
+    if (clientForm) {
+        clientForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            state.commercial.client.name = document.getElementById('input-client-name').value;
+            state.commercial.client.phone = document.getElementById('input-client-phone').value;
+            state.commercial.client.email = document.getElementById('input-client-email').value;
+            state.commercial.client.address = document.getElementById('input-client-address').value;
+
+            if (state.commercial.mode === 'nueva') {
+                switchScreen('commercial-disciplines');
+            } else {
+                renderInventoryTable();
+                switchScreen('commercial-migration');
+            }
+        });
+    }
+    const btnBackClient = document.getElementById('btn-back-client');
+    if (btnBackClient) {
+        btnBackClient.addEventListener('click', () => switchScreen('commercial-home'));
+    }
+    const btnBackClientHome = document.getElementById('btn-back-client-home');
+    if (btnBackClientHome) {
+        btnBackClientHome.addEventListener('click', () => switchScreen('commercial-home'));
+    }
+    const btnBackDisc = document.getElementById('btn-back-disciplines');
+    if (btnBackDisc) {
+        btnBackDisc.addEventListener('click', () => switchScreen('commercial-client-details'));
+    }
+    const btnBackDiscCli = document.getElementById('btn-back-disciplines-client');
+    if (btnBackDiscCli) {
+        btnBackDiscCli.addEventListener('click', () => switchScreen('commercial-client-details'));
+    }
+    document.querySelectorAll('.discipline-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+            if (e.target.tagName !== 'INPUT') {
+                const checkbox = card.querySelector('input[type="checkbox"]');
+                checkbox.checked = !checkbox.checked;
+            }
+            card.classList.toggle('selected', card.querySelector('input[type="checkbox"]').checked);
+        });
+    });
+    const discForm = document.getElementById('disciplines-form');
+    if (discForm) {
+        discForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const checked = Array.from(document.querySelectorAll('input[name="discipline"]:checked'))
+                                 .map(cb => cb.value);
+            
+            if (checked.length === 0) {
+                showToast('Selecciona al menos una disciplina');
+                return;
+            }
+            state.commercial.selectedDisciplines = checked;
+            state.commercial.currentDisciplineIndex = 0;
+            startWizard();
+        });
+    }
+    const btnWizPrev = document.getElementById('btn-wizard-prev');
+    if (btnWizPrev) {
+        btnWizPrev.addEventListener('click', () => {
+            if (state.commercial.currentDisciplineIndex > 0) {
+                state.commercial.currentDisciplineIndex--;
+                showWizardStep();
+            } else {
+                switchScreen('commercial-disciplines');
+            }
+        });
+    }
+    const btnWizBackCtrl = document.getElementById('btn-wizard-back-control');
+    if (btnWizBackCtrl) {
+        btnWizBackCtrl.addEventListener('click', () => {
+            if (state.commercial.currentDisciplineIndex > 0) {
+                state.commercial.currentDisciplineIndex--;
+                showWizardStep();
+            } else {
+                switchScreen('commercial-disciplines');
+            }
+        });
+    }
+    const wizForm = document.getElementById('wizard-form');
+    if (wizForm) {
+        wizForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveCurrentWizardStepData();
+            if (state.commercial.currentDisciplineIndex < state.commercial.selectedDisciplines.length - 1) {
+                state.commercial.currentDisciplineIndex++;
+                showWizardStep();
+            } else {
+                generateSummary();
+                switchScreen('commercial-summary');
+            }
+        });
+    }
+    const btnBackMig = document.getElementById('btn-back-migration');
+    if (btnBackMig) {
+        btnBackMig.addEventListener('click', () => switchScreen('commercial-client-details'));
+    }
+    const btnBackMigCli = document.getElementById('btn-back-migration-client');
+    if (btnBackMigCli) {
+        btnBackMigCli.addEventListener('click', () => switchScreen('commercial-client-details'));
+    }
+    const migForm = document.getElementById('migration-form');
+    if (migForm) {
+        migForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            state.commercial.migration.panelModel = document.getElementById('input-mig-panel').value;
+            state.commercial.migration.comms = document.getElementById('select-mig-comms').value;
+            state.commercial.migration.cctvStatus = document.getElementById('select-mig-cctv').value;
+            state.commercial.migration.notes = document.getElementById('textarea-mig-notes').value;
+            saveInventoryData();
+            generateSummary();
+            switchScreen('commercial-summary');
+        });
+    }
+    const btnBackSum = document.getElementById('btn-back-summary');
+    if (btnBackSum) {
+        btnBackSum.addEventListener('click', () => {
+            if (state.commercial.mode === 'nueva') {
+                state.commercial.currentDisciplineIndex = state.commercial.selectedDisciplines.length - 1;
+                switchScreen('commercial-wizard');
+                showWizardStep();
+            } else {
+                switchScreen('commercial-migration');
+            }
+        });
+    }
+    const btnBackSumEdit = document.getElementById('btn-back-summary-edit');
+    if (btnBackSumEdit) {
+        btnWizPrev.addEventListener('click', () => {
+            if (state.commercial.mode === 'nueva') {
+                state.commercial.currentDisciplineIndex = state.commercial.selectedDisciplines.length - 1;
+                switchScreen('commercial-wizard');
+                showWizardStep();
+            } else {
+                switchScreen('commercial-migration');
+            }
+        });
+    }
 }
 
 // --- CORE FUNCTIONALITY: UNLOCK / SYNC ---
@@ -301,6 +528,7 @@ function switchScreen(screenId) {
         if (screenId === "manuals" && !scopes.includes("manuals")) return;
         if (screenId === "manuals-list" && !scopes.includes("manuals")) return;
         if (screenId === "manual-view" && !scopes.includes("manuals")) return;
+        if (["commercial-home", "commercial-client-details", "commercial-disciplines", "commercial-wizard", "commercial-migration", "commercial-summary"].includes(screenId) && !scopes.includes("commercial")) return;
     }
 
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -441,6 +669,7 @@ async function handleUnlock() {
         if (!state.vault.hours) state.vault.hours = [];
         if (!state.vault.diets) state.vault.diets = [];
         if (!state.vault.materials) state.vault.materials = [];
+        if (!state.vault.commercial_reports) state.vault.commercial_reports = [];
         if (!state.vault.manual_categories) {
             state.vault.manual_categories = ["Ademco", "DSC", "Paradox", "Risco", "Galaxy", "Ajax", "Texecom", "General"];
         }
@@ -448,7 +677,7 @@ async function handleUnlock() {
         // Automatic default admin user initialization on first unlock
         if (userCount === 0) {
             state.vault.users = [
-                { username: "admin", role: "admin", scope: ["passwords", "subscribers", "manuals"] }
+                { username: "admin", role: "admin", scope: ["passwords", "subscribers", "manuals", "commercial"] }
             ];
             const adminWrapped = await encryptData(vaultKey, vaultKey);
             state.usersMetadata["admin"] = adminWrapped;
@@ -463,7 +692,7 @@ async function handleUnlock() {
             activeUser = {
                 username: loggedInUsername,
                 role: loggedInUsername === "admin" ? "admin" : "viewer",
-                scope: loggedInUsername === "admin" ? ["passwords", "subscribers", "manuals"] : []
+                scope: loggedInUsername === "admin" ? ["passwords", "subscribers", "manuals", "commercial"] : []
             };
         }
         
@@ -1732,6 +1961,7 @@ function applyUserPrivileges(user) {
     const hasPass = scopes.includes("passwords") || user.role === "admin";
     const hasSubs = scopes.includes("subscribers") || user.role === "admin";
     const hasManuals = scopes.includes("manuals") || user.role === "admin";
+    const hasComm = scopes.includes("commercial") || user.role === "admin";
     
     document.getElementById("menu-passwords").style.display = hasPass ? "flex" : "none";
     document.querySelector('nav [data-screen="passwords"]').style.display = hasPass ? "flex" : "none";
@@ -1740,6 +1970,11 @@ function applyUserPrivileges(user) {
     document.querySelector('nav [data-screen="subscribers"]').style.display = hasSubs ? "flex" : "none";
     
     document.getElementById("menu-manuals").style.display = hasManuals ? "flex" : "none";
+    
+    const menuComm = document.getElementById("menu-commercial");
+    if (menuComm) {
+        menuComm.style.display = hasComm ? "flex" : "none";
+    }
 }
 
 // Helper: returns true if user can see all technicians' expenses
@@ -1930,6 +2165,7 @@ function openUserForm(u = null) {
     document.getElementById("user-scope-passwords").disabled = !canManageRoles;
     document.getElementById("user-scope-subscribers").disabled = !canManageRoles;
     document.getElementById("user-scope-manuals").disabled = !canManageRoles;
+    document.getElementById("user-scope-commercial").disabled = !canManageRoles;
     
     if (u) {
         title.textContent = "Editar Usuario";
@@ -1943,6 +2179,7 @@ function openUserForm(u = null) {
         document.getElementById("user-scope-passwords").checked = u.scope ? u.scope.includes("passwords") : true;
         document.getElementById("user-scope-subscribers").checked = u.scope ? u.scope.includes("subscribers") : true;
         document.getElementById("user-scope-manuals").checked = u.scope ? u.scope.includes("manuals") : true;
+        document.getElementById("user-scope-commercial").checked = u.scope ? u.scope.includes("commercial") : true;
         
         // Profile fields
         document.getElementById("user-profile-fullname").value = u.fullName || "";
@@ -1962,6 +2199,7 @@ function openUserForm(u = null) {
         document.getElementById("user-scope-passwords").checked = true;
         document.getElementById("user-scope-subscribers").checked = true;
         document.getElementById("user-scope-manuals").checked = true;
+        document.getElementById("user-scope-commercial").checked = true;
         
         // Clear profile fields
         document.getElementById("user-profile-fullname").value = "";
@@ -1997,6 +2235,7 @@ async function saveUserAction(evt) {
     if (document.getElementById("user-scope-passwords").checked) scope.push("passwords");
     if (document.getElementById("user-scope-subscribers").checked) scope.push("subscribers");
     if (document.getElementById("user-scope-manuals").checked) scope.push("manuals");
+    if (document.getElementById("user-scope-commercial").checked) scope.push("commercial");
     
     // Profile fields
     const fullName = document.getElementById("user-profile-fullname").value.trim();
@@ -3310,4 +3549,824 @@ if ("serviceWorker" in navigator) {
             .catch(err => console.log("Service Worker registration failed:", err));
     });
 }
+
+// ==========================================
+// TECHNICAL COMMERCIAL APP (PREVENTA) LOGIC
+// ==========================================
+
+function loadLogoAsBase64() {
+    fetch('logo.png')
+        .then(res => {
+            if (!res.ok) throw new Error('Logo image file not found');
+            return res.blob();
+        })
+        .then(blob => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                state.commercial.logoBase64 = reader.result;
+            };
+            reader.readAsDataURL(blob);
+        })
+        .catch(err => console.warn('Could not pre-load logo image:', err));
+}
+
+function processAndCompressImage(file) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const maxW = 600; // max width for PDF space efficiency
+                let w = img.width;
+                let h = img.height;
+                
+                if (w > maxW) {
+                    h = Math.round((maxW * h) / w);
+                    w = maxW;
+                }
+                
+                canvas.width = w;
+                canvas.height = h;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                resolve(dataUrl);
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+// Photo setup and rendering
+document.addEventListener("DOMContentLoaded", () => {
+    setupCommercialPhotoUploadListeners();
+});
+
+function setupCommercialPhotoUploadListeners() {
+    const photoInputs = [
+        { inputId: 'input-client-blueprint', previewId: 'previews-blueprint', targetArray: () => [] },
+        { inputId: 'input-int-photos', previewId: 'previews-intrusion', targetArray: () => state.commercial.intrusion.photos },
+        { inputId: 'input-cctv-photos', previewId: 'previews-cctv', targetArray: () => state.commercial.cctv.photos },
+        { inputId: 'input-fire-photos', previewId: 'previews-incendios', targetArray: () => state.commercial.incendios.photos },
+        { inputId: 'input-gen-photos', previewId: 'previews-general', targetArray: (disp) => {
+                if (!state.commercial.generalPhotos[disp]) state.commercial.generalPhotos[disp] = [];
+                return state.commercial.generalPhotos[disp];
+            }
+        },
+        { inputId: 'input-mig-photos', previewId: 'previews-migration', targetArray: () => state.commercial.migration.photos }
+    ];
+
+    photoInputs.forEach(({ inputId, previewId, targetArray }) => {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+
+        input.addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+
+            if (inputId === 'input-client-blueprint') {
+                try {
+                    const compressed = await processAndCompressImage(files[0]);
+                    state.commercial.client.blueprintPhoto = compressed;
+                    renderCommercialPreviews(previewId, [compressed], true);
+                } catch (err) {
+                    console.error("Error loading blueprint:", err);
+                }
+            } else {
+                const currentDiscipline = state.commercial.selectedDisciplines[state.commercial.currentDisciplineIndex];
+                const arr = inputId === 'input-gen-photos' ? targetArray(currentDiscipline) : targetArray();
+
+                for (let file of files) {
+                    try {
+                        const compressedBase64 = await processAndCompressImage(file);
+                        arr.push(compressedBase64);
+                    } catch (err) {
+                        console.error("Error compressing image:", err);
+                    }
+                }
+                renderCommercialPreviews(previewId, arr);
+            }
+            input.value = '';
+        });
+    });
+}
+
+function renderCommercialPreviews(previewContainerId, photosArray, isBlueprint = false) {
+    const container = document.getElementById(previewContainerId);
+    if (!container) return;
+    container.innerHTML = '';
+
+    photosArray.forEach((photoBase64, index) => {
+        if (!photoBase64) return;
+        const item = document.createElement('div');
+        item.className = 'photo-preview-item';
+        item.innerHTML = `
+            <img src="${photoBase64}">
+            <button type="button" class="photo-preview-remove" data-index="${index}">×</button>
+        `;
+
+        item.querySelector('.photo-preview-remove').addEventListener('click', () => {
+            if (isBlueprint) {
+                state.commercial.client.blueprintPhoto = '';
+                renderCommercialPreviews(previewContainerId, [], true);
+            } else {
+                photosArray.splice(index, 1);
+                renderCommercialPreviews(previewContainerId, photosArray);
+            }
+        });
+        container.appendChild(item);
+    });
+}
+
+// Wizard controller
+function startWizard() {
+    switchScreen('commercial-wizard');
+    showWizardStep();
+}
+
+function showWizardStep() {
+    const currentDiscipline = state.commercial.selectedDisciplines[state.commercial.currentDisciplineIndex];
+    
+    // Update progress bar
+    const progressPercent = ((state.commercial.currentDisciplineIndex) / state.commercial.selectedDisciplines.length) * 100;
+    const progressFill = document.getElementById('wizard-progress-fill');
+    if (progressFill) progressFill.style.width = `${progressPercent}%`;
+    
+    // Update step label
+    const stepInfo = document.getElementById('wizard-step-info');
+    if (stepInfo) stepInfo.innerText = `Paso ${state.commercial.currentDisciplineIndex + 1} de ${state.commercial.selectedDisciplines.length}`;
+
+    // Hide all dynamic subsections
+    document.querySelectorAll('.discipline-section').forEach(sec => sec.classList.remove('active'));
+
+    // Update title and show the correct subsection
+    const wizardTitle = document.getElementById('wizard-discipline-title');
+    if (currentDiscipline === 'intrusion') {
+        if (wizardTitle) wizardTitle.innerText = 'Configuración de Intrusión';
+        document.getElementById('section-intrusion').classList.add('active');
+        loadIntrusionFields();
+    } else if (currentDiscipline === 'cctv') {
+        if (wizardTitle) wizardTitle.innerText = 'Configuración de CCTV';
+        document.getElementById('section-cctv').classList.add('active');
+        loadCctvFields();
+    } else if (currentDiscipline === 'incendios') {
+        if (wizardTitle) wizardTitle.innerText = 'Configuración de Incendios';
+        document.getElementById('section-incendios').classList.add('active');
+        loadIncendiosFields();
+    } else {
+        if (wizardTitle) wizardTitle.innerText = `Detalles de ${capitalize(currentDiscipline)}`;
+        const generalSection = document.getElementById('section-general');
+        generalSection.classList.add('active');
+        document.getElementById('general-discipline-name').innerText = capitalize(currentDiscipline);
+        
+        // Load general values
+        document.getElementById('input-gen-brand').value = state.commercial[currentDiscipline]?.brand || '';
+        document.getElementById('textarea-general-details').value = state.commercial[currentDiscipline]?.notes || '';
+        renderCommercialPreviews('previews-general', state.commercial.generalPhotos[currentDiscipline] || []);
+    }
+}
+
+function saveCurrentWizardStepData() {
+    const currentDiscipline = state.commercial.selectedDisciplines[state.commercial.currentDisciplineIndex];
+    
+    if (currentDiscipline === 'intrusion') {
+        state.commercial.intrusion.brand = document.getElementById('input-int-brand').value;
+        state.commercial.intrusion.grade = document.getElementById('select-int-grade').value;
+        state.commercial.intrusion.pirs = parseInt(document.getElementById('input-int-pirs').value) || 0;
+        state.commercial.intrusion.contacts = parseInt(document.getElementById('input-int-contacts').value) || 0;
+        state.commercial.intrusion.sirens = parseInt(document.getElementById('input-int-sirens').value) || 0;
+        state.commercial.intrusion.keypads = parseInt(document.getElementById('input-int-keypads').value) || 0;
+        state.commercial.intrusion.cra = document.getElementById('select-int-cra').value;
+        state.commercial.intrusion.maintenance = document.getElementById('select-int-maintenance').value;
+    } else if (currentDiscipline === 'cctv') {
+        state.commercial.cctv.recorderBrand = document.getElementById('input-cctv-recorder-brand').value;
+        state.commercial.cctv.cameraBrand = document.getElementById('input-cctv-camera-brand').value;
+        state.commercial.cctv.camerasIndoor = parseInt(document.getElementById('input-cctv-indoor').value) || 0;
+        state.commercial.cctv.camerasOutdoor = parseInt(document.getElementById('input-cctv-outdoor').value) || 0;
+        state.commercial.cctv.tech = document.getElementById('select-cctv-tech').value;
+        state.commercial.cctv.storage = parseInt(document.getElementById('input-cctv-storage').value) || 7;
+    } else if (currentDiscipline === 'incendios') {
+        state.commercial.incendios.brand = document.getElementById('input-fire-brand').value;
+        state.commercial.incendios.type = document.getElementById('select-fire-type').value;
+        state.commercial.incendios.detectors = parseInt(document.getElementById('input-fire-detectors').value) || 0;
+        state.commercial.incendios.callpoints = parseInt(document.getElementById('input-fire-callpoints').value) || 0;
+    } else {
+        state.commercial[currentDiscipline] = {
+            brand: document.getElementById('input-gen-brand').value,
+            notes: document.getElementById('textarea-general-details').value
+        };
+    }
+}
+
+function loadIntrusionFields() {
+    document.getElementById('input-int-brand').value = state.commercial.intrusion.brand || '';
+    document.getElementById('select-int-grade').value = state.commercial.intrusion.grade;
+    document.getElementById('input-int-pirs').value = state.commercial.intrusion.pirs || '';
+    document.getElementById('input-int-contacts').value = state.commercial.intrusion.contacts || '';
+    document.getElementById('input-int-sirens').value = state.commercial.intrusion.sirens || '';
+    document.getElementById('input-int-keypads').value = state.commercial.intrusion.keypads || '';
+    document.getElementById('select-int-cra').value = state.commercial.intrusion.cra;
+    document.getElementById('select-int-maintenance').value = state.commercial.intrusion.maintenance;
+    renderCommercialPreviews('previews-intrusion', state.commercial.intrusion.photos);
+}
+
+function loadCctvFields() {
+    document.getElementById('input-cctv-recorder-brand').value = state.commercial.cctv.recorderBrand || '';
+    document.getElementById('input-cctv-camera-brand').value = state.commercial.cctv.cameraBrand || '';
+    document.getElementById('input-cctv-indoor').value = state.commercial.cctv.camerasIndoor || '';
+    document.getElementById('input-cctv-outdoor').value = state.commercial.cctv.camerasOutdoor || '';
+    document.getElementById('select-cctv-tech').value = state.commercial.cctv.tech;
+    document.getElementById('input-cctv-storage').value = state.commercial.cctv.storage || '';
+    renderCommercialPreviews('previews-cctv', state.commercial.cctv.photos);
+}
+
+function loadIncendiosFields() {
+    document.getElementById('input-fire-brand').value = state.commercial.incendios.brand || '';
+    document.getElementById('select-fire-type').value = state.commercial.incendios.type;
+    document.getElementById('input-fire-detectors').value = state.commercial.incendios.detectors || '';
+    document.getElementById('input-fire-callpoints').value = state.commercial.incendios.callpoints || '';
+    renderCommercialPreviews('previews-incendios', state.commercial.incendios.photos);
+}
+
+// Inventory table
+function renderInventoryTable() {
+    const tbody = document.getElementById('inventory-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    state.commercial.inventory.forEach((item, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${item.name}</td>
+            <td>
+                <input type="number" class="inventory-input-qty" id="inv-qty-${index}" min="0" value="${item.qty}">
+            </td>
+            <td>
+                <select class="inventory-select" id="inv-status-${index}">
+                    <option value="Reutilizar" ${item.status === 'Reutilizar' ? 'selected' : ''}>Reutilizar</option>
+                    <option value="Sustituir" ${item.status === 'Sustituir' ? 'selected' : ''}>Sustituir</option>
+                    <option value="No aplica" ${item.status === 'No aplica' ? 'selected' : ''}>No aplica</option>
+                </select>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function saveInventoryData() {
+    state.commercial.inventory.forEach((item, index) => {
+        const qtyInput = document.getElementById(`inv-qty-${index}`);
+        const statusSelect = document.getElementById(`inv-status-${index}`);
+        if (qtyInput && statusSelect) {
+            item.qty = parseInt(qtyInput.value) || 0;
+            item.status = statusSelect.value;
+        }
+    });
+}
+
+// Summary generation
+function generateSummary() {
+    const container = document.getElementById('summary-content');
+    if (!container) return;
+    container.innerHTML = '';
+
+    // 1. Client Card
+    let blueprintSection = '';
+    if (state.commercial.client.blueprintPhoto) {
+        blueprintSection = `
+            <div style="margin-top: 10px;">
+                <span class="summary-label" style="font-size: 0.8rem; display: block; margin-bottom: 4px;">Plano de la Instalación:</span>
+                <div class="summary-photo-thumbnail" style="width: 120px; height: 90px; border-radius: var(--radius-sm);">
+                    <img src="${state.commercial.client.blueprintPhoto}" style="width:100%; height:100%; object-fit:cover;">
+                </div>
+            </div>
+        `;
+    }
+
+    let clientHtml = `
+        <div class="summary-block">
+            <div class="summary-header">DATOS DEL CLIENTE</div>
+            <div class="summary-item"><span class="summary-label">Nombre/Razón Social:</span> <span class="summary-value">${escapeHtml(state.commercial.client.name)}</span></div>
+            <div class="summary-item"><span class="summary-label">Teléfono:</span> <span class="summary-value">${escapeHtml(state.commercial.client.phone)}</span></div>
+            <div class="summary-item"><span class="summary-label">Email:</span> <span class="summary-value">${escapeHtml(state.commercial.client.email)}</span></div>
+            <div class="summary-item"><span class="summary-label">Dirección:</span> <span class="summary-value">${escapeHtml(state.commercial.client.address)}</span></div>
+            ${blueprintSection}
+        </div>
+    `;
+    container.innerHTML += clientHtml;
+
+    // 2. Data Blocks based on Mode
+    if (state.commercial.mode === 'nueva') {
+        state.commercial.selectedDisciplines.forEach(disp => {
+            let blockHtml = '';
+            let photos = [];
+            
+            if (disp === 'intrusion') {
+                photos = state.commercial.intrusion.photos;
+                blockHtml = `
+                    <div class="summary-block">
+                        <div class="summary-header">INTRUSIÓN (Normativa Grado ${state.commercial.intrusion.grade})</div>
+                        ${state.commercial.intrusion.brand ? `<div class="summary-item"><span class="summary-label">Central Propuesta:</span> <span class="summary-value">${escapeHtml(state.commercial.intrusion.brand)}</span></div>` : ''}
+                        <div class="summary-item"><span class="summary-label">Volumétricos (PIR):</span> <span class="summary-value">${state.commercial.intrusion.pirs}</span></div>
+                        <div class="summary-item"><span class="summary-label">Contactos Magnéticos:</span> <span class="summary-value">${state.commercial.intrusion.contacts}</span></div>
+                        <div class="summary-item"><span class="summary-label">Sirenas:</span> <span class="summary-value">${state.commercial.intrusion.sirens}</span></div>
+                        <div class="summary-item"><span class="summary-label">Teclados:</span> <span class="summary-value">${state.commercial.intrusion.keypads}</span></div>
+                        <div class="summary-item"><span class="summary-label">Conexión a CRA:</span> <span class="summary-value">${state.commercial.intrusion.cra === 'yes' ? 'Sí' : 'No'}</span></div>
+                        <div class="summary-item"><span class="summary-label">Mantenimiento Bidireccional:</span> <span class="summary-value">${state.commercial.intrusion.maintenance === 'yes' ? 'Sí' : 'No'}</span></div>
+                        ${renderSummaryPhotos(photos)}
+                    </div>
+                `;
+            } else if (disp === 'cctv') {
+                photos = state.commercial.cctv.photos;
+                blockHtml = `
+                    <div class="summary-block">
+                        <div class="summary-header">CCTV (${state.commercial.cctv.tech})</div>
+                        ${state.commercial.cctv.recorderBrand ? `<div class="summary-item"><span class="summary-label">Grabador Propuesto:</span> <span class="summary-value">${escapeHtml(state.commercial.cctv.recorderBrand)}</span></div>` : ''}
+                        ${state.commercial.cctv.cameraBrand ? `<div class="summary-item"><span class="summary-label">Cámaras Propuestas:</span> <span class="summary-value">${escapeHtml(state.commercial.cctv.cameraBrand)}</span></div>` : ''}
+                        <div class="summary-item"><span class="summary-label">Cámaras Interior:</span> <span class="summary-value">${state.commercial.cctv.camerasIndoor}</span></div>
+                        <div class="summary-item"><span class="summary-label">Cámaras Exterior:</span> <span class="summary-value">${state.commercial.cctv.camerasOutdoor}</span></div>
+                        <div class="summary-item"><span class="summary-label">Grabación estimada:</span> <span class="summary-value">${state.commercial.cctv.storage} días</span></div>
+                        ${renderSummaryPhotos(photos)}
+                    </div>
+                `;
+            } else if (disp === 'incendios') {
+                photos = state.commercial.incendios.photos;
+                blockHtml = `
+                    <div class="summary-block">
+                        <div class="summary-header">DETECCIÓN DE INCENDIOS (${state.commercial.incendios.type})</div>
+                        ${state.commercial.incendios.brand ? `<div class="summary-item"><span class="summary-label">Central Propuesta:</span> <span class="summary-value">${escapeHtml(state.commercial.incendios.brand)}</span></div>` : ''}
+                        <div class="summary-item"><span class="summary-label">Detectores:</span> <span class="summary-value">${state.commercial.incendios.detectors}</span></div>
+                        <div class="summary-item"><span class="summary-label">Pulsadores manuales:</span> <span class="summary-value">${state.commercial.incendios.callpoints}</span></div>
+                        ${renderSummaryPhotos(photos)}
+                    </div>
+                `;
+            } else {
+                photos = state.commercial.generalPhotos[disp] || [];
+                blockHtml = `
+                    <div class="summary-block">
+                        <div class="summary-header">${capitalize(disp).replace('_', ' ')}</div>
+                        ${state.commercial[disp]?.brand ? `<div class="summary-item"><span class="summary-label">Equipos Propuestos:</span> <span class="summary-value">${escapeHtml(state.commercial[disp].brand)}</span></div>` : ''}
+                        <div class="summary-item"><span class="summary-label">Detalles técnicos:</span> <span class="summary-value" style="display: block; width: 100%; margin-top: 5px; text-align: left;">${escapeHtml(state.commercial[disp]?.notes || 'Sin detalles')}</span></div>
+                        ${renderSummaryPhotos(photos)}
+                    </div>
+                `;
+            }
+            container.innerHTML += blockHtml;
+        });
+    } else {
+        // Migration details
+        let migHtml = `
+            <div class="summary-block">
+                <div class="summary-header">AUDITORÍA TÉCNICA (MIGRACIÓN)</div>
+                <div class="summary-item"><span class="summary-label">Central Existente:</span> <span class="summary-value">${escapeHtml(state.commercial.migration.panelModel || 'No especificado')}</span></div>
+                <div class="summary-item"><span class="summary-label">Vías de Comunicación:</span> <span class="summary-value">${escapeHtml(state.commercial.migration.comms)}</span></div>
+                <div class="summary-item"><span class="summary-label">Estado de Grabador / Cámaras:</span> <span class="summary-value">${escapeHtml(state.commercial.migration.cctvStatus)}</span></div>
+                ${state.commercial.migration.notes ? `<div class="summary-item" style="flex-direction: column; align-items: flex-start; gap: 4px;"><span class="summary-label">Notas Adicionales:</span> <span class="summary-value" style="text-align: left;">${escapeHtml(state.commercial.migration.notes)}</span></div>` : ''}
+                ${renderSummaryPhotos(state.commercial.migration.photos)}
+            </div>
+            
+            <div class="summary-block">
+                <div class="summary-header">INVENTARIO AUDITADO</div>
+                <table class="inventory-table" style="margin-top: 5px;">
+                    <thead>
+                        <tr>
+                            <th>Elemento</th>
+                            <th>Cant.</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${state.commercial.inventory.filter(item => item.qty > 0).map(item => `
+                            <tr>
+                                <td>${escapeHtml(item.name)}</td>
+                                <td>${item.qty}</td>
+                                <td>${item.status}</td>
+                            </tr>
+                        `).join('') || '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">Sin elementos registrados</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+        `;
+        container.innerHTML += migHtml;
+    }
+}
+
+function renderSummaryPhotos(photosArray) {
+    if (!photosArray || photosArray.length === 0) return '';
+    return `
+        <div style="margin-top: 10px;">
+            <span class="summary-label" style="font-size: 0.8rem; display: block; margin-bottom: 4px;">Fotografías adjuntas (${photosArray.length}):</span>
+            <div class="summary-photos-grid">
+                ${photosArray.map(p => `
+                    <div class="summary-photo-thumbnail">
+                        <img src="${p}">
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+// PDF Generation
+async function handlePdfGenerationAndSharing() {
+    const btn = document.getElementById('btn-share-pdf');
+    const originalHtml = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = `<span style="display:inline-block; animation: spin 1s infinite linear; margin-right: 8px;">🔄</span> Generando...`;
+
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+            orientation: 'p',
+            unit: 'mm',
+            format: 'a4'
+        });
+
+        const reportDate = new Date().toLocaleDateString('es-ES');
+        const filename = state.commercial.mode === 'nueva' ? 'instalanueva.pdf' : 'migracion.pdf';
+        const emailSubject = `Informe Técnico Comercial - ${state.commercial.client.name}`;
+
+        let y = 15;
+
+        // Draw corporate logo from base64 if loaded
+        if (state.commercial.logoBase64) {
+            doc.addImage(state.commercial.logoBase64, 'PNG', 15, 10, 52, 36);
+        } else {
+            // Fallback text if logo failed to load
+            doc.setTextColor(1, 30, 65);
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(28);
+            doc.text('ATS', 15, 25);
+            doc.setFontSize(8.5);
+            doc.text('ALTA TECNOLOGÍA PARA LA SEGURIDAD', 15, 32);
+        }
+
+        // Header info (Right aligned)
+        doc.setTextColor(100, 116, 139);
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(8.5);
+        doc.text(`Versión App: v1.12.00 by JMSYSTEMS`, 195, 16, { align: 'right' });
+        
+        doc.setFontSize(11);
+        doc.setFont('Helvetica', 'bold');
+        doc.setTextColor(209, 10, 36); // Red corporate title
+        const typeLabel = state.commercial.mode === 'nueva' ? 'DISEÑO DE INSTALACIÓN NUEVA' : 'AUDITORÍA Y MIGRACIÓN';
+        doc.text(typeLabel, 195, 26, { align: 'right' });
+        
+        doc.setFontSize(9);
+        doc.setFont('Helvetica', 'normal');
+        doc.setTextColor(30, 41, 59);
+        doc.text(`Fecha de Informe: ${reportDate}`, 195, 32, { align: 'right' });
+
+        y = 55;
+
+        // Client Block
+        doc.setFillColor(245, 248, 250); // light slate background
+        doc.rect(15, y, 180, 32, 'F');
+        
+        doc.setTextColor(1, 30, 65); // Corporate Navy
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text('DATOS DEL CLIENTE', 20, y + 6);
+        
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(9.5);
+        doc.setTextColor(30, 41, 59);
+        doc.text(`Cliente / Razón Social: ${state.commercial.client.name}`, 20, y + 12);
+        doc.text(`Teléfono: ${state.commercial.client.phone}`, 20, y + 17);
+        doc.text(`Email: ${state.commercial.client.email}`, 20, y + 22);
+        doc.text(`Dirección: ${state.commercial.client.address}`, 20, y + 27);
+
+        y += 37;
+
+        // Embed Client Blueprint Photo if present
+        if (state.commercial.client.blueprintPhoto) {
+            if (y + 50 > 270) {
+                doc.addPage();
+                y = 20;
+            }
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(100, 116, 139);
+            doc.text('Plano de la Instalación Adjunto:', 20, y);
+            y += 4;
+            doc.addImage(state.commercial.client.blueprintPhoto, 'JPEG', 20, y, 66, 46);
+            y += 52;
+        } else {
+            y += 5;
+        }
+
+        // Dynamic blocks of content
+        if (state.commercial.mode === 'nueva') {
+            for (let disp of state.commercial.selectedDisciplines) {
+                if (y > 240) {
+                    doc.addPage();
+                    y = 20;
+                }
+
+                // Section header
+                doc.setFillColor(241, 245, 249);
+                doc.rect(15, y, 180, 7, 'F');
+                doc.setTextColor(209, 10, 36); // Red section accent
+                doc.setFont('Helvetica', 'bold');
+                doc.setFontSize(10.5);
+                const sectionTitleText = disp === 'intrusion' ? `SISTEMA DE INTRUSIÓN (Normativa Grado ${state.commercial.intrusion.grade})` :
+                                         disp === 'cctv' ? `SISTEMA DE CCTV (Tecnología ${state.commercial.cctv.tech})` :
+                                         disp === 'incendios' ? `SISTEMA DE DETECCIÓN DE INCENDIOS (${state.commercial.incendios.type})` :
+                                         `SISTEMA DE ${disp.toUpperCase().replace('_', ' ')}`;
+                doc.text(sectionTitleText, 18, y + 5);
+                y += 12;
+
+                doc.setTextColor(30, 41, 59);
+                doc.setFont('Helvetica', 'normal');
+                doc.setFontSize(9.5);
+
+                let photos = [];
+
+                if (disp === 'intrusion') {
+                    photos = state.commercial.intrusion.photos;
+                    if (state.commercial.intrusion.brand) {
+                        doc.setFont('Helvetica', 'bold');
+                        doc.text(`Central Propuesta: ${state.commercial.intrusion.brand}`, 20, y);
+                        doc.setFont('Helvetica', 'normal');
+                        y += 6;
+                    }
+                    doc.text(`• Detectores Volumétricos (PIR): ${state.commercial.intrusion.pirs} uds.`, 20, y);
+                    doc.text(`• Contactos Magnéticos de Apertura: ${state.commercial.intrusion.contacts} uds.`, 20, y + 5);
+                    doc.text(`• Sirenas de Alerta (Exterior/Interior): ${state.commercial.intrusion.sirens} uds.`, 20, y + 10);
+                    doc.text(`• Teclados / Mandos de Control: ${state.commercial.intrusion.keypads} uds.`, 20, y + 15);
+                    doc.text(`• Conexión a Central Receptora de Alarmas (CRA): ${state.commercial.intrusion.cra === 'yes' ? 'SÍ' : 'NO'}`, 20, y + 20);
+                    doc.text(`• Mantenimiento Presencial y Bidireccional: ${state.commercial.intrusion.maintenance === 'yes' ? 'SÍ' : 'NO'}`, 20, y + 25);
+                    y += 31;
+                } else if (disp === 'cctv') {
+                    photos = state.commercial.cctv.photos;
+                    if (state.commercial.cctv.recorderBrand) {
+                        doc.setFont('Helvetica', 'bold');
+                        doc.text(`Grabador Propuesto: ${state.commercial.cctv.recorderBrand}`, 20, y);
+                        doc.setFont('Helvetica', 'normal');
+                        y += 6;
+                    }
+                    if (state.commercial.cctv.cameraBrand) {
+                        doc.setFont('Helvetica', 'bold');
+                        doc.text(`Cámaras Propuestas: ${state.commercial.cctv.cameraBrand}`, 20, y);
+                        doc.setFont('Helvetica', 'normal');
+                        y += 6;
+                    }
+                    doc.text(`• Cámaras para Interior: ${state.commercial.cctv.camerasIndoor} uds.`, 20, y);
+                    doc.text(`• Cámaras para Exterior: ${state.commercial.cctv.camerasOutdoor} uds.`, 20, y + 5);
+                    doc.text(`• Tecnología de Vídeo: Sistema ${state.commercial.cctv.tech}`, 20, y + 10);
+                    doc.text(`• Autonomía de Grabación Estimada: ${state.commercial.cctv.storage} días de histórico continuo.`, 20, y + 15);
+                    y += 21;
+                } else if (disp === 'incendios') {
+                    photos = state.commercial.incendios.photos;
+                    if (state.commercial.incendios.brand) {
+                        doc.setFont('Helvetica', 'bold');
+                        doc.text(`Central Propuesta: ${state.commercial.incendios.brand}`, 20, y);
+                        doc.setFont('Helvetica', 'normal');
+                        y += 6;
+                    }
+                    doc.text(`• Clasificación del Sistema: En conformidad con EN54 - ${state.commercial.incendios.type}`, 20, y);
+                    doc.text(`• Detectores Ópticos/Térmicos: ${state.commercial.incendios.detectors} uds.`, 20, y + 5);
+                    doc.text(`• Pulsadores Manuales de Alarma: ${state.commercial.incendios.callpoints} uds.`, 20, y + 10);
+                    y += 16;
+                } else {
+                    photos = state.commercial.generalPhotos[disp] || [];
+                    if (state.commercial[disp]?.brand) {
+                        doc.setFont('Helvetica', 'bold');
+                        doc.text(`Equipamiento Propuesto: ${state.commercial[disp].brand}`, 20, y);
+                        doc.setFont('Helvetica', 'normal');
+                        y += 6;
+                    }
+                    const textLines = doc.splitTextToSize(state.commercial[disp]?.notes || 'Sin especificaciones técnicas adicionales.', 170);
+                    doc.text(textLines, 20, y);
+                    y += (textLines.length * 5) + 3;
+                }
+
+                // Embed photos inside PDF
+                if (photos.length > 0) {
+                    y += 4;
+                    if (y > 220) {
+                        doc.addPage();
+                        y = 20;
+                    }
+                    doc.setFont('Helvetica', 'bold');
+                    doc.setFontSize(8.5);
+                    doc.setTextColor(100, 116, 139);
+                    doc.text('Imágenes Adjuntas:', 20, y);
+                    y += 4;
+                    
+                    let imgX = 20;
+                    let imgWidth = 40;
+                    let imgHeight = 30;
+                    
+                    for (let photo of photos) {
+                        if (imgX + imgWidth > 190) {
+                            imgX = 20;
+                            y += imgHeight + 4;
+                        }
+                        if (y + imgHeight > 270) {
+                            doc.addPage();
+                            y = 20;
+                            imgX = 20;
+                        }
+                        doc.addImage(photo, 'JPEG', imgX, y, imgWidth, imgHeight);
+                        imgX += imgWidth + 5;
+                    }
+                    y += imgHeight + 8;
+                }
+                y += 5;
+            }
+        } else {
+            // Migration mode
+            doc.setFillColor(241, 245, 249);
+            doc.rect(15, y, 180, 7, 'F');
+            doc.setTextColor(1, 30, 65); // Navy
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(10.5);
+            doc.text('AUDITORÍA TÉCNICA DE INFRAESTRUCTURA', 18, y + 5);
+            y += 12;
+
+            doc.setTextColor(30, 41, 59);
+            doc.setFont('Helvetica', 'normal');
+            doc.setFontSize(9.5);
+            doc.text(`• Modelo de Central Existente: ${state.commercial.migration.panelModel || 'No documentado'}`, 20, y);
+            doc.text(`• Vías de Comunicación Instaladas: Canal ${state.commercial.migration.comms}`, 20, y + 5);
+            doc.text(`• Estado del Equipamiento de CCTV (Cámaras/Grabación): ${state.commercial.migration.cctvStatus}`, 20, y + 10);
+
+            y += 18;
+
+            if (state.commercial.migration.notes) {
+                doc.setFont('Helvetica', 'bold');
+                doc.text('Notas de campo adicionales:', 20, y);
+                doc.setFont('Helvetica', 'normal');
+                y += 5;
+                const noteLines = doc.splitTextToSize(state.commercial.migration.notes, 170);
+                doc.text(noteLines, 20, y);
+                y += (noteLines.length * 5) + 5;
+            }
+
+            // Add audit photos
+            if (state.commercial.migration.photos.length > 0) {
+                if (y > 220) {
+                    doc.addPage();
+                    y = 20;
+                }
+                doc.setFont('Helvetica', 'bold');
+                doc.setFontSize(8.5);
+                doc.setTextColor(100, 116, 139);
+                doc.text('Imágenes Adjuntas de la Auditoría:', 20, y);
+                y += 4;
+                
+                let imgX = 20;
+                let imgWidth = 40;
+                let imgHeight = 30;
+
+                for (let photo of state.commercial.migration.photos) {
+                    if (imgX + imgWidth > 190) {
+                        imgX = 20;
+                        y += imgHeight + 4;
+                    }
+                    if (y + imgHeight > 270) {
+                        doc.addPage();
+                        y = 20;
+                        imgX = 20;
+                    }
+                    doc.addImage(photo, 'JPEG', imgX, y, imgWidth, imgHeight);
+                    imgX += imgWidth + 5;
+                }
+                y += imgHeight + 10;
+            }
+
+            // Check height for table
+            if (y > 180) {
+                doc.addPage();
+                y = 20;
+            }
+
+            // Render Inventory Table inside PDF
+            doc.setFillColor(241, 245, 249);
+            doc.rect(15, y, 180, 7, 'F');
+            doc.setTextColor(209, 10, 36);
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(10.5);
+            doc.text('INVENTARIO AUDITADO (REUTILIZAR / SUSTITUIR)', 18, y + 5);
+            
+            y += 12;
+
+            // Table Header
+            doc.setFillColor(1, 30, 65);
+            doc.rect(15, y, 180, 6, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(8.5);
+            doc.text('Elemento de Seguridad', 18, y + 4.5);
+            doc.text('Cant.', 140, y + 4.5);
+            doc.text('Acción Sugerida', 165, y + 4.5);
+
+            y += 6;
+
+            const auditItems = state.commercial.inventory.filter(item => item.qty > 0);
+            if (auditItems.length === 0) {
+                doc.setTextColor(100, 116, 139);
+                doc.setFont('Helvetica', 'italic');
+                doc.text('No se han registrado elementos en el inventario.', 20, y + 5);
+                y += 10;
+            } else {
+                doc.setTextColor(51, 65, 85);
+                doc.setFont('Helvetica', 'normal');
+                auditItems.forEach(item => {
+                    doc.text(item.name, 18, y + 5);
+                    doc.text(item.qty.toString(), 142, y + 5);
+                    
+                    if (item.status === 'Sustituir') {
+                        doc.setTextColor(209, 10, 36); // Red
+                    } else if (item.status === 'Reutilizar') {
+                        doc.setTextColor(16, 185, 129); // Green
+                    } else {
+                        doc.setTextColor(100, 116, 139); // Gray
+                    }
+                    doc.text(item.status, 165, y + 5);
+                    doc.setTextColor(51, 65, 85); // Restore black
+
+                    // draw line
+                    doc.setDrawColor(241, 245, 249);
+                    doc.line(15, y + 7, 195, y + 7);
+                    y += 7;
+
+                    if (y > 270) {
+                        doc.addPage();
+                        y = 20;
+                    }
+                });
+            }
+        }
+
+        // Add Signature Block/Footer
+        if (y > 240) {
+            doc.addPage();
+            y = 20;
+        }
+        y += 15;
+        doc.setDrawColor(200, 200, 200);
+        doc.line(15, y, 90, y);
+        doc.line(120, y, 195, y);
+        
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text('Firma Comercial / Técnico (JMSYSTEMS)', 15, y + 4);
+        doc.text('Firma Conformidad Cliente', 120, y + 4);
+
+        // Save/Share Process
+        const pdfBlob = doc.output('blob');
+        const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+
+        // Check if navigator.share and file sharing are supported
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+                files: [file],
+                title: emailSubject,
+                text: `Informe Técnico Comercial generado para el cliente: ${state.commercial.client.name}.`
+            });
+            showToast('¡Informe compartido con éxito!');
+        } else {
+            // Fallback: download directly
+            doc.save(filename);
+            showToast('Web Share no soportado. Se ha descargado el PDF.', 'info');
+            
+            // Auto open email client with mailto link
+            const mailtoUrl = `mailto:${encodeURIComponent(state.commercial.client.email)}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent('Hola, adjunto el informe técnico comercial que se acaba de descargar en mi dispositivo.')}`;
+            window.location.href = mailtoUrl;
+        }
+
+    } catch (error) {
+        console.error('Error durante la generación/envío de PDF', error);
+        showToast('Ocurrió un error al procesar el archivo.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
+
+// Helpers
+function capitalize(str) {
+    if (!str) return '';
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function escapeHtml(unsafe) {
+    if (!unsafe) return '';
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 
