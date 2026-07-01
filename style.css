@@ -398,21 +398,22 @@ select.input-control {
 /* Dashboard / Center Menu - Fluid Grid */
 .menu-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 16px;
-    margin-top: 20px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 15px;
 }
 
 .menu-card {
     background: var(--bg-glass);
     border: 1px solid var(--border-glass);
     border-radius: var(--radius-md);
-    padding: 24px 16px;
+    aspect-ratio: 1 / 1;
+    padding: 12px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 12px;
+    gap: 6px;
     cursor: pointer;
     transition: var(--transition-smooth);
 }
@@ -423,11 +424,11 @@ select.input-control {
 }
 
 .menu-card .card-icon {
-    font-size: 2.2rem;
+    font-size: 1.8rem;
 }
 
 .menu-card .card-title {
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     font-weight: 600;
     color: var(--text-primary);
 }

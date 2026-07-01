@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.12.00",
+        version: "1.12.02",
         company_name: "ATS TEC",
         theme: "default",
         entries: [],       // General passwords
@@ -3185,7 +3185,7 @@ function exportMonthlyReport() {
     
     const company = state.vault.company_name || "ATS TEC";
     const monthName = getSpanishMonthName(month);
-    const logoUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) + '/logo.png';
+    const logoUrl = state.commercial.logoBase64 || 'logo.png';
     
     // Determine which technician's data to export
     let targetOwner = null; // null = current user (self), 'all' = everyone
@@ -3232,31 +3232,16 @@ function exportMonthlyReport() {
             margin:       10,
             filename:     fileName,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0, windowWidth: 800 },
+            html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0, windowWidth: 820 },
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
-        const container = document.createElement("div");
-        container.style.width = "800px";
-        container.style.position = "absolute";
-        container.style.left = "0";
-        container.style.top = "0";
-        container.style.zIndex = "-9999";
-        container.style.background = "#fff";
-        container.innerHTML = htmlContent;
-        document.body.appendChild(container);
+        const contentWithWidth = `<div style="width: 800px; color: #000; background: #fff;">${htmlContent}</div>`;
 
-        html2pdf().set(opt).from(container).save()
-            .then(() => {
-                document.body.removeChild(container);
-            })
-            .catch(err => {
-                console.error("PDF Generation error", err);
-                if (container.parentNode) {
-                    document.body.removeChild(container);
-                }
-                showToast("Error al generar PDF");
-            });
+        html2pdf().set(opt).from(contentWithWidth).save().catch(err => {
+            console.error("PDF Generation error", err);
+            showToast("Error al generar PDF");
+        });
     };
 
     const isAllTechs = targetOwner === "all";
@@ -4010,7 +3995,7 @@ async function handlePdfGenerationAndSharing() {
         doc.setTextColor(100, 116, 139);
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(8.5);
-        doc.text(`Versión App: v1.12.00 by JMSYSTEMS`, 195, 16, { align: 'right' });
+        doc.text(`Versión App: v1.12.02 by JMSYSTEMS`, 195, 16, { align: 'right' });
         
         doc.setFontSize(11);
         doc.setFont('Helvetica', 'bold');
