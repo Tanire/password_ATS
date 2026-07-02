@@ -7,7 +7,7 @@
 const state = {
     vault: {
         version: "1.13.01",
-        company_name: "ATS TEC",
+        company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
         subscribers: [],   // Alarm/Recorder subscriber accounts
@@ -1918,11 +1918,11 @@ function adaptLoginFields() {
     const userCount = Object.keys(state.usersMetadata || {}).length;
     if (userCount > 0) {
         if (usernameGroup) usernameGroup.style.display = "block";
-        if (loginSubtitle) loginSubtitle.textContent = "Introduce tus credenciales para acceder a ATS TEC.";
+        if (loginSubtitle) loginSubtitle.textContent = "Introduce tus credenciales para acceder a ALTA TECNOLOGIA PARA LA SEGURIDAD.";
         if (loginPassInput) loginPassInput.placeholder = "Contraseña";
     } else {
         if (usernameGroup) usernameGroup.style.display = "none";
-        if (loginSubtitle) loginSubtitle.textContent = "Introduce tu Clave Maestra para descifrar la base de datos de ATS TEC.";
+        if (loginSubtitle) loginSubtitle.textContent = "Introduce tu Clave Maestra para descifrar la base de datos de ALTA TECNOLOGIA PARA LA SEGURIDAD.";
         if (loginPassInput) loginPassInput.placeholder = "Clave Maestra";
     }
 }
@@ -3209,7 +3209,7 @@ function exportMonthlyReport() {
     
     const filterPrefix = `${year}-${month}`;
     
-    const company = state.vault.company_name || "ATS TEC";
+    const company = state.vault.company_name || "ALTA TECNOLOGIA PARA LA SEGURIDAD";
     const monthName = getSpanishMonthName(month);
     const logoUrl = state.commercial.logoBase64 || 'logo.png';
     
