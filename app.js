@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.13.00",
+        version: "1.13.01",
         company_name: "ATS TEC",
         theme: "default",
         entries: [],       // General passwords
@@ -708,7 +708,7 @@ async function handleUnlock() {
             const adminWrapped = await encryptData(vaultKey, vaultKey);
             state.usersMetadata["admin"] = adminWrapped;
             state.vault.version = "4.01";
-            state.vault.company_name = "SEC ATS";
+            state.vault.company_name = "ALTA TECNOLOGIA PARA LA SEGURIDAD";
         }
         
         const loggedInUsername = (username || "admin").toLowerCase();
@@ -738,8 +738,8 @@ async function handleUnlock() {
             els.lblCompanyName.textContent = state.vault.company_name;
             els.setCompanyName.value = state.vault.company_name;
         } else {
-            els.lblCompanyName.textContent = "SEC ATS";
-            els.setCompanyName.value = "SEC ATS";
+            els.lblCompanyName.textContent = "ALTA TECNOLOGIA PARA LA SEGURIDAD";
+            els.setCompanyName.value = "ALTA TECNOLOGIA PARA LA SEGURIDAD";
         }
 
         els.screenLogin.style.display = "none";
@@ -848,7 +848,7 @@ async function syncWithCloud(isRetry = false) {
 // Lock application and wipe password from memory
 function lockVault() {
     state.masterPassword = "";
-    state.vault = { version: "4.01", company_name: "SEC ATS", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [] };
+    state.vault = { version: "4.01", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [] };
     state.gitSha = null;
     state.currentUser = null;
     
@@ -1595,7 +1595,7 @@ async function enviarAlertaTelegram(tipo, datos, isRetry = false) {
         montoMsg = escapeMarkdown(datos.subscriber_code || "Sin número");
     }
 
-    const headerTitle = datos.isNew === false ? "*Registro Modificado en SEC ATS*" : "*Nuevo Registro en SEC ATS*";
+    const headerTitle = datos.isNew === false ? "*Registro Modificado en ALTA TECNOLOGIA PARA LA SEGURIDAD*" : "*Nuevo Registro en ALTA TECNOLOGIA PARA LA SEGURIDAD*";
     const message = `${headerTitle}
 • *Tipo:* ${tipoMsg}
 • *Técnico:* ${tecnicoMsg}
@@ -4022,7 +4022,7 @@ async function handlePdfGenerationAndSharing() {
         doc.setTextColor(100, 116, 139);
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(8.5);
-        doc.text(`Versión App: v1.13.00 by JMSYSTEMS`, 195, 16, { align: 'right' });
+        doc.text(`Versión App: v1.13.01 by JMSYSTEMS`, 195, 16, { align: 'right' });
         
         doc.setFontSize(11);
         doc.setFont('Helvetica', 'bold');
