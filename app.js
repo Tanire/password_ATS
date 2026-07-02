@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.13.02",
+        version: "1.13.03",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -4022,7 +4022,7 @@ async function handlePdfGenerationAndSharing() {
         doc.setTextColor(100, 116, 139);
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(8.5);
-        doc.text(`Versión App: v1.13.02 by JMSYSTEMS`, 195, 16, { align: 'right' });
+        doc.text(`Versión App: v1.13.03 by JMSYSTEMS`, 195, 16, { align: 'right' });
         
         doc.setFontSize(11);
         doc.setFont('Helvetica', 'bold');
