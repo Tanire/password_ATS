@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.13.03",
+        version: "1.13.04",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -2635,6 +2635,7 @@ function openHourForm(id = null) {
     form.reset();
     document.getElementById("hour-id").value = "";
     document.getElementById("hour-date").value = new Date().toISOString().split('T')[0];
+    document.getElementById("hour-client").value = "";
     
     if (id) {
         const entry = state.vault.hours.find(h => h.id === id);
@@ -2643,6 +2644,7 @@ function openHourForm(id = null) {
             document.getElementById("hour-id").value = entry.id;
             document.getElementById("hour-date").value = entry.date || "";
             document.getElementById("hour-concept").value = entry.concept || "TRABAJOS";
+            document.getElementById("hour-client").value = entry.client || "";
             document.getElementById("hour-description").value = entry.description || "";
             document.getElementById("hour-start").value = entry.startTime || "";
             document.getElementById("hour-end").value = entry.endTime || "";
@@ -2663,6 +2665,7 @@ async function saveHourEntry(evt) {
     const id = document.getElementById("hour-id").value;
     const date = document.getElementById("hour-date").value;
     const concept = document.getElementById("hour-concept").value.trim();
+    const client = document.getElementById("hour-client").value.trim();
     const description = document.getElementById("hour-description").value.trim();
     const startTime = document.getElementById("hour-start").value;
     const endTime = document.getElementById("hour-end").value;
@@ -2673,6 +2676,7 @@ async function saveHourEntry(evt) {
     const entryData = {
         date,
         concept,
+        client,
         description,
         startTime,
         endTime,
@@ -2729,6 +2733,7 @@ function renderHours() {
         filtered = filtered.filter(h => {
             return (h.description || "").toLowerCase().includes(q) || 
                    (h.concept || "").toLowerCase().includes(q) ||
+                   (h.client || "").toLowerCase().includes(q) ||
                    (h.date || "").includes(q);
         });
     }
@@ -2742,8 +2747,9 @@ function renderHours() {
         const card = document.createElement("div");
         card.className = "item-card anim-fade";
         
-        const titleText = `${h.description || "Sin cliente"}`;
-        const subtext = `⏱️ ${h.date} • ${h.startTime} a ${h.endTime} (${h.hours.substring(0, 5)} hrs) • ${h.user_name}`;
+        const titleText = `${h.client || "Sin cliente"}`;
+        const descText = h.description ? ` • ${h.description}` : '';
+        const subtext = `⏱️ ${h.date} • ${h.startTime} a ${h.endTime} (${h.hours.substring(0, 5)} hrs)${descText} • ${h.user_name}`;
         
         card.innerHTML = `
             <div class="item-card-left">
@@ -3209,7 +3215,7 @@ function exportMonthlyReport() {
     
     const filterPrefix = `${year}-${month}`;
     
-    const company = state.vault.company_name || "ALTA TECNOLOGIA PARA LA SEGURIDAD";
+    const company = "ALTA TECNOLOGIA PARA LA SEGURIDAD";
     const monthName = getSpanishMonthName(month);
     const logoUrl = state.commercial.logoBase64 || 'logo.png';
     
@@ -3292,6 +3298,7 @@ function exportMonthlyReport() {
                         <td style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem;">${formattedDate}</td>
                         ${isAllTechs ? `<td style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem;">${h.user_name}</td>` : ''}
                         <td style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem;">${h.concept || "TRABAJOS"}</td>
+                        <td style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem;">${h.client || ""}</td>
                         <td style="border: 1.5px solid #000; padding: 9px; text-align: left; padding-left: 15px; font-size: 0.9rem;">${h.description || ""}</td>
                         <td style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem;">${h.hours}</td>
                     </tr>
@@ -3301,6 +3308,7 @@ function exportMonthlyReport() {
                     <tr>
                         <td style="border: 1.5px solid #000; padding: 9px;">&nbsp;</td>
                         ${isAllTechs ? `<td style="border: 1.5px solid #000; padding: 9px;">&nbsp;</td>` : ''}
+                        <td style="border: 1.5px solid #000; padding: 9px;">&nbsp;</td>
                         <td style="border: 1.5px solid #000; padding: 9px;">&nbsp;</td>
                         <td style="border: 1.5px solid #000; padding: 9px;">&nbsp;</td>
                         <td style="border: 1.5px solid #000; padding: 9px;">&nbsp;</td>
@@ -3325,17 +3333,18 @@ function exportMonthlyReport() {
                 <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
                     <thead>
                         <tr>
-                            <th style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem; background: #f1f5f9; font-weight: 700; width:15%">FECHA</th>
+                            <th style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem; background: #f1f5f9; font-weight: 700; width:12%">FECHA</th>
                             ${isAllTechs ? '<th style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem; background: #f1f5f9; font-weight: 700; width:15%">TÉCNICO</th>' : ''}
-                            <th style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem; background: #f1f5f9; font-weight: 700; width:20%">CONCEPTO</th>
+                            <th style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem; background: #f1f5f9; font-weight: 700; width:15%">CONCEPTO</th>
+                            <th style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem; background: #f1f5f9; font-weight: 700; width:20%">CLIENTE</th>
                             <th style="border: 1.5px solid #000; padding: 9px; text-align: left; padding-left: 15px; font-size: 0.9rem; background: #f1f5f9; font-weight: 700;">MOTIVO / DESCRIPCIÓN</th>
-                            <th style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem; background: #f1f5f9; font-weight: 700; width:18%">TOTAL EXTRAS</th>
+                            <th style="border: 1.5px solid #000; padding: 9px; text-align: center; font-size: 0.9rem; background: #f1f5f9; font-weight: 700; width:15%">TOTAL EXTRAS</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${rowsHtml}
                         <tr style="font-weight: 700; border-top: 2.5px solid #000;">
-                            <td colspan="${isAllTechs ? 4 : 3}" style="border: 1.5px solid #000; padding: 9px; text-align: right; padding-right: 15px; background: #ffff00;">TOTAL HORAS</td>
+                            <td colspan="${isAllTechs ? 5 : 4}" style="border: 1.5px solid #000; padding: 9px; text-align: right; padding-right: 15px; background: #ffff00;">TOTAL HORAS</td>
                             <td style="border: 1.5px solid #000; padding: 9px; text-align: center; background: #ffff00;">${totalSumStr}</td>
                         </tr>
                     </tbody>
@@ -4022,7 +4031,7 @@ async function handlePdfGenerationAndSharing() {
         doc.setTextColor(100, 116, 139);
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(8.5);
-        doc.text(`Versión App: v1.13.03 by JMSYSTEMS`, 195, 16, { align: 'right' });
+        doc.text(`Versión App: v1.13.04 by JMSYSTEMS`, 195, 16, { align: 'right' });
         
         doc.setFontSize(11);
         doc.setFont('Helvetica', 'bold');
