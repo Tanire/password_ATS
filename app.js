@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.14.00",
+        version: "1.14.01",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -888,7 +888,7 @@ async function syncWithCloud(isRetry = false) {
 // Lock application and wipe password from memory
 function lockVault() {
     state.masterPassword = "";
-    state.vault = { version: "1.14.00", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [] };
+    state.vault = { version: "1.14.01", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [] };
     state.gitSha = null;
     state.currentUser = null;
     
@@ -4083,7 +4083,7 @@ async function handlePdfGenerationAndSharing() {
         doc.setTextColor(100, 116, 139);
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(8.5);
-        doc.text(`Versión App: v1.14.00 by JMSYSTEMS`, 195, 16, { align: 'right' });
+        doc.text(`Versión App: v1.14.01 by JMSYSTEMS`, 195, 16, { align: 'right' });
         
         doc.setFontSize(11);
         doc.setFont('Helvetica', 'bold');
@@ -4781,6 +4781,35 @@ function toggleVacationRequestForm() {
     if (reqCard.style.display === "none") {
         reqCard.style.display = "block";
         reqCard.scrollIntoView({ behavior: 'smooth' });
+        
+        // Admin tech selection populate
+        const selectContainer = document.getElementById("vac-tech-select-container");
+        const select = document.getElementById("vac-tech-select");
+        const isAdmin = state.currentUser && (state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico");
+        
+        if (isAdmin && selectContainer && select) {
+            selectContainer.style.display = "block";
+            select.innerHTML = "";
+            
+            // Add self first
+            const myOpt = document.createElement("option");
+            myOpt.value = state.currentUser.username;
+            myOpt.textContent = `A mi nombre (${state.currentUser.fullName || state.currentUser.username.toUpperCase()})`;
+            select.appendChild(myOpt);
+            
+            // Add other users
+            const users = state.vault.users || [];
+            users.forEach(u => {
+                if (u.username.toLowerCase() !== state.currentUser.username.toLowerCase()) {
+                    const opt = document.createElement("option");
+                    opt.value = u.username;
+                    opt.textContent = u.fullName || u.username.toUpperCase();
+                    select.appendChild(opt);
+                }
+            });
+        } else if (selectContainer) {
+            selectContainer.style.display = "none";
+        }
     } else {
         reqCard.style.display = "none";
     }
@@ -4818,12 +4847,27 @@ async function submitVacationRequest(evt) {
         current.setDate(current.getDate() + 1);
     }
     
+    const isAdmin = state.currentUser && (state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico");
+    let targetUsername = state.currentUser ? state.currentUser.username : "admin";
+    let targetFullName = state.currentUser ? (state.currentUser.fullName || state.currentUser.username.toUpperCase()) : "TÉCNICO";
+    let requestStatus = "pending";
+    
+    if (isAdmin) {
+        const select = document.getElementById("vac-tech-select");
+        if (select && select.value) {
+            targetUsername = select.value.toLowerCase();
+            const foundUser = (state.vault.users || []).find(u => u.username.toLowerCase() === targetUsername);
+            targetFullName = foundUser ? (foundUser.fullName || targetUsername.toUpperCase()) : targetUsername.toUpperCase();
+        }
+        requestStatus = "approved"; // Auto-approve if created by admin
+    }
+    
     const requestData = {
         id: Date.now() + Math.floor(Math.random() * 1000),
-        username: state.currentUser ? state.currentUser.username : "admin",
-        fullName: state.currentUser ? (state.currentUser.fullName || state.currentUser.username.toUpperCase()) : "TÉCNICO",
+        username: targetUsername,
+        fullName: targetFullName,
         dates: dates,
-        status: "pending",
+        status: requestStatus,
         comments: comment,
         requestDate: new Date().toISOString().split('T')[0]
     };
@@ -4832,7 +4876,7 @@ async function submitVacationRequest(evt) {
     state.vault.vacations.unshift(requestData);
     
     setSyncStatus(false);
-    showToast("Solicitud registrada localmente");
+    showToast(isAdmin ? "Vacaciones registradas" : "Solicitud registrada localmente");
     
     // Hide form
     document.getElementById("vacations-request-card").style.display = "none";
@@ -4841,17 +4885,22 @@ async function submitVacationRequest(evt) {
     // Refresh lists & calendar
     renderVacationCalendar();
     renderVacationsSummary();
+    renderAdminVacationsPending();
+    updateVacationBadge();
     
     // Sync to cloud
     await syncWithCloud();
     
     // Send Telegram alert
     const rangeText = dates.length === 1 ? `${startVal}` : `${startVal} al ${endVal} (${dates.length} días)`;
+    const subtipoText = isAdmin ? "Registro" : "Solicitud";
+    const estadoText = isAdmin ? "APROBADO" : "PENDIENTE DE VALIDAR";
+    
     enviarAlertaTelegram("Vacaciones", {
-        subtipo: "Solicitud",
+        subtipo: subtipoText,
         tecnico: requestData.fullName,
-        detalle: `Solicita vacaciones para el rango: ${rangeText}. Comentario: ${comment || "Ninguno"}`,
-        estado: "PENDIENTE DE VALIDAR"
+        detalle: `${isAdmin ? "Administrador registra" : "Solicita"} vacaciones para el rango: ${rangeText}. Comentario: ${comment || "Ninguno"}`,
+        estado: estadoText
     });
 }
 
