@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.13.04",
+        version: "1.14.00",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -14,13 +14,17 @@ const state = {
         manuals: [],       // Technical manual notes
         expenses: [],      // Expense logs
         users: [],         // User list
-        commercial_reports: [] // Technical-commercial reports
+        commercial_reports: [], // Technical-commercial reports
+        vacations: []      // Vacation requests v1.14.00
     },
     masterPassword: "",
     gitClient: null,
     gitSha: null,
     isSynced: true,      // true: Synced, false: Unsaved changes, 'offline': Offline mode
     currentScreen: "dashboard",
+    vacation: {
+        currentDate: new Date()
+    },
     activeCategory: "General", // For manuals brand selection
     usersMetadata: {},   // Wrapped keys metadata
     currentUser: null,   // Current active user
@@ -538,6 +542,40 @@ function setupEventListeners() {
     if (btnSharePdf) {
         btnSharePdf.addEventListener('click', handlePdfGenerationAndSharing);
     }
+
+    // ==========================================
+    // VACATION LISTENERS v1.14.00
+    // ==========================================
+    const menuVac = document.getElementById("menu-vacations");
+    if (menuVac) {
+        menuVac.addEventListener("click", () => switchScreen("vacations"));
+    }
+    const btnBackVac = document.getElementById("btn-back-vacations");
+    if (btnBackVac) {
+        btnBackVac.addEventListener("click", () => switchScreen("dashboard"));
+    }
+    const btnVacPrev = document.getElementById("btn-vac-prev-month");
+    if (btnVacPrev) {
+        btnVacPrev.addEventListener("click", () => navigateVacMonth(-1));
+    }
+    const btnVacNext = document.getElementById("btn-vac-next-month");
+    if (btnVacNext) {
+        btnVacNext.addEventListener("click", () => navigateVacMonth(1));
+    }
+    const btnVacShowForm = document.getElementById("btn-vac-show-request-form");
+    if (btnVacShowForm) {
+        btnVacShowForm.addEventListener("click", toggleVacationRequestForm);
+    }
+    const btnVacCancelForm = document.getElementById("btn-vac-cancel-request");
+    if (btnVacCancelForm) {
+        btnVacCancelForm.addEventListener("click", () => {
+            document.getElementById("vacations-request-card").style.display = "none";
+        });
+    }
+    const formVacReq = document.getElementById("form-vacation-request");
+    if (formVacReq) {
+        formVacReq.addEventListener("submit", submitVacationRequest);
+    }
 }
 
 // --- CORE FUNCTIONALITY: UNLOCK / SYNC ---
@@ -582,6 +620,7 @@ function switchScreen(screenId) {
     if (screenId === "materials") renderMaterials();
     if (screenId === "expenses") renderExpenses();
     if (screenId === "commercial-history") renderCommercialHistory();
+    if (screenId === "vacations") initVacationsScreen();
 }
 
 // Derive keys and pull vault from GitHub or local cache
@@ -696,6 +735,7 @@ async function handleUnlock() {
         if (!state.vault.diets) state.vault.diets = [];
         if (!state.vault.materials) state.vault.materials = [];
         if (!state.vault.commercial_reports) state.vault.commercial_reports = [];
+        if (!state.vault.vacations) state.vault.vacations = [];
         if (!state.vault.manual_categories) {
             state.vault.manual_categories = ["Ademco", "DSC", "Paradox", "Risco", "Galaxy", "Ajax", "Texecom", "General"];
         }
@@ -848,7 +888,7 @@ async function syncWithCloud(isRetry = false) {
 // Lock application and wipe password from memory
 function lockVault() {
     state.masterPassword = "";
-    state.vault = { version: "4.01", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [] };
+    state.vault = { version: "1.14.00", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [] };
     state.gitSha = null;
     state.currentUser = null;
     
@@ -1593,14 +1633,23 @@ async function enviarAlertaTelegram(tipo, datos, isRetry = false) {
         }
         detalleMsg = escapeMarkdown(detail);
         montoMsg = escapeMarkdown(datos.subscriber_code || "Sin número");
+    } else if (tipo === "Vacaciones") {
+        tipoMsg = escapeMarkdown(`Vacaciones - ${datos.subtipo}`);
+        tecnicoMsg = escapeMarkdown(datos.tecnico || "TÉCNICO");
+        detalleMsg = escapeMarkdown(datos.detalle || "-");
+        montoMsg = escapeMarkdown(datos.estado || "Pendiente");
     }
 
-    const headerTitle = datos.isNew === false ? "*Registro Modificado en ALTA TECNOLOGIA PARA LA SEGURIDAD*" : "*Nuevo Registro en ALTA TECNOLOGIA PARA LA SEGURIDAD*";
+    let headerTitle = datos.isNew === false ? "*Registro Modificado en ALTA TECNOLOGIA PARA LA SEGURIDAD*" : "*Nuevo Registro en ALTA TECNOLOGIA PARA LA SEGURIDAD*";
+    if (tipo === "Vacaciones") {
+        headerTitle = datos.subtipo === "Solicitud" ? "*Nueva Solicitud de Vacaciones*" : "*Resolución de Vacaciones*";
+    }
+    
     const message = `${headerTitle}
 • *Tipo:* ${tipoMsg}
 • *Técnico:* ${tecnicoMsg}
 • *Detalle / Concepto:* ${detalleMsg}
-• *Monto / Identificador:* ${montoMsg}
+• *Estado / Info:* ${montoMsg}
 • *Fecha:* ${fechaFormateada}`;
 
     const url = `https://api.telegram.org/bot${TELEGRAM_CONFIG.token}/sendMessage`;
@@ -2001,6 +2050,9 @@ function applyUserPrivileges(user) {
     if (menuComm) {
         menuComm.style.display = hasComm ? "flex" : "none";
     }
+
+    // Update vacation badge
+    updateVacationBadge();
 }
 
 // Helper: returns true if user can see all technicians' expenses
@@ -4031,7 +4083,7 @@ async function handlePdfGenerationAndSharing() {
         doc.setTextColor(100, 116, 139);
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(8.5);
-        doc.text(`Versión App: v1.13.04 by JMSYSTEMS`, 195, 16, { align: 'right' });
+        doc.text(`Versión App: v1.14.00 by JMSYSTEMS`, 195, 16, { align: 'right' });
         
         doc.setFontSize(11);
         doc.setFont('Helvetica', 'bold');
@@ -4584,5 +4636,435 @@ async function deleteCommercialReport(id) {
         showToast("Error al sincronizar cambios");
     }
 }
+
+// ==========================================
+// VACATION MODULE METHODS v1.14.00
+// ==========================================
+
+function initVacationsScreen() {
+    state.vacation.currentDate = new Date();
+    // Default request date inputs to current date
+    const todayStr = new Date().toISOString().split('T')[0];
+    const startInput = document.getElementById("vac-start-date");
+    const endInput = document.getElementById("vac-end-date");
+    if (startInput) startInput.value = todayStr;
+    if (endInput) endInput.value = todayStr;
+    
+    // Hide request form card initially
+    const reqCard = document.getElementById("vacations-request-card");
+    if (reqCard) reqCard.style.display = "none";
+    
+    renderVacationCalendar();
+    renderVacationsSummary();
+    renderAdminVacationsPending();
+    updateVacationBadge();
+}
+
+function renderVacationCalendar() {
+    const grid = document.getElementById("vac-calendar-grid");
+    if (!grid) return;
+    grid.innerHTML = "";
+    
+    const d = state.vacation.currentDate;
+    const year = d.getFullYear();
+    const month = d.getMonth(); // 0-indexed
+    
+    // Set title
+    const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    document.getElementById("vac-calendar-title").textContent = `${months[month]} ${year}`;
+    
+    // First day of month
+    const firstDay = new Date(year, month, 1);
+    // Day of week of first day (0=Sunday, 1=Monday, ..., 6=Saturday)
+    // Convert to European standard (0=Monday, ..., 6=Sunday)
+    let startDayOfWeek = firstDay.getDay() - 1;
+    if (startDayOfWeek < 0) startDayOfWeek = 6;
+    
+    // Number of days in month
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    // Empty cells before start day
+    for (let i = 0; i < startDayOfWeek; i++) {
+        const emptyCell = document.createElement("div");
+        emptyCell.className = "calendar-day empty";
+        grid.appendChild(emptyCell);
+    }
+    
+    const today = new Date();
+    const isAdmin = state.currentUser && (state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico");
+    
+    // Get all vacations from vault
+    const vacations = state.vault.vacations || [];
+    
+    // Generate day cells
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dayCell = document.createElement("div");
+        dayCell.className = "calendar-day";
+        dayCell.textContent = day;
+        
+        // Build YYYY-MM-DD string for this day
+        const currentMonthStr = String(month + 1).padStart(2, '0');
+        const currentDayStr = String(day).padStart(2, '0');
+        const dateStr = `${year}-${currentMonthStr}-${currentDayStr}`;
+        
+        // Check if this date is today
+        if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+            dayCell.classList.add("today");
+        }
+        
+        // Find matching vacation requests that overlap with this date
+        const matchingRequests = vacations.filter(v => {
+            return v.dates && v.dates.includes(dateStr) && v.status !== "rejected";
+        });
+        
+        if (matchingRequests.length > 0) {
+            // Determine combined status: if any is pending, show yellow. If all are approved, show green.
+            const hasPending = matchingRequests.some(r => r.status === "pending");
+            if (hasPending) {
+                dayCell.classList.add("pending");
+            } else {
+                dayCell.classList.add("approved");
+            }
+            
+            // Build tooltip text listing requesters
+            let tooltip = "";
+            if (isAdmin) {
+                const names = matchingRequests.map(r => `${r.fullName || r.username.toUpperCase()} (${r.status === 'pending' ? 'Pendiente' : 'Aceptado'})`);
+                tooltip = names.join(", ");
+            } else {
+                // If technician, just show own status or "Ocupado"
+                const myMatch = matchingRequests.some(r => r.username.toLowerCase() === state.currentUser.username.toLowerCase());
+                if (myMatch) {
+                    tooltip = "Tus vacaciones (" + (hasPending ? "Pendiente" : "Aceptado") + ")";
+                } else {
+                    tooltip = "Reservado por otro técnico";
+                }
+            }
+            dayCell.setAttribute("title", tooltip);
+            
+            // Add tiny indicators for multiple requests
+            if (matchingRequests.length > 1) {
+                const dotsContainer = document.createElement("div");
+                dotsContainer.className = "calendar-day-dots";
+                matchingRequests.forEach(r => {
+                    const dot = document.createElement("span");
+                    dot.className = "cal-dot " + (r.status === "pending" ? "pending" : "approved");
+                    dotsContainer.appendChild(dot);
+                });
+                dayCell.appendChild(dotsContainer);
+            }
+        }
+        
+        // Click to view/toggle day detail
+        dayCell.addEventListener("click", () => {
+            handleCalendarDayClick(dateStr, matchingRequests);
+        });
+        
+        grid.appendChild(dayCell);
+    }
+}
+
+function navigateVacMonth(dir) {
+    const d = state.vacation.currentDate;
+    d.setMonth(d.getMonth() + dir);
+    state.vacation.currentDate = d;
+    renderVacationCalendar();
+}
+
+function toggleVacationRequestForm() {
+    const reqCard = document.getElementById("vacations-request-card");
+    if (!reqCard) return;
+    if (reqCard.style.display === "none") {
+        reqCard.style.display = "block";
+        reqCard.scrollIntoView({ behavior: 'smooth' });
+    } else {
+        reqCard.style.display = "none";
+    }
+}
+
+async function submitVacationRequest(evt) {
+    evt.preventDefault();
+    if (state.currentUser && state.currentUser.role === "viewer") {
+        showToast("Error: Acceso de sólo lectura");
+        return;
+    }
+    
+    const startVal = document.getElementById("vac-start-date").value;
+    const endVal = document.getElementById("vac-end-date").value;
+    const comment = document.getElementById("vac-comment").value.trim();
+    
+    if (!startVal || !endVal) {
+        showToast("Por favor selecciona ambas fechas");
+        return;
+    }
+    
+    const start = new Date(startVal);
+    const end = new Date(endVal);
+    
+    if (end < start) {
+        showToast("La fecha de fin no puede ser anterior a la de inicio");
+        return;
+    }
+    
+    // Generate dates array
+    const dates = [];
+    let current = new Date(start);
+    while (current <= end) {
+        dates.push(current.toISOString().split('T')[0]);
+        current.setDate(current.getDate() + 1);
+    }
+    
+    const requestData = {
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        username: state.currentUser ? state.currentUser.username : "admin",
+        fullName: state.currentUser ? (state.currentUser.fullName || state.currentUser.username.toUpperCase()) : "TÉCNICO",
+        dates: dates,
+        status: "pending",
+        comments: comment,
+        requestDate: new Date().toISOString().split('T')[0]
+    };
+    
+    if (!state.vault.vacations) state.vault.vacations = [];
+    state.vault.vacations.unshift(requestData);
+    
+    setSyncStatus(false);
+    showToast("Solicitud registrada localmente");
+    
+    // Hide form
+    document.getElementById("vacations-request-card").style.display = "none";
+    document.getElementById("vac-comment").value = "";
+    
+    // Refresh lists & calendar
+    renderVacationCalendar();
+    renderVacationsSummary();
+    
+    // Sync to cloud
+    await syncWithCloud();
+    
+    // Send Telegram alert
+    const rangeText = dates.length === 1 ? `${startVal}` : `${startVal} al ${endVal} (${dates.length} días)`;
+    enviarAlertaTelegram("Vacaciones", {
+        subtipo: "Solicitud",
+        tecnico: requestData.fullName,
+        detalle: `Solicita vacaciones para el rango: ${rangeText}. Comentario: ${comment || "Ninguno"}`,
+        estado: "PENDIENTE DE VALIDAR"
+    });
+}
+
+function renderVacationsSummary() {
+    const list = document.getElementById("vacations-summary-list");
+    if (!list) return;
+    list.innerHTML = "";
+    
+    const isAdmin = state.currentUser && (state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico");
+    let requests = state.vault.vacations || [];
+    
+    // If not admin, technician only sees their own requests
+    if (!isAdmin) {
+        requests = requests.filter(r => r.username.toLowerCase() === state.currentUser.username.toLowerCase());
+        document.getElementById("vac-summary-title").textContent = "Resumen de mis Solicitudes";
+    } else {
+        document.getElementById("vac-summary-title").textContent = "Todas las Solicitudes (General)";
+    }
+    
+    if (requests.length === 0) {
+        list.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-secondary); font-size:0.85rem;">No hay solicitudes registradas</div>`;
+        return;
+    }
+    
+    requests.forEach(r => {
+        const card = document.createElement("div");
+        card.className = "vacation-item-card anim-fade";
+        card.style.background = "rgba(255, 255, 255, 0.02)";
+        
+        const dateRangeText = r.dates.length === 1 ? 
+            formatSpanishDate(r.dates[0]) : 
+            `${formatSpanishDate(r.dates[0])} al ${formatSpanishDate(r.dates[r.dates.length - 1])} (${r.dates.length} días)`;
+            
+        const commentText = r.comments ? `<div style="font-size:0.8rem; color:var(--text-secondary); font-style:italic; margin-top:2px;">💬 ${escapeHtml(r.comments)}</div>` : "";
+        const ownerName = isAdmin ? `<span style="font-weight:600; color:var(--accent);">${escapeHtml(r.fullName)}</span> • ` : "";
+        
+        let deleteBtn = "";
+        // Only allow technician to delete their own PENDING requests, or admin to delete any
+        if (isAdmin || (r.username.toLowerCase() === state.currentUser.username.toLowerCase() && r.status === "pending")) {
+            deleteBtn = `<button class="btn-icon btn-delete-vac" data-id="${r.id}" style="color:var(--danger); border:none; background:transparent; cursor:pointer;" title="Eliminar Solicitud"><i class="bx bx-trash" style="font-size:1.1rem;"></i></button>`;
+        }
+        
+        card.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div>
+                    <div style="font-size:0.9rem; font-weight:500;">${ownerName}${dateRangeText}</div>
+                    ${commentText}
+                    <div style="margin-top:5px; display:flex; gap:10px; font-size:0.75rem; color:var(--text-secondary);">
+                        <span>Solicitado: ${formatSpanishDate(r.requestDate || r.dates[0])}</span>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="vacation-status-badge ${r.status}">${r.status === 'pending' ? 'Pendiente' : r.status === 'approved' ? 'Validado' : 'Denegado'}</span>
+                    ${deleteBtn}
+                </div>
+            </div>
+        `;
+        
+        if (deleteBtn) {
+            card.querySelector(".btn-delete-vac").addEventListener("click", (evt) => {
+                evt.stopPropagation();
+                deleteVacationRequest(r.id);
+            });
+        }
+        
+        list.appendChild(card);
+    });
+}
+
+async function deleteVacationRequest(id) {
+    if (state.currentUser && state.currentUser.role === "viewer") {
+        showToast("Error: Acceso de sólo lectura");
+        return;
+    }
+    
+    if (confirm("¿Estás seguro de que deseas eliminar esta solicitud de vacaciones?")) {
+        state.vault.vacations = state.vault.vacations.filter(v => v.id !== id);
+        setSyncStatus(false);
+        renderVacationCalendar();
+        renderVacationsSummary();
+        renderAdminVacationsPending();
+        updateVacationBadge();
+        
+        await syncWithCloud();
+        showToast("Solicitud eliminada");
+    }
+}
+
+function renderAdminVacationsPending() {
+    const panel = document.getElementById("vacations-admin-panel");
+    const list = document.getElementById("vacations-pending-list");
+    if (!panel || !list) return;
+    
+    const isAdmin = state.currentUser && (state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico");
+    if (!isAdmin) {
+        panel.style.display = "none";
+        return;
+    }
+    
+    const pending = (state.vault.vacations || []).filter(v => v.status === "pending");
+    if (pending.length === 0) {
+        panel.style.display = "none";
+        return;
+    }
+    
+    panel.style.display = "block";
+    list.innerHTML = "";
+    
+    pending.forEach(r => {
+        const item = document.createElement("div");
+        item.style.background = "rgba(255, 255, 255, 0.03)";
+        item.style.border = "1px solid var(--border-glass)";
+        item.style.borderRadius = "var(--radius-sm)";
+        item.style.padding = "10px 14px";
+        item.style.display = "flex";
+        item.style.justifyContent = "space-between";
+        item.style.alignItems = "center";
+        
+        const dateRangeText = r.dates.length === 1 ? 
+            formatSpanishDate(r.dates[0]) : 
+            `${formatSpanishDate(r.dates[0])} al ${formatSpanishDate(r.dates[r.dates.length - 1])} (${r.dates.length} días)`;
+            
+        const commentHtml = r.comments ? `<div style="font-size:0.75rem; color:var(--text-secondary); font-style:italic;">💬 ${escapeHtml(r.comments)}</div>` : "";
+        
+        item.innerHTML = `
+            <div>
+                <div style="font-weight:600; font-size:0.9rem; color:var(--accent);">${escapeHtml(r.fullName)}</div>
+                <div style="font-size:0.85rem; color:var(--text-primary); margin-top:2px;">${dateRangeText}</div>
+                ${commentHtml}
+            </div>
+            <div style="display:flex; gap:6px;">
+                <button class="btn-approve btn-premium" style="background:var(--success); border:none; padding:4px 8px; font-size:0.75rem; height:28px;" type="button">Validar</button>
+                <button class="btn-reject btn-premium" style="background:var(--danger); border:none; padding:4px 8px; font-size:0.75rem; height:28px;" type="button">Denegar</button>
+            </div>
+        `;
+        
+        item.querySelector(".btn-approve").addEventListener("click", () => resolveVacationRequest(r.id, "approved"));
+        item.querySelector(".btn-reject").addEventListener("click", () => resolveVacationRequest(r.id, "rejected"));
+        
+        list.appendChild(item);
+    });
+}
+
+async function resolveVacationRequest(id, status) {
+    if (state.currentUser && state.currentUser.role === "viewer") {
+        showToast("Error: Acceso de sólo lectura");
+        return;
+    }
+    
+    const request = (state.vault.vacations || []).find(v => v.id === id);
+    if (!request) return;
+    
+    request.status = status;
+    setSyncStatus(false);
+    
+    renderVacationCalendar();
+    renderVacationsSummary();
+    renderAdminVacationsPending();
+    updateVacationBadge();
+    
+    await syncWithCloud();
+    showToast(status === "approved" ? "Vacaciones validadas" : "Vacaciones denegadas");
+    
+    // Telegram notification
+    const rangeText = request.dates.length === 1 ? `${request.dates[0]}` : `${request.dates[0]} al ${request.dates[request.dates.length - 1]} (${request.dates.length} días)`;
+    const adminUser = state.currentUser ? (state.currentUser.fullName || state.currentUser.username.toUpperCase()) : "ADMIN";
+    enviarAlertaTelegram("Vacaciones", {
+        subtipo: "Resolución",
+        tecnico: request.fullName,
+        detalle: `Resolución para el rango: ${rangeText}`,
+        estado: status === "approved" ? `APROBADO por ${adminUser}` : `DENEGADO por ${adminUser}`
+    });
+}
+
+function updateVacationBadge() {
+    const badge = document.getElementById("vacation-badge");
+    if (!badge) return;
+    
+    const isAdmin = state.currentUser && (state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico");
+    if (!isAdmin) {
+        badge.style.display = "none";
+        return;
+    }
+    
+    const pendingCount = (state.vault.vacations || []).filter(v => v.status === "pending").length;
+    if (pendingCount > 0) {
+        badge.textContent = pendingCount;
+        badge.style.display = "flex";
+    } else {
+        badge.style.display = "none";
+    }
+}
+
+function handleCalendarDayClick(dateStr, matchingRequests) {
+    // Set Date input fields in request form to clicked day for convenience
+    document.getElementById("vac-start-date").value = dateStr;
+    document.getElementById("vac-end-date").value = dateStr;
+    
+    if (matchingRequests.length === 0) {
+        showToast(`Día libre: ${formatSpanishDate(dateStr)}`);
+        return;
+    }
+    
+    const details = matchingRequests.map(r => {
+        const statusText = r.status === 'pending' ? 'Pendiente' : 'Aceptado';
+        return `${r.fullName || r.username.toUpperCase()} (${statusText})`;
+    }).join(", ");
+    
+    showToast(`${formatSpanishDate(dateStr)}: ${details}`);
+}
+
+function formatSpanishDate(dateStr) {
+    if (!dateStr) return "";
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
 
 

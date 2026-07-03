@@ -1034,4 +1034,138 @@ select.input-control {
     display: none !important;
 }
 
+/* VACATIONS & CALENDAR STYLES v1.14.00 */
+.calendar-grid-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    margin-top: 5px;
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border-radius: 8px;
+    border: 1px solid var(--border-glass);
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.01);
+    color: var(--text-primary);
+    transition: var(--transition-smooth);
+    position: relative;
+    user-select: none;
+}
+
+.calendar-day:hover:not(.empty) {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.calendar-day.empty {
+    background: transparent;
+    border: none;
+    cursor: default;
+    pointer-events: none;
+}
+
+.calendar-day.today {
+    border: 1.5px solid var(--accent);
+    font-weight: bold;
+    color: var(--accent);
+}
+
+.calendar-day.selected {
+    background: var(--accent-gradient) !important;
+    color: #ffffff !important;
+    border-color: transparent !important;
+    box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.calendar-day.pending {
+    background: rgba(245, 158, 11, 0.15) !important;
+    border: 1.5px solid var(--warning) !important;
+    color: #fbbf24 !important;
+}
+
+.calendar-day.approved {
+    background: rgba(16, 185, 129, 0.15) !important;
+    border: 1.5px solid var(--success) !important;
+    color: #34d399 !important;
+}
+
+.calendar-day.rejected {
+    background: rgba(239, 68, 68, 0.15) !important;
+    border: 1.5px solid var(--danger) !important;
+    color: #f87171 !important;
+}
+
+/* Dot indicator inside calendar days for multiple events or technicians */
+.calendar-day-dots {
+    display: flex;
+    gap: 2px;
+    margin-top: 2px;
+    position: absolute;
+    bottom: 3px;
+}
+
+.cal-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+}
+.cal-dot.pending {
+    background: var(--warning);
+}
+.cal-dot.approved {
+    background: var(--success);
+}
+
+/* Vacation status items and cards */
+.vacation-item-card {
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: var(--transition-smooth);
+}
+
+.vacation-item-card:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.vacation-status-badge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    width: fit-content;
+}
+
+.vacation-status-badge.pending {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--warning);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.vacation-status-badge.approved {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.vacation-status-badge.rejected {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+
 
