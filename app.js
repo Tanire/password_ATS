@@ -4733,7 +4733,11 @@ function renderVacationCalendar() {
                 tooltip = names.join(", ");
             } else {
                 // If technician, just show own status or "Ocupado"
-                const myMatch = matchingRequests.some(r => r.username.toLowerCase() === state.currentUser.username.toLowerCase());
+                const myMatch = matchingRequests.some(r => {
+                    const rUser = (r.username || "").toLowerCase();
+                    const currUser = (state.currentUser?.username || "").toLowerCase();
+                    return rUser === currUser;
+                });
                 if (myMatch) {
                     tooltip = "Tus vacaciones (" + (hasPending ? "Pendiente" : "Aceptado") + ")";
                 } else {
@@ -4861,7 +4865,11 @@ function renderVacationsSummary() {
     
     // If not admin, technician only sees their own requests
     if (!isAdmin) {
-        requests = requests.filter(r => r.username.toLowerCase() === state.currentUser.username.toLowerCase());
+        requests = requests.filter(r => {
+            const rUser = (r.username || "").toLowerCase();
+            const currUser = (state.currentUser?.username || "").toLowerCase();
+            return rUser === currUser;
+        });
         document.getElementById("vac-summary-title").textContent = "Resumen de mis Solicitudes";
     } else {
         document.getElementById("vac-summary-title").textContent = "Todas las Solicitudes (General)";
@@ -4886,7 +4894,9 @@ function renderVacationsSummary() {
         
         let deleteBtn = "";
         // Only allow technician to delete their own PENDING requests, or admin to delete any
-        if (isAdmin || (r.username.toLowerCase() === state.currentUser.username.toLowerCase() && r.status === "pending")) {
+        const rUser = (r.username || "").toLowerCase();
+        const currUser = (state.currentUser?.username || "").toLowerCase();
+        if (isAdmin || (rUser === currUser && r.status === "pending")) {
             deleteBtn = `<button class="btn-icon btn-delete-vac" data-id="${r.id}" style="color:var(--danger); border:none; background:transparent; cursor:pointer;" title="Eliminar Solicitud"><i class="bx bx-trash" style="font-size:1.1rem;"></i></button>`;
         }
         
