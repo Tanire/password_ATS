@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.14.02",
+        version: "1.14.03",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -4109,7 +4109,7 @@ async function handlePdfGenerationAndSharing() {
         doc.setTextColor(100, 116, 139);
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(8.5);
-        doc.text(`Versión App: v1.14.02 by JMSYSTEMS`, 195, 16, { align: 'right' });
+        doc.text(`Versión App: v1.14.03 by JMSYSTEMS`, 195, 16, { align: 'right' });
         
         doc.setFontSize(11);
         doc.setFont('Helvetica', 'bold');
@@ -4685,6 +4685,7 @@ function initVacationsScreen() {
     renderAdminVacationsPending();
     updateVacationBadge();
     updateVacationCounter();
+    renderAdminVacationsSummary();
 }
 
 function renderVacationCalendar() {
@@ -4745,12 +4746,30 @@ function renderVacationCalendar() {
         });
         
         if (matchingRequests.length > 0) {
-            // Determine combined status: if any is pending, show yellow. If all are approved, show green.
             const hasPending = matchingRequests.some(r => r.status === "pending");
-            if (hasPending) {
-                dayCell.classList.add("pending");
+            const colors = matchingRequests.map(r => getTechColor(r.username));
+            const uniqueColors = [...new Set(colors)];
+            
+            if (uniqueColors.length === 1) {
+                dayCell.style.background = uniqueColors[0];
             } else {
-                dayCell.classList.add("approved");
+                const percent = 100 / uniqueColors.length;
+                let gradParts = [];
+                uniqueColors.forEach((color, idx) => {
+                    gradParts.push(`${color} ${idx * percent}%`);
+                    gradParts.push(`${color} ${(idx + 1) * percent}%`);
+                });
+                dayCell.style.background = `linear-gradient(135deg, ${gradParts.join(', ')})`;
+            }
+            dayCell.style.color = "#ffffff";
+            dayCell.style.textShadow = "0 1px 2px rgba(0,0,0,0.6)";
+            dayCell.style.fontWeight = "bold";
+            
+            if (hasPending) {
+                dayCell.style.border = "1.5px solid var(--warning)";
+                dayCell.style.boxShadow = "inset 0 0 5px rgba(245, 158, 11, 0.6)";
+            } else {
+                dayCell.style.border = "1.5px solid var(--success)";
             }
             
             // Build tooltip text listing requesters
@@ -4952,6 +4971,7 @@ async function submitVacationRequest(evt) {
     renderAdminVacationsPending();
     updateVacationBadge();
     updateVacationCounter();
+    renderAdminVacationsSummary();
     
     // Sync to cloud
     await syncWithCloud();
@@ -5116,6 +5136,7 @@ async function deleteVacationRequest(id) {
         renderAdminVacationsPending();
         updateVacationBadge();
         updateVacationCounter();
+        renderAdminVacationsSummary();
         
         await syncWithCloud();
         showToast("Solicitud eliminada");
@@ -5194,6 +5215,7 @@ async function resolveVacationRequest(id, status) {
     renderAdminVacationsPending();
     updateVacationBadge();
     updateVacationCounter();
+    renderAdminVacationsSummary();
     
     await syncWithCloud();
     showToast(status === "approved" ? "Vacaciones validadas" : "Vacaciones denegadas");
@@ -5309,6 +5331,102 @@ function updateVacationCounter(username = null) {
     approvedEl.textContent = approvedDays;
     pendingEl.textContent = pendingDays;
     remainingEl.textContent = 23 - approvedDays - pendingDays;
+}
+
+// v1.14.03 Distinct vibrant colors for technicians
+const TECH_COLORS = [
+    "#3b82f6", // Blue
+    "#10b981", // Emerald Green
+    "#8b5cf6", // Purple
+    "#f59e0b", // Amber
+    "#ec4899", // Pink
+    "#06b6d4", // Cyan
+    "#f43f5e", // Rose
+    "#14b8a6", // Teal
+    "#a855f7", // Purple-magenta
+    "#eab308"  // Yellow
+];
+
+function getTechColor(username) {
+    if (!username) return "#94a3b8"; // Default slate gray
+    const name = username.toLowerCase().trim();
+    if (name === "admin") return "#ef4444"; // Red for admin
+    
+    // Deterministic hash to map username to one of the colors
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const idx = Math.abs(hash) % TECH_COLORS.length;
+    return TECH_COLORS[idx];
+}
+
+// v1.14.03 Render Admin Vacation Summary widget
+function renderAdminVacationsSummary() {
+    const panel = document.getElementById("vacations-admin-summary-panel");
+    const list = document.getElementById("vacations-admin-summary-list");
+    if (!panel || !list) return;
+    
+    const isAdmin = state.currentUser && (state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico");
+    if (!isAdmin) {
+        panel.style.display = "none";
+        return;
+    }
+    
+    panel.style.display = "block";
+    list.innerHTML = "";
+    
+    const users = state.vault.users || [];
+    const vacations = state.vault.vacations || [];
+    const todayStr = new Date().toISOString().split('T')[0];
+    
+    users.forEach(u => {
+        let approvedDays = 0;
+        let pendingDays = 0;
+        let enjoyedDays = 0;
+        
+        const userVacations = vacations.filter(v => (v.username || "").toLowerCase() === u.username.toLowerCase());
+        userVacations.forEach(v => {
+            const bizDays = getBusinessDaysCount(v.dates);
+            if (v.status === "approved") {
+                approvedDays += bizDays;
+                
+                // Count enjoyed days (approved and date is in the past)
+                const enjoyedBizDays = getBusinessDaysCount(v.dates.filter(d => d < todayStr));
+                enjoyedDays += enjoyedBizDays;
+            } else if (v.status === "pending") {
+                pendingDays += bizDays;
+            }
+        });
+        
+        const remainingDays = 23 - approvedDays - pendingDays;
+        const color = getTechColor(u.username);
+        const displayName = u.fullName || u.username.toUpperCase();
+        
+        const item = document.createElement("div");
+        item.style.display = "flex";
+        item.style.justifyContent = "space-between";
+        item.style.alignItems = "center";
+        item.style.background = "rgba(255, 255, 255, 0.02)";
+        item.style.border = "1px solid var(--border-glass)";
+        item.style.borderRadius = "var(--radius-sm)";
+        item.style.padding = "8px 12px";
+        item.style.fontSize = "0.85rem";
+        
+        item.innerHTML = `
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span style="width:12px; height:12px; border-radius:50%; background:${color}; display:inline-block; border:1px solid rgba(255,255,255,0.2);"></span>
+                <span style="font-weight:600; color:var(--text-primary);">${escapeHtml(displayName)}</span>
+            </div>
+            <div style="display:flex; gap:12px; color:var(--text-secondary); font-size:0.75rem;">
+                <span title="Disfrutados"><i class="bx bx-calendar-check" style="color:var(--success);"></i> ${enjoyedDays}</span>
+                <span title="Aprobados"><i class="bx bx-check-double" style="color:var(--success);"></i> ${approvedDays}</span>
+                <span title="Pendientes"><i class="bx bx-time-five" style="color:var(--warning);"></i> ${pendingDays}</span>
+                <span title="Restantes (saldo)"><i class="bx bx-calculator" style="color:var(--accent);"></i> ${remainingDays}</span>
+            </div>
+        `;
+        list.appendChild(item);
+    });
 }
 
 
