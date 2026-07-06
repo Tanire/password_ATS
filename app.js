@@ -23,7 +23,8 @@ const state = {
     isSynced: true,      // true: Synced, false: Unsaved changes, 'offline': Offline mode
     currentScreen: "dashboard",
     vacation: {
-        currentDate: new Date()
+        currentDate: new Date(),
+        editingId: null
     },
     activeCategory: "General", // For manuals brand selection
     usersMetadata: {},   // Wrapped keys metadata
@@ -570,6 +571,7 @@ function setupEventListeners() {
     if (btnVacCancelForm) {
         btnVacCancelForm.addEventListener("click", () => {
             document.getElementById("vacations-request-card").style.display = "none";
+            state.vacation.editingId = null;
             updateVacationCounter();
         });
     }
@@ -4887,18 +4889,54 @@ async function submitVacationRequest(evt) {
         requestStatus = "approved"; // Auto-approve if created by admin
     }
     
-    const requestData = {
-        id: Date.now() + Math.floor(Math.random() * 1000),
-        username: targetUsername,
-        fullName: targetFullName,
-        dates: dates,
-        status: requestStatus,
-        comments: comment,
-        requestDate: new Date().toISOString().split('T')[0]
-    };
+    const editingId = state.vacation.editingId;
+    let requestData;
     
-    if (!state.vault.vacations) state.vault.vacations = [];
-    state.vault.vacations.unshift(requestData);
+    if (editingId) {
+        if (!state.vault.vacations) state.vault.vacations = [];
+        const existing = state.vault.vacations.find(v => v.id == editingId);
+        if (existing) {
+            existing.dates = dates;
+            existing.comments = comment;
+            if (isAdmin) {
+                const select = document.getElementById("vac-tech-select");
+                if (select && select.value) {
+                    existing.username = select.value.toLowerCase();
+                    const foundUser = (state.vault.users || []).find(u => u.username.toLowerCase() === existing.username);
+                    existing.fullName = foundUser ? (foundUser.fullName || existing.username.toUpperCase()) : existing.username.toUpperCase();
+                }
+                existing.status = "approved"; // Force approve for admin edits
+            } else {
+                existing.status = "pending"; // Reset to pending for technician edits
+            }
+            requestData = existing;
+        } else {
+            // Fallback if not found
+            requestData = {
+                id: editingId,
+                username: targetUsername,
+                fullName: targetFullName,
+                dates: dates,
+                status: requestStatus,
+                comments: comment,
+                requestDate: new Date().toISOString().split('T')[0]
+            };
+            state.vault.vacations.unshift(requestData);
+        }
+    } else {
+        requestData = {
+            id: Date.now() + Math.floor(Math.random() * 1000),
+            username: targetUsername,
+            fullName: targetFullName,
+            dates: dates,
+            status: requestStatus,
+            comments: comment,
+            requestDate: new Date().toISOString().split('T')[0]
+        };
+        
+        if (!state.vault.vacations) state.vault.vacations = [];
+        state.vault.vacations.unshift(requestData);
+    }
     
     setSyncStatus(false);
     showToast(isAdmin ? "Vacaciones registradas" : "Solicitud registrada localmente");
@@ -4906,6 +4944,7 @@ async function submitVacationRequest(evt) {
     // Hide form
     document.getElementById("vacations-request-card").style.display = "none";
     document.getElementById("vac-comment").value = "";
+    state.vacation.editingId = null;
     
     // Refresh lists & calendar
     renderVacationCalendar();
@@ -4967,12 +5006,19 @@ function renderVacationsSummary() {
         const commentText = r.comments ? `<div style="font-size:0.8rem; color:var(--text-secondary); font-style:italic; margin-top:2px;">💬 ${escapeHtml(r.comments)}</div>` : "";
         const ownerName = isAdmin ? `<span style="font-weight:600; color:var(--accent);">${escapeHtml(r.fullName)}</span> • ` : "";
         
-        let deleteBtn = "";
-        // Only allow technician to delete their own PENDING requests, or admin to delete any
+        const todayStr = new Date().toISOString().split('T')[0];
+        const isFuture = r.dates && r.dates.some(d => d >= todayStr);
         const rUser = (r.username || "").toLowerCase();
         const currUser = (state.currentUser?.username || "").toLowerCase();
-        if (isAdmin || (rUser === currUser && r.status === "pending")) {
-            deleteBtn = `<button class="btn-icon btn-delete-vac" data-id="${r.id}" style="color:var(--danger); border:none; background:transparent; cursor:pointer;" title="Eliminar Solicitud"><i class="bx bx-trash" style="font-size:1.1rem;"></i></button>`;
+        
+        const canModify = isAdmin || (rUser === currUser && (r.status === "pending" || (r.status === "approved" && isFuture)));
+        
+        let actionBtns = "";
+        if (canModify) {
+            actionBtns = `
+                <button class="btn-icon btn-edit-vac" data-id="${r.id}" style="color:var(--accent); border:none; background:transparent; cursor:pointer; padding:0 4px;" title="Editar Solicitud"><i class="bx bx-edit-alt" style="font-size:1.1rem;"></i></button>
+                <button class="btn-icon btn-delete-vac" data-id="${r.id}" style="color:var(--danger); border:none; background:transparent; cursor:pointer; padding:0 4px;" title="Eliminar Solicitud"><i class="bx bx-trash" style="font-size:1.1rem;"></i></button>
+            `;
         }
         
         card.innerHTML = `
@@ -4986,20 +5032,74 @@ function renderVacationsSummary() {
                 </div>
                 <div style="display:flex; align-items:center; gap:8px;">
                     <span class="vacation-status-badge ${r.status}">${r.status === 'pending' ? 'Pendiente' : r.status === 'approved' ? 'Validado' : 'Denegado'}</span>
-                    ${deleteBtn}
+                    ${actionBtns}
                 </div>
             </div>
         `;
         
-        if (deleteBtn) {
+        if (canModify) {
             card.querySelector(".btn-delete-vac").addEventListener("click", (evt) => {
                 evt.stopPropagation();
                 deleteVacationRequest(r.id);
+            });
+            card.querySelector(".btn-edit-vac").addEventListener("click", (evt) => {
+                evt.stopPropagation();
+                editVacationRequest(r);
             });
         }
         
         list.appendChild(card);
     });
+}
+
+function editVacationRequest(r) {
+    const reqCard = document.getElementById("vacations-request-card");
+    if (!reqCard) return;
+    
+    // Set editing ID in state first
+    state.vacation.editingId = r.id;
+    
+    // Open the form card
+    reqCard.style.display = "block";
+    reqCard.scrollIntoView({ behavior: "smooth" });
+    
+    // Set form fields
+    document.getElementById("vac-start-date").value = r.dates[0];
+    document.getElementById("vac-end-date").value = r.dates[r.dates.length - 1];
+    document.getElementById("vac-comment").value = r.comments || "";
+    
+    // Handle admin tech selector if user has rights
+    const isAdmin = state.currentUser && (state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico");
+    const selectContainer = document.getElementById("vac-tech-select-container");
+    const select = document.getElementById("vac-tech-select");
+    
+    if (isAdmin && selectContainer && select) {
+        selectContainer.style.display = "block";
+        select.innerHTML = "";
+        
+        // Add self first
+        const myOpt = document.createElement("option");
+        myOpt.value = state.currentUser.username;
+        myOpt.textContent = `A mi nombre (${state.currentUser.fullName || state.currentUser.username.toUpperCase()})`;
+        select.appendChild(myOpt);
+        
+        // Add other users
+        const users = state.vault.users || [];
+        users.forEach(u => {
+            if (u.username.toLowerCase() !== state.currentUser.username.toLowerCase()) {
+                const opt = document.createElement("option");
+                opt.value = u.username;
+                opt.textContent = u.fullName || u.username.toUpperCase();
+                select.appendChild(opt);
+            }
+        });
+        
+        select.value = r.username.toLowerCase();
+    } else if (selectContainer) {
+        selectContainer.style.display = "none";
+    }
+    
+    updateVacationCounter(r.username);
 }
 
 async function deleteVacationRequest(id) {
@@ -5158,10 +5258,17 @@ function getBusinessDaysCount(datesArray) {
     if (!datesArray || !Array.isArray(datesArray)) return 0;
     let count = 0;
     datesArray.forEach(dStr => {
-        const d = new Date(dStr + "T00:00:00");
-        const day = d.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-        if (day !== 0 && day !== 6) {
-            count++;
+        // Safe YYYY-MM-DD split constructor (avoiding browser compatibility issues with ISO-like strings)
+        const parts = dStr.split("-");
+        if (parts.length === 3) {
+            const year = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1; // 0-indexed month
+            const day = parseInt(parts[2], 10);
+            const d = new Date(year, month, day);
+            const dayOfWeek = d.getDay(); // 0 = Sunday, 6 = Saturday
+            if (!isNaN(dayOfWeek) && dayOfWeek !== 0 && dayOfWeek !== 6) {
+                count++;
+            }
         }
     });
     return count;
@@ -5201,7 +5308,7 @@ function updateVacationCounter(username = null) {
     
     approvedEl.textContent = approvedDays;
     pendingEl.textContent = pendingDays;
-    remainingEl.textContent = 23 - approvedDays;
+    remainingEl.textContent = 23 - approvedDays - pendingDays;
 }
 
 
