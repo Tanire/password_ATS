@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.14.06",
+        version: "1.14.07",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -863,18 +863,21 @@ async function syncWithCloud(isRetry = false) {
         
         let targetSha = state.gitSha;
         if (remoteFile) {
-            if (state.gitSha && remoteFile.sha !== state.gitSha) {
+            if (!state.gitSha || remoteFile.sha !== state.gitSha) {
                 // Conflict check
                 if (showUi) {
                     showLoading(false);
-                    const overwrite = confirm("Conflicto detectado: El archivo en GitHub fue actualizado desde otro móvil. ¿Quieres sobrescribir los cambios remotos?");
+                    const overwrite = confirm("Alerta de Sincronización: Se han detectado cambios en GitHub no descargados localmente (o iniciaste sesión sin conexión). ¿Estás seguro de que deseas sobrescribir los datos remotos con tus datos locales?");
                     if (!overwrite) {
                         setSyncStatus(false);
-                        showToast("Sincronización cancelada por el usuario");
+                        showToast("Sincronización cancelada para proteger tus datos");
                         return;
                     }
                 } else {
-                    throw new Error("Conflict detected during background sync. Manual sync required.");
+                    // Prevent background overwriting if offline session or conflict
+                    console.warn("Conflict detected during background sync. Overwrite prevented.");
+                    setSyncStatus(false);
+                    return;
                 }
             }
             targetSha = remoteFile.sha;
@@ -4130,7 +4133,7 @@ async function handlePdfGenerationAndSharing() {
         doc.setTextColor(100, 116, 139);
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(8.5);
-        doc.text(`Versión App: v1.14.06 by JMSYSTEMS`, 195, 16, { align: 'right' });
+        doc.text(`Versión App: v1.14.07 by JMSYSTEMS`, 195, 16, { align: 'right' });
         
         doc.setFontSize(11);
         doc.setFont('Helvetica', 'bold');
@@ -5080,7 +5083,13 @@ async function submitVacationRequest(evt) {
             const foundUser = (state.vault.users || []).find(u => u.username.toLowerCase() === targetUsername);
             targetFullName = foundUser ? (foundUser.fullName || targetUsername.toUpperCase()) : targetUsername.toUpperCase();
         }
-        requestStatus = "approved"; // Auto-approve if created by admin
+        
+        // Auto-approve ONLY if the logged-in user has the 'admin' role
+        if (state.currentUser && state.currentUser.role === "admin") {
+            requestStatus = "approved";
+        } else {
+            requestStatus = "pending";
+        }
     }
     
     const editingId = state.vacation.editingId;
@@ -5099,7 +5108,13 @@ async function submitVacationRequest(evt) {
                     const foundUser = (state.vault.users || []).find(u => u.username.toLowerCase() === existing.username);
                     existing.fullName = foundUser ? (foundUser.fullName || existing.username.toUpperCase()) : existing.username.toUpperCase();
                 }
-                existing.status = "approved"; // Force approve for admin edits
+                
+                // Force approve only if edited by 'admin'
+                if (state.currentUser && state.currentUser.role === "admin") {
+                    existing.status = "approved";
+                } else {
+                    existing.status = "pending";
+                }
             } else {
                 existing.status = "pending"; // Reset to pending for technician edits
             }
