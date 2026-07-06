@@ -102,7 +102,7 @@
                         </div>
                     </div>
                     <div style="text-align: center; margin-top: 40px; font-size: 0.8rem; color: var(--text-secondary);" class="dashboard-footer">
-                        Versión 1.14.01 - JMSYSTEMAS
+                        Versión 1.14.02 - JMSYSTEMAS
                     </div>
                 </div>
 
@@ -500,7 +500,13 @@
                             <input type="checkbox" id="user-scope-manuals" checked style="width: 18px; height: 18px; accent-color: var(--accent);"> Manuales
                         </label>
                         <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 0; cursor: pointer; color: var(--text-primary); font-weight: normal;">
+                            <input type="checkbox" id="user-scope-expenses" checked style="width: 18px; height: 18px; accent-color: var(--accent);"> Gastos
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 0; cursor: pointer; color: var(--text-primary); font-weight: normal;">
                             <input type="checkbox" id="user-scope-commercial" checked style="width: 18px; height: 18px; accent-color: var(--accent);"> Preventa / Comercial
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 0; cursor: pointer; color: var(--text-primary); font-weight: normal;">
+                            <input type="checkbox" id="user-scope-vacations" checked style="width: 18px; height: 18px; accent-color: var(--accent);"> Vacaciones
                         </label>
                     </div>
                 </div>
@@ -1335,6 +1341,28 @@
             
             <div class="vacations-container anim-fade" style="display: flex; flex-direction: column; gap: 1rem; overflow-y: auto; flex: 1; padding: 5px;">
                 
+                <!-- WIDGET CONTADOR DE VACACIONES -->
+                <div id="vacations-counter-panel" class="glass-card" style="padding: 14px 16px; border-color: rgba(59, 130, 246, 0.2); background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%); display: flex; flex-direction: column; gap: 8px;">
+                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center;">
+                        <span>Resumen de Vacaciones</span>
+                        <span id="vac-counter-tech-name" style="color: var(--accent); text-transform: none; font-weight: 600;">Técnico</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 5px; text-align: center;">
+                        <div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass);">
+                            <div id="vac-counter-approved" style="font-size: 1.25rem; font-weight: 700; color: var(--success);">0</div>
+                            <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px;">Aprobados</div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass);">
+                            <div id="vac-counter-pending" style="font-size: 1.25rem; font-weight: 700; color: var(--warning);">0</div>
+                            <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px;">Pendientes</div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass);">
+                            <div id="vac-counter-remaining" style="font-size: 1.25rem; font-weight: 700; color: var(--accent);">23</div>
+                            <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px;">Restantes (de 23)</div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 1. NOTIFICACIÓN/PANEL DE APROBACIÓN (SOLO PARA ADMINS) -->
                 <div id="vacations-admin-panel" class="glass-card" style="display: none; border-color: var(--warning); background: rgba(245, 158, 11, 0.05);">
                     <h3 style="font-size: 0.95rem; color: var(--warning); display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-weight: 600;">

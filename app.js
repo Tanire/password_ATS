@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.14.01",
+        version: "1.14.02",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -570,11 +570,18 @@ function setupEventListeners() {
     if (btnVacCancelForm) {
         btnVacCancelForm.addEventListener("click", () => {
             document.getElementById("vacations-request-card").style.display = "none";
+            updateVacationCounter();
         });
     }
     const formVacReq = document.getElementById("form-vacation-request");
     if (formVacReq) {
         formVacReq.addEventListener("submit", submitVacationRequest);
+    }
+    const vacTechSelect = document.getElementById("vac-tech-select");
+    if (vacTechSelect) {
+        vacTechSelect.addEventListener("change", (e) => {
+            updateVacationCounter(e.target.value);
+        });
     }
 }
 
@@ -592,6 +599,8 @@ function switchScreen(screenId) {
         if (screenId === "manuals-list" && !scopes.includes("manuals")) return;
         if (screenId === "manual-view" && !scopes.includes("manuals")) return;
         if (["commercial-home", "commercial-client-details", "commercial-disciplines", "commercial-wizard", "commercial-migration", "commercial-summary"].includes(screenId) && !scopes.includes("commercial")) return;
+        if (["expenses-submenu", "hours", "diets", "materials", "form-hour", "form-diet", "form-material", "expenses", "form-expense"].includes(screenId) && !scopes.includes("expenses")) return;
+        if (screenId === "vacations" && !scopes.includes("vacations")) return;
     }
 
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -743,7 +752,7 @@ async function handleUnlock() {
         // Automatic default admin user initialization on first unlock
         if (userCount === 0) {
             state.vault.users = [
-                { username: "admin", role: "admin", scope: ["passwords", "subscribers", "manuals", "commercial"] }
+                { username: "admin", role: "admin", scope: ["passwords", "subscribers", "manuals", "expenses", "commercial", "vacations"] }
             ];
             const adminWrapped = await encryptData(vaultKey, vaultKey);
             state.usersMetadata["admin"] = adminWrapped;
@@ -758,7 +767,7 @@ async function handleUnlock() {
             activeUser = {
                 username: loggedInUsername,
                 role: loggedInUsername === "admin" ? "admin" : "viewer",
-                scope: loggedInUsername === "admin" ? ["passwords", "subscribers", "manuals", "commercial"] : []
+                scope: loggedInUsername === "admin" ? ["passwords", "subscribers", "manuals", "expenses", "commercial", "vacations"] : []
             };
         }
         
@@ -2036,7 +2045,9 @@ function applyUserPrivileges(user) {
     const hasPass = scopes.includes("passwords") || user.role === "admin";
     const hasSubs = scopes.includes("subscribers") || user.role === "admin";
     const hasManuals = scopes.includes("manuals") || user.role === "admin";
+    const hasExpenses = scopes.includes("expenses") || user.role === "admin";
     const hasComm = scopes.includes("commercial") || user.role === "admin";
+    const hasVacations = scopes.includes("vacations") || user.role === "admin";
     
     document.getElementById("menu-passwords").style.display = hasPass ? "flex" : "none";
     document.querySelector('nav [data-screen="passwords"]').style.display = hasPass ? "flex" : "none";
@@ -2046,10 +2057,15 @@ function applyUserPrivileges(user) {
     
     document.getElementById("menu-manuals").style.display = hasManuals ? "flex" : "none";
     
+    document.getElementById("menu-expenses").style.display = hasExpenses ? "flex" : "none";
+    document.querySelector('nav [data-screen="expenses-submenu"]').style.display = hasExpenses ? "flex" : "none";
+    
     const menuComm = document.getElementById("menu-commercial");
     if (menuComm) {
         menuComm.style.display = hasComm ? "flex" : "none";
     }
+    
+    document.getElementById("menu-vacations").style.display = hasVacations ? "flex" : "none";
 
     // Update vacation badge
     updateVacationBadge();
@@ -2243,7 +2259,9 @@ function openUserForm(u = null) {
     document.getElementById("user-scope-passwords").disabled = !canManageRoles;
     document.getElementById("user-scope-subscribers").disabled = !canManageRoles;
     document.getElementById("user-scope-manuals").disabled = !canManageRoles;
+    document.getElementById("user-scope-expenses").disabled = !canManageRoles;
     document.getElementById("user-scope-commercial").disabled = !canManageRoles;
+    document.getElementById("user-scope-vacations").disabled = !canManageRoles;
     
     if (u) {
         title.textContent = "Editar Usuario";
@@ -2257,7 +2275,9 @@ function openUserForm(u = null) {
         document.getElementById("user-scope-passwords").checked = u.scope ? u.scope.includes("passwords") : true;
         document.getElementById("user-scope-subscribers").checked = u.scope ? u.scope.includes("subscribers") : true;
         document.getElementById("user-scope-manuals").checked = u.scope ? u.scope.includes("manuals") : true;
+        document.getElementById("user-scope-expenses").checked = u.scope ? u.scope.includes("expenses") : true;
         document.getElementById("user-scope-commercial").checked = u.scope ? u.scope.includes("commercial") : true;
+        document.getElementById("user-scope-vacations").checked = u.scope ? u.scope.includes("vacations") : true;
         
         // Profile fields
         document.getElementById("user-profile-fullname").value = u.fullName || "";
@@ -2277,7 +2297,9 @@ function openUserForm(u = null) {
         document.getElementById("user-scope-passwords").checked = true;
         document.getElementById("user-scope-subscribers").checked = true;
         document.getElementById("user-scope-manuals").checked = true;
+        document.getElementById("user-scope-expenses").checked = true;
         document.getElementById("user-scope-commercial").checked = true;
+        document.getElementById("user-scope-vacations").checked = true;
         
         // Clear profile fields
         document.getElementById("user-profile-fullname").value = "";
@@ -2313,7 +2335,9 @@ async function saveUserAction(evt) {
     if (document.getElementById("user-scope-passwords").checked) scope.push("passwords");
     if (document.getElementById("user-scope-subscribers").checked) scope.push("subscribers");
     if (document.getElementById("user-scope-manuals").checked) scope.push("manuals");
+    if (document.getElementById("user-scope-expenses").checked) scope.push("expenses");
     if (document.getElementById("user-scope-commercial").checked) scope.push("commercial");
+    if (document.getElementById("user-scope-vacations").checked) scope.push("vacations");
     
     // Profile fields
     const fullName = document.getElementById("user-profile-fullname").value.trim();
@@ -4083,7 +4107,7 @@ async function handlePdfGenerationAndSharing() {
         doc.setTextColor(100, 116, 139);
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(8.5);
-        doc.text(`Versión App: v1.14.01 by JMSYSTEMS`, 195, 16, { align: 'right' });
+        doc.text(`Versión App: v1.14.02 by JMSYSTEMS`, 195, 16, { align: 'right' });
         
         doc.setFontSize(11);
         doc.setFont('Helvetica', 'bold');
@@ -4658,6 +4682,7 @@ function initVacationsScreen() {
     renderVacationsSummary();
     renderAdminVacationsPending();
     updateVacationBadge();
+    updateVacationCounter();
 }
 
 function renderVacationCalendar() {
@@ -4887,6 +4912,7 @@ async function submitVacationRequest(evt) {
     renderVacationsSummary();
     renderAdminVacationsPending();
     updateVacationBadge();
+    updateVacationCounter();
     
     // Sync to cloud
     await syncWithCloud();
@@ -4989,6 +5015,7 @@ async function deleteVacationRequest(id) {
         renderVacationsSummary();
         renderAdminVacationsPending();
         updateVacationBadge();
+        updateVacationCounter();
         
         await syncWithCloud();
         showToast("Solicitud eliminada");
@@ -5066,6 +5093,7 @@ async function resolveVacationRequest(id, status) {
     renderVacationsSummary();
     renderAdminVacationsPending();
     updateVacationBadge();
+    updateVacationCounter();
     
     await syncWithCloud();
     showToast(status === "approved" ? "Vacaciones validadas" : "Vacaciones denegadas");
@@ -5123,6 +5151,57 @@ function formatSpanishDate(dateStr) {
     const parts = dateStr.split("-");
     if (parts.length !== 3) return dateStr;
     return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+// v1.14.02 Vacation Business Days count helper
+function getBusinessDaysCount(datesArray) {
+    if (!datesArray || !Array.isArray(datesArray)) return 0;
+    let count = 0;
+    datesArray.forEach(dStr => {
+        const d = new Date(dStr + "T00:00:00");
+        const day = d.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+        if (day !== 0 && day !== 6) {
+            count++;
+        }
+    });
+    return count;
+}
+
+// v1.14.02 Update vacation counter panel
+function updateVacationCounter(username = null) {
+    const approvedEl = document.getElementById("vac-counter-approved");
+    const pendingEl = document.getElementById("vac-counter-pending");
+    const remainingEl = document.getElementById("vac-counter-remaining");
+    const nameEl = document.getElementById("vac-counter-tech-name");
+    
+    if (!approvedEl || !pendingEl || !remainingEl) return;
+    
+    const targetUser = username || (state.currentUser ? state.currentUser.username : "admin");
+    const foundUser = state.vault.users.find(u => u.username.toLowerCase() === targetUser.toLowerCase());
+    const fullName = foundUser ? (foundUser.fullName || targetUser.toUpperCase()) : targetUser.toUpperCase();
+    
+    if (nameEl) {
+        nameEl.textContent = fullName;
+    }
+    
+    let approvedDays = 0;
+    let pendingDays = 0;
+    
+    const vacations = state.vault.vacations || [];
+    vacations.forEach(v => {
+        if ((v.username || "").toLowerCase() === targetUser.toLowerCase()) {
+            const bizDays = getBusinessDaysCount(v.dates);
+            if (v.status === "approved") {
+                approvedDays += bizDays;
+            } else if (v.status === "pending") {
+                pendingDays += bizDays;
+            }
+        }
+    });
+    
+    approvedEl.textContent = approvedDays;
+    pendingEl.textContent = pendingDays;
+    remainingEl.textContent = 23 - approvedDays;
 }
 
 

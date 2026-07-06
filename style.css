@@ -595,7 +595,9 @@ select.input-control {
     position: absolute;
     bottom: 86px;
     left: 50%;
-    transform: translateX(-50%) translateY(100px);
+    transform: translateX(-50%) translateY(20px);
+    opacity: 0;
+    pointer-events: none;
     background: rgba(22, 24, 37, 0.9);
     border: 1px solid var(--border-glass);
     backdrop-filter: blur(12px);
@@ -606,12 +608,14 @@ select.input-control {
     font-weight: 500;
     box-shadow: var(--shadow-premium);
     z-index: 20;
-    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
     white-space: nowrap;
 }
 
 #toast.show {
     transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
 }
 
 /* Expenses Summary Header */
