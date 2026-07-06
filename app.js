@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.14.04",
+        version: "1.14.05",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -24,7 +24,8 @@ const state = {
     currentScreen: "dashboard",
     vacation: {
         currentDate: new Date(),
-        editingId: null
+        editingId: null,
+        activeView: "monthly"
     },
     activeCategory: "General", // For manuals brand selection
     usersMetadata: {},   // Wrapped keys metadata
@@ -583,6 +584,22 @@ function setupEventListeners() {
     if (vacTechSelect) {
         vacTechSelect.addEventListener("change", (e) => {
             updateVacationCounter(e.target.value);
+        });
+    }
+    const btnMonthly = document.getElementById("btn-vac-view-monthly");
+    const btnYearly = document.getElementById("btn-vac-view-yearly");
+    if (btnMonthly && btnYearly) {
+        btnMonthly.addEventListener("click", () => {
+            state.vacation.activeView = "monthly";
+            btnMonthly.classList.remove("btn-secondary");
+            btnYearly.classList.add("btn-secondary");
+            renderVacationCalendar();
+        });
+        btnYearly.addEventListener("click", () => {
+            state.vacation.activeView = "yearly";
+            btnYearly.classList.remove("btn-secondary");
+            btnMonthly.classList.add("btn-secondary");
+            renderVacationCalendar();
         });
     }
 }
@@ -2052,7 +2069,6 @@ function applyUserPrivileges(user) {
     const hasVacations = scopes.includes("vacations") || user.role === "admin";
     
     document.getElementById("menu-passwords").style.display = hasPass ? "flex" : "none";
-    document.querySelector('nav [data-screen="passwords"]').style.display = hasPass ? "flex" : "none";
     
     document.getElementById("menu-subscribers").style.display = hasSubs ? "flex" : "none";
     document.querySelector('nav [data-screen="subscribers"]').style.display = hasSubs ? "flex" : "none";
@@ -2068,6 +2084,7 @@ function applyUserPrivileges(user) {
     }
     
     document.getElementById("menu-vacations").style.display = hasVacations ? "flex" : "none";
+    document.querySelector('nav [data-screen="vacations"]').style.display = hasVacations ? "flex" : "none";
 
     // Update vacation badge
     updateVacationBadge();
@@ -4109,7 +4126,7 @@ async function handlePdfGenerationAndSharing() {
         doc.setTextColor(100, 116, 139);
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(8.5);
-        doc.text(`Versión App: v1.14.04 by JMSYSTEMS`, 195, 16, { align: 'right' });
+        doc.text(`Versión App: v1.14.05 by JMSYSTEMS`, 195, 16, { align: 'right' });
         
         doc.setFontSize(11);
         doc.setFont('Helvetica', 'bold');
@@ -4695,6 +4712,156 @@ function renderVacationCalendar() {
     
     const d = state.vacation.currentDate;
     const year = d.getFullYear();
+    const activeView = state.vacation.activeView || "monthly";
+    const titleEl = document.getElementById("vac-calendar-title");
+    const weekdaysHeader = document.getElementById("vac-calendar-weekdays-header");
+    
+    if (activeView === "yearly") {
+        if (titleEl) titleEl.textContent = `Año ${year}`;
+        if (weekdaysHeader) weekdaysHeader.style.display = "none";
+        
+        // Change grid styling to show months
+        grid.style.display = "grid";
+        grid.style.gridTemplateColumns = "repeat(auto-fill, minmax(180px, 1fr))";
+        grid.style.gap = "15px";
+        
+        const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+        const today = new Date();
+        const vacations = state.vault.vacations || [];
+        
+        for (let m = 0; m < 12; m++) {
+            const monthCard = document.createElement("div");
+            monthCard.className = "glass-card";
+            monthCard.style.padding = "10px";
+            monthCard.style.display = "flex";
+            monthCard.style.flexDirection = "column";
+            monthCard.style.gap = "8px";
+            monthCard.style.border = "1px solid var(--border-glass)";
+            
+            const monthTitle = document.createElement("div");
+            monthTitle.style.fontSize = "0.85rem";
+            monthTitle.style.fontWeight = "bold";
+            monthTitle.style.color = "var(--accent)";
+            monthTitle.style.textAlign = "center";
+            monthTitle.style.borderBottom = "1px solid var(--border-glass)";
+            monthTitle.style.paddingBottom = "4px";
+            monthTitle.textContent = months[m];
+            monthCard.appendChild(monthTitle);
+            
+            // Mini calendar grid weekdays: L M X J V S D
+            const miniWeekdays = document.createElement("div");
+            miniWeekdays.style.display = "grid";
+            miniWeekdays.style.gridTemplateColumns = "repeat(7, 1fr)";
+            miniWeekdays.style.textAlign = "center";
+            miniWeekdays.style.fontSize = "0.6rem";
+            miniWeekdays.style.color = "var(--text-secondary)";
+            miniWeekdays.style.fontWeight = "600";
+            miniWeekdays.innerHTML = "<div>L</div><div>M</div><div>X</div><div>J</div><div>V</div><div>S</div><div>D</div>";
+            monthCard.appendChild(miniWeekdays);
+            
+            const miniGrid = document.createElement("div");
+            miniGrid.style.display = "grid";
+            miniGrid.style.gridTemplateColumns = "repeat(7, 1fr)";
+            miniGrid.style.gap = "2px";
+            miniGrid.style.textAlign = "center";
+            
+            const firstDayOfMonth = new Date(year, m, 1);
+            let startDayOfWeek = firstDayOfMonth.getDay() - 1;
+            if (startDayOfWeek < 0) startDayOfWeek = 6;
+            
+            const daysInMonth = new Date(year, m + 1, 0).getDate();
+            
+            // Empty cells
+            for (let i = 0; i < startDayOfWeek; i++) {
+                const empty = document.createElement("div");
+                empty.style.aspectRatio = "1";
+                miniGrid.appendChild(empty);
+            }
+            
+            // Day cells
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayCell = document.createElement("div");
+                dayCell.style.aspectRatio = "1";
+                dayCell.style.display = "flex";
+                dayCell.style.alignItems = "center";
+                dayCell.style.justifyContent = "center";
+                dayCell.style.fontSize = "0.7rem";
+                dayCell.style.borderRadius = "4px";
+                dayCell.style.cursor = "pointer";
+                dayCell.style.userSelect = "none";
+                dayCell.textContent = day;
+                
+                const dateStr = `${year}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                
+                if (day === today.getDate() && m === today.getMonth() && year === today.getFullYear()) {
+                    dayCell.style.border = "1px solid var(--accent)";
+                    dayCell.style.color = "var(--accent)";
+                    dayCell.style.fontWeight = "bold";
+                }
+                
+                const matchingRequests = vacations.filter(v => {
+                    return v.dates && v.dates.includes(dateStr) && v.status !== "rejected";
+                });
+                
+                if (matchingRequests.length > 0) {
+                    const hasPending = matchingRequests.some(r => r.status === "pending");
+                    const colors = matchingRequests.map(r => getTechColor(r.username));
+                    const uniqueColors = [...new Set(colors)];
+                    
+                    if (uniqueColors.length === 1) {
+                        dayCell.style.background = uniqueColors[0];
+                    } else {
+                        const percent = 100 / uniqueColors.length;
+                        let gradParts = [];
+                        uniqueColors.forEach((color, idx) => {
+                            gradParts.push(`${color} ${idx * percent}%`);
+                            gradParts.push(`${color} ${(idx + 1) * percent}%`);
+                        });
+                        dayCell.style.background = `linear-gradient(135deg, ${gradParts.join(', ')})`;
+                    }
+                    dayCell.style.color = "#ffffff";
+                    dayCell.style.fontWeight = "bold";
+                    
+                    if (hasPending) {
+                        dayCell.style.border = "1px solid var(--warning)";
+                    } else {
+                        dayCell.style.border = "1px solid var(--success)";
+                    }
+                } else {
+                    dayCell.style.background = "rgba(255,255,255,0.02)";
+                    dayCell.style.color = "var(--text-primary)";
+                }
+                
+                // Clicking a day in yearly view changes to monthly view of that month!
+                dayCell.addEventListener("click", () => {
+                    state.vacation.currentDate = new Date(year, m, day);
+                    state.vacation.activeView = "monthly";
+                    
+                    const btnMonthly = document.getElementById("btn-vac-view-monthly");
+                    const btnYearly = document.getElementById("btn-vac-view-yearly");
+                    if (btnMonthly && btnYearly) {
+                        btnMonthly.classList.remove("btn-secondary");
+                        btnYearly.classList.add("btn-secondary");
+                    }
+                    
+                    renderVacationCalendar();
+                });
+                
+                miniGrid.appendChild(dayCell);
+            }
+            
+            monthCard.appendChild(miniGrid);
+            grid.appendChild(monthCard);
+        }
+        return;
+    }
+    
+    // Vista Mensual
+    if (weekdaysHeader) weekdaysHeader.style.display = "grid";
+    grid.style.display = "grid";
+    grid.style.gridTemplateColumns = "repeat(7, 1fr)";
+    grid.style.gap = "4px";
+    
     const month = d.getMonth(); // 0-indexed
     
     // Set title
@@ -4816,7 +4983,11 @@ function renderVacationCalendar() {
 
 function navigateVacMonth(dir) {
     const d = state.vacation.currentDate;
-    d.setMonth(d.getMonth() + dir);
+    if (state.vacation.activeView === "yearly") {
+        d.setFullYear(d.getFullYear() + dir);
+    } else {
+        d.setMonth(d.getMonth() + dir);
+    }
     state.vacation.currentDate = d;
     renderVacationCalendar();
 }

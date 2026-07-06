@@ -102,7 +102,7 @@
                         </div>
                     </div>
                     <div style="text-align: center; margin-top: 40px; font-size: 0.8rem; color: var(--text-secondary);" class="dashboard-footer">
-                        Versión 1.14.04 - JMSYSTEMAS
+                        Versión 1.14.05 - JMSYSTEMAS
                     </div>
                 </div>
 
@@ -1385,13 +1385,19 @@
 
                 <!-- 2. CALENDARIO INTERACTIVO -->
                 <div class="glass-card calendar-card" style="padding: 1rem;">
-                    <div class="calendar-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <!-- Selector de Vista (Mensual / Anual) -->
+                    <div style="display: flex; gap: 8px; margin-bottom: 1rem; background: rgba(255,255,255,0.02); border-radius: var(--radius-md); padding: 4px; border: 1px solid var(--border-glass);">
+                        <button type="button" id="btn-vac-view-monthly" class="btn-premium" style="flex: 1; padding: 6px 12px; font-size: 0.8rem; border-radius: var(--radius-sm); font-weight: 600; border: none; cursor: pointer;">Vista Mensual</button>
+                        <button type="button" id="btn-vac-view-yearly" class="btn-premium btn-secondary" style="flex: 1; padding: 6px 12px; font-size: 0.8rem; border-radius: var(--radius-sm); font-weight: 600; border: none; cursor: pointer;">Vista Anual</button>
+                    </div>
+
+                    <div class="calendar-header" id="vac-calendar-nav-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                         <button class="btn-icon" id="btn-vac-prev-month" type="button" style="width: 32px; height: 32px;"><i class="bx bx-chevron-left"></i></button>
                         <h3 id="vac-calendar-title" style="font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">Julio 2026</h3>
                         <button class="btn-icon" id="btn-vac-next-month" type="button" style="width: 32px; height: 32px;"><i class="bx bx-chevron-right"></i></button>
                     </div>
 
-                    <div class="calendar-grid-weekdays" style="display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                    <div class="calendar-grid-weekdays" id="vac-calendar-weekdays-header" style="display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem;">
                         <div>Lu</div><div>Ma</div><div>Mi</div><div>Ju</div><div>Vi</div><div>Sá</div><div>Do</div>
                     </div>
 
@@ -1460,10 +1466,6 @@
             <i class="bx bx-grid-alt"></i>
             <span>Inicio</span>
         </div>
-        <div class="nav-item" data-screen="passwords">
-            <i class="bx bx-globe"></i>
-            <span>Webs</span>
-        </div>
         <div class="nav-item" data-screen="subscribers">
             <i class="bx bx-bell"></i>
             <span>Abonados</span>
@@ -1471,6 +1473,10 @@
         <div class="nav-item" data-screen="expenses-submenu">
             <i class="bx bx-wallet"></i>
             <span>Gastos</span>
+        </div>
+        <div class="nav-item" data-screen="vacations">
+            <i class="bx bx-calendar"></i>
+            <span>Vacaciones</span>
         </div>
         <div class="nav-item" data-screen="settings">
             <i class="bx bx-cog"></i>
