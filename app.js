@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.14.05",
+        version: "1.14.06",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -2304,6 +2304,7 @@ function openUserForm(u = null) {
         document.getElementById("user-profile-delegacion").value = u.delegacion || "";
         document.getElementById("user-profile-vehiculo").value = u.vehiculo || "";
         document.getElementById("user-profile-tarjeta").value = u.tarjeta || "";
+        document.getElementById("user-profile-hiredate").value = u.hireDate || "";
     } else {
         title.textContent = "Nuevo Usuario";
         nameInput.value = "";
@@ -2326,6 +2327,7 @@ function openUserForm(u = null) {
         document.getElementById("user-profile-delegacion").value = "";
         document.getElementById("user-profile-vehiculo").value = "";
         document.getElementById("user-profile-tarjeta").value = "";
+        document.getElementById("user-profile-hiredate").value = "";
     }
     
     switchScreen("form-user");
@@ -2364,6 +2366,7 @@ async function saveUserAction(evt) {
     const delegacion = document.getElementById("user-profile-delegacion").value.trim();
     const vehiculo = document.getElementById("user-profile-vehiculo").value.trim();
     const tarjeta = document.getElementById("user-profile-tarjeta").value.trim();
+    const hireDate = document.getElementById("user-profile-hiredate").value;
     
     if (!username) {
         showToast("Escribe un nombre de usuario");
@@ -2387,6 +2390,7 @@ async function saveUserAction(evt) {
                 state.vault.users[idx].delegacion = delegacion;
                 state.vault.users[idx].vehiculo = vehiculo;
                 state.vault.users[idx].tarjeta = tarjeta;
+                state.vault.users[idx].hireDate = hireDate;
                 
                 if (password) {
                     const wrappedKey = await encryptData(state.masterPassword, password);
@@ -2395,7 +2399,7 @@ async function saveUserAction(evt) {
                 
                 // Update currentUser in state if editing own profile
                 if (editId.toLowerCase() === state.currentUser.username.toLowerCase()) {
-                    state.currentUser = { ...state.currentUser, fullName, zona, delegacion, vehiculo, tarjeta };
+                    state.currentUser = { ...state.currentUser, fullName, zona, delegacion, vehiculo, tarjeta, hireDate };
                     applyUserPrivileges(state.currentUser);
                 }
             }
@@ -2406,7 +2410,7 @@ async function saveUserAction(evt) {
                 return;
             }
             
-            state.vault.users.push({ username, role, scope, fullName, zona, delegacion, vehiculo, tarjeta });
+            state.vault.users.push({ username, role, scope, fullName, zona, delegacion, vehiculo, tarjeta, hireDate });
             
             const wrappedKey = await encryptData(state.masterPassword, password);
             state.usersMetadata[username] = wrappedKey;
@@ -4126,7 +4130,7 @@ async function handlePdfGenerationAndSharing() {
         doc.setTextColor(100, 116, 139);
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(8.5);
-        doc.text(`Versión App: v1.14.05 by JMSYSTEMS`, 195, 16, { align: 'right' });
+        doc.text(`Versión App: v1.14.06 by JMSYSTEMS`, 195, 16, { align: 'right' });
         
         doc.setFontSize(11);
         doc.setFont('Helvetica', 'bold');
@@ -5467,6 +5471,40 @@ function getBusinessDaysCount(datesArray) {
     return count;
 }
 
+// v1.14.06 Calculate vacation allowance proportionally based on company entry date
+function getUserVacationAllowance(user, year) {
+    if (!user) return 23;
+    const hireDateStr = user.hireDate;
+    if (!hireDateStr) return 23;
+    
+    // Parse entry date safely (YYYY-MM-DD)
+    const parts = hireDateStr.split('-');
+    if (parts.length !== 3) return 23;
+    const entryDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    if (isNaN(entryDate.getTime())) return 23;
+    
+    const entryYear = entryDate.getFullYear();
+    
+    if (entryYear < year) {
+        return 23; // Entered before this year, full 23 days
+    } else if (entryYear > year) {
+        return 0; // Has not entered company yet in this year
+    } else {
+        // Entered during this year. Calculate proportional days.
+        const endOfYear = new Date(year, 11, 31);
+        const diffTime = Math.abs(endOfYear - entryDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // inclusive
+        
+        // Total days in this year
+        const startOfYear = new Date(year, 0, 1);
+        const totalYearTime = Math.abs(endOfYear - startOfYear);
+        const totalYearDays = Math.ceil(totalYearTime / (1000 * 60 * 60 * 24)) + 1;
+        
+        const proportion = diffDays / totalYearDays;
+        return Math.round(proportion * 23);
+    }
+}
+
 // v1.14.02 Update vacation counter panel
 function updateVacationCounter(username = null) {
     const approvedEl = document.getElementById("vac-counter-approved");
@@ -5499,9 +5537,17 @@ function updateVacationCounter(username = null) {
         }
     });
     
+    const year = state.vacation.currentDate.getFullYear();
+    const totalAllowance = foundUser ? getUserVacationAllowance(foundUser, year) : 23;
+    
+    const labelEl = remainingEl.nextElementSibling;
+    if (labelEl) {
+        labelEl.textContent = `Restantes (de ${totalAllowance})`;
+    }
+    
     approvedEl.textContent = approvedDays;
     pendingEl.textContent = pendingDays;
-    remainingEl.textContent = 23 - approvedDays - pendingDays;
+    remainingEl.textContent = totalAllowance - approvedDays - pendingDays;
 }
 
 // v1.14.03 Distinct vibrant colors for technicians
@@ -5570,7 +5616,9 @@ function renderAdminVacationsSummary() {
             }
         });
         
-        const remainingDays = 23 - approvedDays - pendingDays;
+        const year = state.vacation.currentDate.getFullYear();
+        const allowance = getUserVacationAllowance(u, year);
+        const remainingDays = allowance - approvedDays - pendingDays;
         const color = getTechColor(u.username);
         const displayName = u.fullName || u.username.toUpperCase();
         
@@ -5593,7 +5641,7 @@ function renderAdminVacationsSummary() {
                 <span title="Disfrutados"><i class="bx bx-calendar-check" style="color:var(--success);"></i> ${enjoyedDays}</span>
                 <span title="Aprobados"><i class="bx bx-check-double" style="color:var(--success);"></i> ${approvedDays}</span>
                 <span title="Pendientes"><i class="bx bx-time-five" style="color:var(--warning);"></i> ${pendingDays}</span>
-                <span title="Restantes (saldo)"><i class="bx bx-calculator" style="color:var(--accent);"></i> ${remainingDays}</span>
+                <span title="Restantes (saldo)"><i class="bx bx-calculator" style="color:var(--accent);"></i> ${remainingDays} (de ${allowance})</span>
             </div>
         `;
         list.appendChild(item);
