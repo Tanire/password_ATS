@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.15.01",
+        version: "1.15.02",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -4037,8 +4037,8 @@ function toggleRoundsTimer() {
         state.roundsTimer.intervalId = setInterval(() => {
             state.roundsTimer.seconds++;
             updateRoundsTimerDisplay();
-            // Automatically set time field to matching minutes (minimum 1)
-            const minutes = Math.max(1, Math.round(state.roundsTimer.seconds / 60));
+            // Automatically set time field to matching minutes (always round up - Math.ceil)
+            const minutes = Math.max(1, Math.ceil(state.roundsTimer.seconds / 60));
             document.getElementById('input-rounds-point-time').value = minutes;
         }, 1000);
     }
@@ -4107,7 +4107,8 @@ function addRoundPoint() {
     const timeInput = document.getElementById('input-rounds-point-time');
     
     const name = nameInput.value.trim();
-    const time = parseInt(timeInput.value) || 0;
+    // Grab value from input (which is synchronized to stopwatch rounded up)
+    const time = parseInt(timeInput.value) || (state.roundsTimer.seconds > 0 ? Math.max(1, Math.ceil(state.roundsTimer.seconds / 60)) : 0);
     
     if (!name) {
         showToast('Introduce un nombre para el punto');
@@ -4131,14 +4132,20 @@ function addRoundPoint() {
     
     // Clear point fields
     nameInput.value = '';
-    timeInput.value = 10;
     document.getElementById('input-rounds-point-photo').value = '';
     const previewsContainer = document.getElementById('previews-rounds-point');
     if (previewsContainer) previewsContainer.innerHTML = '';
     state.tempRoundPhotoBase64 = '';
     
-    // Reset timer for next point
-    resetRoundsTimer();
+    // Reset timer for next point but keep running if it was already running!
+    if (state.roundsTimer.isRunning) {
+        state.roundsTimer.seconds = 0;
+        updateRoundsTimerDisplay();
+        timeInput.value = 1; // Default next minute start
+    } else {
+        timeInput.value = 10;
+        resetRoundsTimer();
+    }
     
     renderRoundsPointsList();
     calculateRoundsCost();
@@ -4211,15 +4218,11 @@ function calculateRoundsCost() {
     const kmIda = parseFloat(document.getElementById('input-rounds-km').value) || 0;
     const travelTimeIda = parseInt(document.getElementById('input-rounds-travel-time').value) || 0;
     
-    // Round trip is calculated automatically
-    const kmTotal = kmIda * 2;
-    const travelTimeTotal = travelTimeIda * 2;
-    
     const points = state.commercial.rounds.points || [];
     const pointsTime = points.reduce((acc, p) => acc + p.time, 0);
     
-    const kmCost = kmTotal * 0.50;
-    const travelCost = travelTimeTotal * 1.00;
+    const kmCost = kmIda * 0.50;
+    const travelCost = travelTimeIda * 1.00;
     const pointsCost = pointsTime * 1.00;
     
     const dailyCost = kmCost + travelCost + pointsCost;
@@ -4362,11 +4365,8 @@ function generateSummary() {
         const points = rounds.points || [];
         const pointsTime = points.reduce((acc, p) => acc + p.time, 0);
         
-        const kmTotal = rounds.travelKm * 2;
-        const travelTimeTotal = rounds.travelTime * 2;
-        
-        const kmCost = kmTotal * 0.50;
-        const travelCost = travelTimeTotal * 1.00;
+        const kmCost = rounds.travelKm * 0.50;
+        const travelCost = rounds.travelTime * 1.00;
         const pointsCost = pointsTime * 1.00;
         const dailyCost = kmCost + travelCost + pointsCost;
         const monthlyCost = dailyCost * 30;
@@ -4374,8 +4374,8 @@ function generateSummary() {
         let roundsHtml = `
             <div class="summary-block">
                 <div class="summary-header">RONDAS DE VIGILANTES</div>
-                <div class="summary-item"><span class="summary-label">Distancia Ida:</span> <span class="summary-value">${rounds.travelKm.toFixed(1)} km (Ida/Vuelta: ${kmTotal.toFixed(1)} km)</span></div>
-                <div class="summary-item"><span class="summary-label">Tiempo Desplazamiento Ida:</span> <span class="summary-value">${rounds.travelTime} min (Ida/Vuelta: ${travelTimeTotal} min)</span></div>
+                <div class="summary-item"><span class="summary-label">Distancia Ida:</span> <span class="summary-value">${rounds.travelKm.toFixed(1)} km</span></div>
+                <div class="summary-item"><span class="summary-label">Tiempo Desplazamiento Ida:</span> <span class="summary-value">${rounds.travelTime} min</span></div>
                 <div class="summary-item"><span class="summary-label">Tiempo Total en Puntos:</span> <span class="summary-value">${pointsTime} min</span></div>
             </div>
             
@@ -4406,8 +4406,8 @@ function generateSummary() {
             
             <div class="summary-block">
                 <div class="summary-header">DESGLOSE DE COSTES DE RONDAS</div>
-                <div class="summary-item"><span class="summary-label">Coste Kilómetros (Ida y Vuelta - 0.50€/km):</span> <span class="summary-value">${kmCost.toFixed(2)} €</span></div>
-                <div class="summary-item"><span class="summary-label">Coste Desplazamiento (Ida y Vuelta - 1€/min):</span> <span class="summary-value">${travelCost.toFixed(2)} €</span></div>
+                <div class="summary-item"><span class="summary-label">Coste Kilómetros (0.50€/km):</span> <span class="summary-value">${kmCost.toFixed(2)} €</span></div>
+                <div class="summary-item"><span class="summary-label">Coste Desplazamiento (1€/min):</span> <span class="summary-value">${travelCost.toFixed(2)} €</span></div>
                 <div class="summary-item"><span class="summary-label">Coste Tiempo Rondas (1€/min):</span> <span class="summary-value">${pointsCost.toFixed(2)} €</span></div>
                 <div class="summary-item" style="border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; margin-top:8px; font-weight:bold;"><span class="summary-label" style="color: var(--text-primary); font-size:0.95rem;">Coste Diario (1 Ronda):</span> <span class="summary-value" style="color: var(--text-primary); font-size:1rem;">${dailyCost.toFixed(2)} €</span></div>
                 <div class="summary-item" style="border-top:1px solid rgba(255,255,255,0.05); padding-top:4px; margin-top:4px; font-weight:bold;"><span class="summary-label" style="color: var(--text-primary); font-size:1rem;">Coste Mensual (30 Rondas):</span> <span class="summary-value" style="color: var(--success); font-size:1.1rem;">${monthlyCost.toFixed(2)} €</span></div>
@@ -4685,11 +4685,8 @@ async function handlePdfGenerationAndSharing() {
             const points = rounds.points || [];
             const pointsTime = points.reduce((acc, p) => acc + p.time, 0);
             
-            const kmTotal = rounds.travelKm * 2;
-            const travelTimeTotal = rounds.travelTime * 2;
-            
-            const kmCost = kmTotal * 0.50;
-            const travelCost = travelTimeTotal * 1.00;
+            const kmCost = rounds.travelKm * 0.50;
+            const travelCost = rounds.travelTime * 1.00;
             const pointsCost = pointsTime * 1.00;
             const dailyCost = kmCost + travelCost + pointsCost;
             const monthlyCost = dailyCost * 30;
@@ -4705,8 +4702,8 @@ async function handlePdfGenerationAndSharing() {
             doc.setTextColor(30, 41, 59);
             doc.setFont('Helvetica', 'normal');
             doc.setFontSize(9.5);
-            doc.text(`• Distancia de Ida: ${rounds.travelKm.toFixed(1)} km (Ida/Vuelta: ${kmTotal.toFixed(1)} km)`, 20, y);
-            doc.text(`• Tiempo Desplazamiento Ida: ${rounds.travelTime} minutos (Ida/Vuelta: ${travelTimeTotal} minutos)`, 20, y + 5);
+            doc.text(`• Distancia de Ida: ${rounds.travelKm.toFixed(1)} km`, 20, y);
+            doc.text(`• Tiempo Desplazamiento Ida: ${rounds.travelTime} minutos`, 20, y + 5);
             doc.text(`• Tiempo Total de Rondas en Cliente: ${pointsTime} minutos`, 20, y + 10);
             
             y += 20;
@@ -4786,12 +4783,12 @@ async function handlePdfGenerationAndSharing() {
             doc.setFont('Helvetica', 'normal');
             doc.setFontSize(9.5);
 
-            doc.text(`• Coste de Kilometraje (Ida y Vuelta - ${kmTotal.toFixed(1)} km x 0.50 €/km):`, 20, y);
+            doc.text(`• Coste de Kilometraje (${rounds.travelKm.toFixed(1)} km x 0.50 €/km):`, 20, y);
             doc.setFont('Helvetica', 'bold');
             doc.text(`${kmCost.toFixed(2)} €`, 160, y);
             doc.setFont('Helvetica', 'normal');
 
-            doc.text(`• Coste Desplazamiento (Ida y Vuelta - ${travelTimeTotal} min x 1.00 €/min):`, 20, y + 6);
+            doc.text(`• Coste Desplazamiento (${rounds.travelTime} min x 1.00 €/min):`, 20, y + 6);
             doc.setFont('Helvetica', 'bold');
             doc.text(`${travelCost.toFixed(2)} €`, 160, y + 6);
             doc.setFont('Helvetica', 'normal');
