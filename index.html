@@ -1326,31 +1326,53 @@
                 <button class="btn-icon" id="btn-back-rounds"><i class="bx bx-arrow-back"></i></button>
             </div>
             <div class="glass-card anim-fade">
-                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1.25rem;">Calcula el kilometraje y los tiempos de desplazamiento desde base y entre los distintos puntos de control.</p>
+                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1.25rem;">Calcula el kilometraje de ida, los tiempos de desplazamiento de ida (se calcula automáticamente ida y vuelta) y los puntos de control.</p>
                 
                 <form id="rounds-form">
-                    <div class="section-title">Desplazamiento desde Base</div>
+                    <div class="section-title">Desplazamiento desde Base (Solo Ida)</div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Distancia Ida y Vuelta (km)</label>
+                            <label>Distancia de Ida (km)</label>
                             <input type="number" id="input-rounds-km" class="input-control" min="0" step="0.1" value="0" required>
                         </div>
                         <div class="form-group">
-                            <label>Tiempo de Desplazamiento (minutos)</label>
+                            <label>Tiempo Desplazamiento Ida (minutos)</label>
                             <input type="number" id="input-rounds-travel-time" class="input-control" min="0" step="1" value="0" required>
                         </div>
                     </div>
 
                     <div class="section-title" style="margin-top: 1.5rem;">Puntos de Control en Cliente</div>
                     <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 15px;">
+                        
+                        <!-- Stopwatch / Cronómetro -->
+                        <div style="display: flex; flex-direction: column; align-items: center; background: rgba(0,0,0,0.2); padding: 8px; border-radius: var(--radius-sm); margin-bottom: 12px; border: 1px solid var(--border-glass);">
+                            <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Cronómetro de Ronda</span>
+                            <div id="rounds-timer-display" style="font-family: monospace; font-size: 1.8rem; font-weight: 700; color: var(--accent); margin: 4px 0;">00:00</div>
+                            <div style="display: flex; gap: 8px; width: 100%;">
+                                <button type="button" id="btn-rounds-timer-toggle" class="btn-premium" style="flex: 1; padding: 6px; font-size: 0.8rem; background: var(--success);"><i class="bx bx-play"></i> Iniciar</button>
+                                <button type="button" id="btn-rounds-timer-reset" class="btn-premium btn-secondary" style="flex: 1; padding: 6px; font-size: 0.8rem;"><i class="bx bx-reset"></i> Reiniciar</button>
+                            </div>
+                        </div>
+
                         <div class="form-group">
                             <label>Punto / Ubicación de Control</label>
                             <input type="text" id="input-rounds-point-name" class="input-control" placeholder="Ej. Puerta Principal, Almacén, Perímetro Norte...">
                         </div>
                         <div class="form-group" style="margin-top: 8px;">
-                            <label>Tiempo estimado en el punto (minutos)</label>
+                            <label>Tiempo estimado (minutos)</label>
                             <input type="number" id="input-rounds-point-time" class="input-control" min="1" step="1" value="10">
                         </div>
+                        
+                        <!-- Photo Uploader for Point -->
+                        <div class="form-group" style="margin-top: 8px;">
+                            <label>Foto del Punto de Control</label>
+                            <div class="photo-uploader">
+                                <label for="input-rounds-point-photo" class="photo-input-label" id="lbl-rounds-point-photo" style="display: inline-block; cursor: pointer; padding: 6px 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); font-size: 0.8rem;">📷 Adjuntar Foto</label>
+                                <input type="file" id="input-rounds-point-photo" accept="image/*" style="display: none;">
+                                <div class="photo-previews" id="previews-rounds-point" style="margin-top: 5px; display: flex; gap: 5px;"></div>
+                            </div>
+                        </div>
+
                         <button type="button" id="btn-rounds-add-point" class="btn-premium" style="width: 100%; margin-top: 10px; padding: 8px;">
                             <i class="bx bx-plus"></i> Añadir Punto
                         </button>
@@ -1366,11 +1388,11 @@
                         <div style="font-size: 0.95rem; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 10px; color: var(--accent);">DESGLOSE DE COSTES</div>
                         
                         <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px; color: var(--text-secondary);">
-                            <span>Coste Kilómetros (0.50€/km):</span>
+                            <span>Coste Kilómetros (Ida y Vuelta - 0.50€/km):</span>
                             <span id="cost-rounds-km">0.00 €</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px; color: var(--text-secondary);">
-                            <span>Coste Tiempo Desplazamiento (1€/min):</span>
+                            <span>Coste Desplazamiento (Ida y Vuelta - 1€/min):</span>
                             <span id="cost-rounds-travel">0.00 €</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 8px; color: var(--text-secondary);">
@@ -1378,9 +1400,13 @@
                             <span id="cost-rounds-points">0.00 €</span>
                         </div>
                         
-                        <div style="display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: 800; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; color: var(--text-primary);">
-                            <span>TOTAL:</span>
-                            <span id="cost-rounds-total" style="color: var(--success);">0.00 €</span>
+                        <div style="display: flex; justify-content: space-between; font-size: 1rem; font-weight: 700; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; margin-bottom: 6px; color: var(--text-primary);">
+                            <span>COSTE DIARIO (1 Ronda):</span>
+                            <span id="cost-rounds-total">0.00 €</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: 800; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px; color: var(--text-primary);">
+                            <span>COSTE MENSUAL (30 Rondas):</span>
+                            <span id="cost-rounds-monthly" style="color: var(--success);">0.00 €</span>
                         </div>
                     </div>
 

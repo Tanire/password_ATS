@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.15.00",
+        version: "1.15.01",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -94,7 +94,13 @@ const state = {
             travelKm: 0,
             points: []
         }
-    }
+    },
+    roundsTimer: {
+        intervalId: null,
+        seconds: 0,
+        isRunning: false
+    },
+    tempRoundPhotoBase64: ''
 };
 
 // LocalStorage Keys
@@ -567,10 +573,26 @@ function setupEventListeners() {
     if (inputRoundsTravelTime) {
         inputRoundsTravelTime.addEventListener('input', calculateRoundsCost);
     }
+    const btnRoundsTimerToggle = document.getElementById('btn-rounds-timer-toggle');
+    if (btnRoundsTimerToggle) {
+        btnRoundsTimerToggle.addEventListener('click', toggleRoundsTimer);
+    }
+    const btnRoundsTimerReset = document.getElementById('btn-rounds-timer-reset');
+    if (btnRoundsTimerReset) {
+        btnRoundsTimerReset.addEventListener('click', resetRoundsTimer);
+    }
+    const inputRoundsPointPhoto = document.getElementById('input-rounds-point-photo');
+    if (inputRoundsPointPhoto) {
+        inputRoundsPointPhoto.addEventListener('change', handleRoundsPointPhotoChange);
+    }
     const roundsForm = document.getElementById('rounds-form');
     if (roundsForm) {
         roundsForm.addEventListener('submit', (e) => {
             e.preventDefault();
+            // Stop timer if running
+            if (state.roundsTimer.isRunning) {
+                toggleRoundsTimer();
+            }
             state.commercial.rounds.travelKm = parseFloat(document.getElementById('input-rounds-km').value) || 0;
             state.commercial.rounds.travelTime = parseInt(document.getElementById('input-rounds-travel-time').value) || 0;
             generateSummary();
@@ -3980,9 +4002,104 @@ function renderRoundsForm() {
     document.getElementById('input-rounds-point-name').value = '';
     document.getElementById('input-rounds-point-time').value = 10;
     
+    // Clear photo upload
+    document.getElementById('input-rounds-point-photo').value = '';
+    document.getElementById('previews-rounds-point').innerHTML = '';
+    state.tempRoundPhotoBase64 = '';
+    
+    // Reset timer
+    resetRoundsTimer();
+    
     // Render the list of points and recalculate costs
     renderRoundsPointsList();
     calculateRoundsCost();
+}
+
+// Stopwatch / Timer functions
+function toggleRoundsTimer() {
+    const btn = document.getElementById('btn-rounds-timer-toggle');
+    if (!btn) return;
+    
+    if (state.roundsTimer.isRunning) {
+        // Pause timer
+        clearInterval(state.roundsTimer.intervalId);
+        state.roundsTimer.isRunning = false;
+        btn.innerHTML = `<i class="bx bx-play"></i> Iniciar`;
+        btn.style.background = 'var(--success)';
+        showToast('Cronómetro pausado');
+    } else {
+        // Start timer
+        state.roundsTimer.isRunning = true;
+        btn.innerHTML = `<i class="bx bx-pause"></i> Pausar`;
+        btn.style.background = 'var(--warning)';
+        showToast('Cronómetro iniciado');
+        
+        state.roundsTimer.intervalId = setInterval(() => {
+            state.roundsTimer.seconds++;
+            updateRoundsTimerDisplay();
+            // Automatically set time field to matching minutes (minimum 1)
+            const minutes = Math.max(1, Math.round(state.roundsTimer.seconds / 60));
+            document.getElementById('input-rounds-point-time').value = minutes;
+        }, 1000);
+    }
+}
+
+function resetRoundsTimer() {
+    if (state.roundsTimer.intervalId) {
+        clearInterval(state.roundsTimer.intervalId);
+    }
+    state.roundsTimer.intervalId = null;
+    state.roundsTimer.seconds = 0;
+    state.roundsTimer.isRunning = false;
+    
+    const btn = document.getElementById('btn-rounds-timer-toggle');
+    if (btn) {
+        btn.innerHTML = `<i class="bx bx-play"></i> Iniciar`;
+        btn.style.background = 'var(--success)';
+    }
+    
+    updateRoundsTimerDisplay();
+}
+
+function updateRoundsTimerDisplay() {
+    const display = document.getElementById('rounds-timer-display');
+    if (!display) return;
+    
+    const m = Math.floor(state.roundsTimer.seconds / 60).toString().padStart(2, '0');
+    const s = (state.roundsTimer.seconds % 60).toString().padStart(2, '0');
+    display.textContent = `${m}:${s}`;
+}
+
+// Point photo uploader handler
+function handleRoundsPointPhotoChange(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    showLoading(true, "Comprimiendo foto...");
+    processAndCompressImage(file)
+        .then(base64 => {
+            state.tempRoundPhotoBase64 = base64;
+            const container = document.getElementById('previews-rounds-point');
+            if (container) {
+                container.innerHTML = `
+                    <div class="photo-thumbnail" style="position: relative; width: 60px; height: 45px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass);">
+                        <img src="${base64}" style="width:100%; height:100%; object-fit:cover; border-radius: var(--radius-sm);">
+                        <span id="btn-delete-rounds-photo" style="position: absolute; top:-5px; right:-5px; background:var(--danger); color:#fff; border-radius:50%; width:16px; height:16px; font-size:10px; display:flex; justify-content:center; align-items:center; cursor:pointer;">×</span>
+                    </div>
+                `;
+                document.getElementById('btn-delete-rounds-photo').addEventListener('click', () => {
+                    state.tempRoundPhotoBase64 = '';
+                    container.innerHTML = '';
+                    document.getElementById('input-rounds-point-photo').value = '';
+                });
+            }
+            showLoading(false);
+        })
+        .catch(err => {
+            console.error(err);
+            showLoading(false);
+            showToast("Error al cargar la foto");
+        });
 }
 
 function addRoundPoint() {
@@ -4008,11 +4125,20 @@ function addRoundPoint() {
     state.commercial.rounds.points.push({
         id: "pt_" + Date.now() + "_" + Math.floor(Math.random() * 100),
         name: name,
-        time: time
+        time: time,
+        photoBase64: state.tempRoundPhotoBase64 || ''
     });
     
+    // Clear point fields
     nameInput.value = '';
     timeInput.value = 10;
+    document.getElementById('input-rounds-point-photo').value = '';
+    const previewsContainer = document.getElementById('previews-rounds-point');
+    if (previewsContainer) previewsContainer.innerHTML = '';
+    state.tempRoundPhotoBase64 = '';
+    
+    // Reset timer for next point
+    resetRoundsTimer();
     
     renderRoundsPointsList();
     calculateRoundsCost();
@@ -4051,10 +4177,22 @@ function renderRoundsPointsList() {
         item.style.fontSize = '0.85rem';
         item.className = 'anim-fade';
         
+        let photoHtml = '';
+        if (p.photoBase64) {
+            photoHtml = `
+                <div style="width: 36px; height: 27px; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border-glass); cursor: pointer;" onclick="viewFullscreenImage('${p.photoBase64.replace(/'/g, "\\'")}')">
+                    <img src="${p.photoBase64}" style="width:100%; height:100%; object-fit:cover;">
+                </div>
+            `;
+        }
+        
         item.innerHTML = `
-            <div>
-                <span style="font-weight:600; color:var(--text-primary);">${escapeHtml(p.name)}</span>
-                <span style="color:var(--text-secondary); margin-left: 8px;">(${p.time} min)</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                ${photoHtml}
+                <div>
+                    <span style="font-weight:600; color:var(--text-primary);">${escapeHtml(p.name)}</span>
+                    <span style="color:var(--text-secondary); margin-left: 8px;">(${p.time} min)</span>
+                </div>
             </div>
             <button type="button" class="btn-icon" style="color:var(--danger); padding:0; border:none; background:none; cursor:pointer;" title="Eliminar punto">
                 <i class="bx bx-trash" style="font-size: 1.1rem;"></i>
@@ -4070,21 +4208,28 @@ function renderRoundsPointsList() {
 }
 
 function calculateRoundsCost() {
-    const km = parseFloat(document.getElementById('input-rounds-km').value) || 0;
-    const travelTime = parseInt(document.getElementById('input-rounds-travel-time').value) || 0;
+    const kmIda = parseFloat(document.getElementById('input-rounds-km').value) || 0;
+    const travelTimeIda = parseInt(document.getElementById('input-rounds-travel-time').value) || 0;
+    
+    // Round trip is calculated automatically
+    const kmTotal = kmIda * 2;
+    const travelTimeTotal = travelTimeIda * 2;
     
     const points = state.commercial.rounds.points || [];
     const pointsTime = points.reduce((acc, p) => acc + p.time, 0);
     
-    const kmCost = km * 0.50;
-    const travelCost = travelTime * 1.00;
+    const kmCost = kmTotal * 0.50;
+    const travelCost = travelTimeTotal * 1.00;
     const pointsCost = pointsTime * 1.00;
-    const totalCost = kmCost + travelCost + pointsCost;
+    
+    const dailyCost = kmCost + travelCost + pointsCost;
+    const monthlyCost = dailyCost * 30;
     
     document.getElementById('cost-rounds-km').innerText = kmCost.toFixed(2) + ' €';
     document.getElementById('cost-rounds-travel').innerText = travelCost.toFixed(2) + ' €';
     document.getElementById('cost-rounds-points').innerText = pointsCost.toFixed(2) + ' €';
-    document.getElementById('cost-rounds-total').innerText = totalCost.toFixed(2) + ' €';
+    document.getElementById('cost-rounds-total').innerText = dailyCost.toFixed(2) + ' €';
+    document.getElementById('cost-rounds-monthly').innerText = monthlyCost.toFixed(2) + ' €';
 }
 
 // Inventory table
@@ -4217,37 +4362,55 @@ function generateSummary() {
         const points = rounds.points || [];
         const pointsTime = points.reduce((acc, p) => acc + p.time, 0);
         
-        const kmCost = rounds.travelKm * 0.50;
-        const travelCost = rounds.travelTime * 1.00;
+        const kmTotal = rounds.travelKm * 2;
+        const travelTimeTotal = rounds.travelTime * 2;
+        
+        const kmCost = kmTotal * 0.50;
+        const travelCost = travelTimeTotal * 1.00;
         const pointsCost = pointsTime * 1.00;
-        const totalCost = kmCost + travelCost + pointsCost;
+        const dailyCost = kmCost + travelCost + pointsCost;
+        const monthlyCost = dailyCost * 30;
         
         let roundsHtml = `
             <div class="summary-block">
                 <div class="summary-header">RONDAS DE VIGILANTES</div>
-                <div class="summary-item"><span class="summary-label">Distancia desde Base:</span> <span class="summary-value">${rounds.travelKm.toFixed(1)} km</span></div>
-                <div class="summary-item"><span class="summary-label">Tiempo Desplazamiento:</span> <span class="summary-value">${rounds.travelTime} min</span></div>
+                <div class="summary-item"><span class="summary-label">Distancia Ida:</span> <span class="summary-value">${rounds.travelKm.toFixed(1)} km (Ida/Vuelta: ${kmTotal.toFixed(1)} km)</span></div>
+                <div class="summary-item"><span class="summary-label">Tiempo Desplazamiento Ida:</span> <span class="summary-value">${rounds.travelTime} min (Ida/Vuelta: ${travelTimeTotal} min)</span></div>
                 <div class="summary-item"><span class="summary-label">Tiempo Total en Puntos:</span> <span class="summary-value">${pointsTime} min</span></div>
             </div>
             
             <div class="summary-block">
                 <div class="summary-header">PUNTOS DE CONTROL REGISTRADOS</div>
                 <div style="margin-top: 5px;">
-                    ${points.map(p => `
-                        <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                            <span style="color: var(--text-primary); font-weight:600;">• ${escapeHtml(p.name)}</span>
-                            <span style="color: var(--text-secondary);">${p.time} min</span>
-                        </div>
-                    `).join('') || '<div style="text-align: center; color: var(--text-secondary); font-size: 0.85rem; padding: 10px;">Sin puntos registrados</div>'}
+                    ${points.map(p => {
+                        let imgHtml = '';
+                        if (p.photoBase64) {
+                            imgHtml = `
+                                <div class="summary-photo-thumbnail" style="width: 50px; height: 38px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass); overflow:hidden; margin-right: 10px; flex-shrink: 0;" onclick="viewFullscreenImage('${p.photoBase64.replace(/'/g, "\\'")}')">
+                                    <img src="${p.photoBase64}" style="width:100%; height:100%; object-fit:cover;">
+                                </div>
+                            `;
+                        }
+                        return `
+                            <div style="display:flex; align-items:center; justify-content:space-between; font-size:0.85rem; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                <div style="display:flex; align-items:center;">
+                                    ${imgHtml}
+                                    <span style="color: var(--text-primary); font-weight:600;">• ${escapeHtml(p.name)}</span>
+                                </div>
+                                <span style="color: var(--text-secondary);">${p.time} min</span>
+                            </div>
+                        `;
+                    }).join('') || '<div style="text-align: center; color: var(--text-secondary); font-size: 0.85rem; padding: 10px;">Sin puntos registrados</div>'}
                 </div>
             </div>
             
             <div class="summary-block">
                 <div class="summary-header">DESGLOSE DE COSTES DE RONDAS</div>
-                <div class="summary-item"><span class="summary-label">Coste Kilómetros (0.50€/km):</span> <span class="summary-value">${kmCost.toFixed(2)} €</span></div>
-                <div class="summary-item"><span class="summary-label">Coste Tiempo Desplazamiento (1€/min):</span> <span class="summary-value">${travelCost.toFixed(2)} €</span></div>
+                <div class="summary-item"><span class="summary-label">Coste Kilómetros (Ida y Vuelta - 0.50€/km):</span> <span class="summary-value">${kmCost.toFixed(2)} €</span></div>
+                <div class="summary-item"><span class="summary-label">Coste Desplazamiento (Ida y Vuelta - 1€/min):</span> <span class="summary-value">${travelCost.toFixed(2)} €</span></div>
                 <div class="summary-item"><span class="summary-label">Coste Tiempo Rondas (1€/min):</span> <span class="summary-value">${pointsCost.toFixed(2)} €</span></div>
-                <div class="summary-item" style="border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; margin-top:8px; font-weight:bold;"><span class="summary-label" style="color: var(--text-primary); font-size:1rem;">Coste Total del Servicio:</span> <span class="summary-value" style="color: var(--success); font-size:1.1rem;">${totalCost.toFixed(2)} €</span></div>
+                <div class="summary-item" style="border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; margin-top:8px; font-weight:bold;"><span class="summary-label" style="color: var(--text-primary); font-size:0.95rem;">Coste Diario (1 Ronda):</span> <span class="summary-value" style="color: var(--text-primary); font-size:1rem;">${dailyCost.toFixed(2)} €</span></div>
+                <div class="summary-item" style="border-top:1px solid rgba(255,255,255,0.05); padding-top:4px; margin-top:4px; font-weight:bold;"><span class="summary-label" style="color: var(--text-primary); font-size:1rem;">Coste Mensual (30 Rondas):</span> <span class="summary-value" style="color: var(--success); font-size:1.1rem;">${monthlyCost.toFixed(2)} €</span></div>
             </div>
         `;
         container.innerHTML += roundsHtml;
@@ -4345,7 +4508,7 @@ async function handlePdfGenerationAndSharing() {
         doc.setTextColor(100, 116, 139);
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(8.5);
-        doc.text(`Versión App: v1.15.00 by JMSYSTEMS`, 195, 16, { align: 'right' });
+        doc.text(`Versión App: v1.15.01 by JMSYSTEMS`, 195, 16, { align: 'right' });
         
         doc.setFontSize(11);
         doc.setFont('Helvetica', 'bold');
@@ -4522,10 +4685,14 @@ async function handlePdfGenerationAndSharing() {
             const points = rounds.points || [];
             const pointsTime = points.reduce((acc, p) => acc + p.time, 0);
             
-            const kmCost = rounds.travelKm * 0.50;
-            const travelCost = rounds.travelTime * 1.00;
+            const kmTotal = rounds.travelKm * 2;
+            const travelTimeTotal = rounds.travelTime * 2;
+            
+            const kmCost = kmTotal * 0.50;
+            const travelCost = travelTimeTotal * 1.00;
             const pointsCost = pointsTime * 1.00;
-            const totalCost = kmCost + travelCost + pointsCost;
+            const dailyCost = kmCost + travelCost + pointsCost;
+            const monthlyCost = dailyCost * 30;
 
             doc.setFillColor(241, 245, 249);
             doc.rect(15, y, 180, 7, 'F');
@@ -4538,8 +4705,8 @@ async function handlePdfGenerationAndSharing() {
             doc.setTextColor(30, 41, 59);
             doc.setFont('Helvetica', 'normal');
             doc.setFontSize(9.5);
-            doc.text(`• Distancia de Desplazamiento Base: ${rounds.travelKm.toFixed(1)} km`, 20, y);
-            doc.text(`• Tiempo de Desplazamiento Base: ${rounds.travelTime} minutos`, 20, y + 5);
+            doc.text(`• Distancia de Ida: ${rounds.travelKm.toFixed(1)} km (Ida/Vuelta: ${kmTotal.toFixed(1)} km)`, 20, y);
+            doc.text(`• Tiempo Desplazamiento Ida: ${rounds.travelTime} minutos (Ida/Vuelta: ${travelTimeTotal} minutos)`, 20, y + 5);
             doc.text(`• Tiempo Total de Rondas en Cliente: ${pointsTime} minutos`, 20, y + 10);
             
             y += 20;
@@ -4556,7 +4723,8 @@ async function handlePdfGenerationAndSharing() {
             doc.setFont('Helvetica', 'bold');
             doc.setFontSize(8.5);
             doc.text('Punto de Control / Ubicación', 18, y + 4.5);
-            doc.text('Tiempo Estimado', 160, y + 4.5);
+            doc.text('Tiempo', 110, y + 4.5);
+            doc.text('Fotografía del Punto', 145, y + 4.5);
             
             y += 6;
 
@@ -4571,13 +4739,27 @@ async function handlePdfGenerationAndSharing() {
             } else {
                 points.forEach(p => {
                     doc.text(p.name, 18, y + 5);
-                    doc.text(`${p.time} minutos`, 160, y + 5);
+                    doc.text(`${p.time} min`, 110, y + 5);
                     
-                    doc.setDrawColor(241, 245, 249);
-                    doc.line(15, y + 7, 195, y + 7);
-                    y += 7;
+                    if (p.photoBase64) {
+                        try {
+                            doc.addImage(p.photoBase64, 'JPEG', 145, y + 1, 20, 15);
+                            doc.setDrawColor(241, 245, 249);
+                            doc.line(15, y + 17, 195, y + 17);
+                            y += 17;
+                        } catch (e) {
+                            console.error("Error drawing point photo in PDF:", e);
+                            doc.setDrawColor(241, 245, 249);
+                            doc.line(15, y + 7, 195, y + 7);
+                            y += 7;
+                        }
+                    } else {
+                        doc.setDrawColor(241, 245, 249);
+                        doc.line(15, y + 7, 195, y + 7);
+                        y += 7;
+                    }
 
-                    if (y > 270) {
+                    if (y > 260) {
                         doc.addPage();
                         y = 20;
                     }
@@ -4604,17 +4786,17 @@ async function handlePdfGenerationAndSharing() {
             doc.setFont('Helvetica', 'normal');
             doc.setFontSize(9.5);
 
-            doc.text(`• Coste de Kilometraje (${rounds.travelKm.toFixed(1)} km x 0.50 €/km):`, 20, y);
+            doc.text(`• Coste de Kilometraje (Ida y Vuelta - ${kmTotal.toFixed(1)} km x 0.50 €/km):`, 20, y);
             doc.setFont('Helvetica', 'bold');
             doc.text(`${kmCost.toFixed(2)} €`, 160, y);
             doc.setFont('Helvetica', 'normal');
 
-            doc.text(`• Coste de Tiempo Desplazamiento (${rounds.travelTime} min x 1.00 €/min):`, 20, y + 6);
+            doc.text(`• Coste Desplazamiento (Ida y Vuelta - ${travelTimeTotal} min x 1.00 €/min):`, 20, y + 6);
             doc.setFont('Helvetica', 'bold');
             doc.text(`${travelCost.toFixed(2)} €`, 160, y + 6);
             doc.setFont('Helvetica', 'normal');
 
-            doc.text(`• Coste de Tiempo Rondas (${pointsTime} min x 1.00 €/min):`, 20, y + 12);
+            doc.text(`• Coste Tiempo Rondas en Cliente (${pointsTime} min x 1.00 €/min):`, 20, y + 12);
             doc.setFont('Helvetica', 'bold');
             doc.text(`${pointsCost.toFixed(2)} €`, 160, y + 12);
             doc.setFont('Helvetica', 'normal');
@@ -4626,10 +4808,16 @@ async function handlePdfGenerationAndSharing() {
             y += 6;
 
             doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(10);
+            doc.setTextColor(30, 41, 59);
+            doc.text('COSTE DIARIO (1 Ronda diaria):', 20, y);
+            doc.text(`${dailyCost.toFixed(2)} €`, 160, y);
+            
+            y += 6;
             doc.setFontSize(11);
             doc.setTextColor(16, 185, 129); // Green
-            doc.text('COSTE TOTAL DEL SERVICIO:', 20, y);
-            doc.text(`${totalCost.toFixed(2)} €`, 160, y);
+            doc.text('COSTE MENSUAL (30 Rondas al mes):', 20, y);
+            doc.text(`${monthlyCost.toFixed(2)} €`, 160, y);
             y += 10;
         } else {
             // Migration mode
