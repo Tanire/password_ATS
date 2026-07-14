@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.14.08",
+        version: "1.15.00",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -88,7 +88,12 @@ const state = {
             { name: 'Sirenas', qty: 0, status: 'Reutilizar' },
             { name: 'Cámaras Analógicas', qty: 0, status: 'Reutilizar' },
             { name: 'Grabador DVR/NVR', qty: 0, status: 'Sustituir' }
-        ]
+        ],
+        rounds: {
+            travelTime: 0,
+            travelKm: 0,
+            points: []
+        }
     }
 };
 
@@ -383,6 +388,15 @@ function setupEventListeners() {
             switchScreen('commercial-client-details');
         });
     }
+    const btnModeRounds = document.getElementById("btn-mode-rounds");
+    if (btnModeRounds) {
+        btnModeRounds.addEventListener("click", () => {
+            state.commercial.id = ''; // Reset ID since this is a new report
+            state.commercial.mode = 'rondas';
+            document.getElementById('client-title').innerText = 'Datos de Rondas de Vigilantes';
+            switchScreen('commercial-client-details');
+        });
+    }
     const clientForm = document.getElementById('client-form');
     if (clientForm) {
         clientForm.addEventListener('submit', (e) => {
@@ -394,6 +408,9 @@ function setupEventListeners() {
 
             if (state.commercial.mode === 'nueva') {
                 switchScreen('commercial-disciplines');
+            } else if (state.commercial.mode === 'rondas') {
+                renderRoundsForm();
+                switchScreen('commercial-rounds');
             } else {
                 renderInventoryTable();
                 switchScreen('commercial-migration');
@@ -505,6 +522,8 @@ function setupEventListeners() {
                 state.commercial.currentDisciplineIndex = state.commercial.selectedDisciplines.length - 1;
                 switchScreen('commercial-wizard');
                 showWizardStep();
+            } else if (state.commercial.mode === 'rondas') {
+                switchScreen('commercial-rounds');
             } else {
                 switchScreen('commercial-migration');
             }
@@ -517,9 +536,45 @@ function setupEventListeners() {
                 state.commercial.currentDisciplineIndex = state.commercial.selectedDisciplines.length - 1;
                 switchScreen('commercial-wizard');
                 showWizardStep();
+            } else if (state.commercial.mode === 'rondas') {
+                switchScreen('commercial-rounds');
             } else {
                 switchScreen('commercial-migration');
             }
+        });
+    }
+
+    // ==========================================
+    // RONDAS LISTENERS
+    // ==========================================
+    const btnBackRounds = document.getElementById('btn-back-rounds');
+    if (btnBackRounds) {
+        btnBackRounds.addEventListener('click', () => switchScreen('commercial-client-details'));
+    }
+    const btnBackRoundsClient = document.getElementById('btn-back-rounds-client');
+    if (btnBackRoundsClient) {
+        btnBackRoundsClient.addEventListener('click', () => switchScreen('commercial-client-details'));
+    }
+    const btnRoundsAddPoint = document.getElementById('btn-rounds-add-point');
+    if (btnRoundsAddPoint) {
+        btnRoundsAddPoint.addEventListener('click', addRoundPoint);
+    }
+    const inputRoundsKm = document.getElementById('input-rounds-km');
+    if (inputRoundsKm) {
+        inputRoundsKm.addEventListener('input', calculateRoundsCost);
+    }
+    const inputRoundsTravelTime = document.getElementById('input-rounds-travel-time');
+    if (inputRoundsTravelTime) {
+        inputRoundsTravelTime.addEventListener('input', calculateRoundsCost);
+    }
+    const roundsForm = document.getElementById('rounds-form');
+    if (roundsForm) {
+        roundsForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            state.commercial.rounds.travelKm = parseFloat(document.getElementById('input-rounds-km').value) || 0;
+            state.commercial.rounds.travelTime = parseInt(document.getElementById('input-rounds-travel-time').value) || 0;
+            generateSummary();
+            switchScreen('commercial-summary');
         });
     }
 
@@ -617,7 +672,7 @@ function switchScreen(screenId) {
         if (screenId === "manuals" && !scopes.includes("manuals")) return;
         if (screenId === "manuals-list" && !scopes.includes("manuals")) return;
         if (screenId === "manual-view" && !scopes.includes("manuals")) return;
-        if (["commercial-home", "commercial-client-details", "commercial-disciplines", "commercial-wizard", "commercial-migration", "commercial-summary"].includes(screenId) && !scopes.includes("commercial")) return;
+        if (["commercial-home", "commercial-client-details", "commercial-disciplines", "commercial-wizard", "commercial-migration", "commercial-summary", "commercial-rounds"].includes(screenId) && !scopes.includes("commercial")) return;
         if (["expenses-submenu", "hours", "diets", "materials", "form-hour", "form-diet", "form-material", "expenses", "form-expense"].includes(screenId) && !scopes.includes("expenses")) return;
         if (screenId === "vacations" && !scopes.includes("vacations")) return;
     }
@@ -3915,6 +3970,123 @@ function loadIncendiosFields() {
     renderCommercialPreviews('previews-incendios', state.commercial.incendios.photos);
 }
 
+// Rondas functionality
+function renderRoundsForm() {
+    // Set travel values if they exist
+    document.getElementById('input-rounds-km').value = state.commercial.rounds.travelKm || 0;
+    document.getElementById('input-rounds-travel-time').value = state.commercial.rounds.travelTime || 0;
+    
+    // Clear inputs for adding a point
+    document.getElementById('input-rounds-point-name').value = '';
+    document.getElementById('input-rounds-point-time').value = 10;
+    
+    // Render the list of points and recalculate costs
+    renderRoundsPointsList();
+    calculateRoundsCost();
+}
+
+function addRoundPoint() {
+    const nameInput = document.getElementById('input-rounds-point-name');
+    const timeInput = document.getElementById('input-rounds-point-time');
+    
+    const name = nameInput.value.trim();
+    const time = parseInt(timeInput.value) || 0;
+    
+    if (!name) {
+        showToast('Introduce un nombre para el punto');
+        return;
+    }
+    if (time <= 0) {
+        showToast('El tiempo debe ser mayor que 0');
+        return;
+    }
+    
+    if (!state.commercial.rounds.points) {
+        state.commercial.rounds.points = [];
+    }
+    
+    state.commercial.rounds.points.push({
+        id: "pt_" + Date.now() + "_" + Math.floor(Math.random() * 100),
+        name: name,
+        time: time
+    });
+    
+    nameInput.value = '';
+    timeInput.value = 10;
+    
+    renderRoundsPointsList();
+    calculateRoundsCost();
+    showToast('Punto añadido');
+}
+
+function deleteRoundPoint(pointId) {
+    state.commercial.rounds.points = state.commercial.rounds.points.filter(p => p.id !== pointId);
+    renderRoundsPointsList();
+    calculateRoundsCost();
+    showToast('Punto eliminado');
+}
+
+function renderRoundsPointsList() {
+    const listContainer = document.getElementById('list-rounds-points');
+    if (!listContainer) return;
+    listContainer.innerHTML = '';
+    
+    const points = state.commercial.rounds.points || [];
+    
+    if (points.length === 0) {
+        listContainer.innerHTML = `<div style="text-align: center; padding: 15px; color: var(--text-secondary); font-size: 0.85rem; border: 1px dashed var(--border-glass); border-radius: var(--radius-sm);">No hay puntos registrados. Añade al menos uno para calcular los tiempos.</div>`;
+        return;
+    }
+    
+    points.forEach(p => {
+        const item = document.createElement('div');
+        item.style.display = 'flex';
+        item.style.justifyContent = 'space-between';
+        item.style.alignItems = 'center';
+        item.style.background = 'rgba(255,255,255,0.02)';
+        item.style.border = '1px solid var(--border-glass)';
+        item.style.borderRadius = 'var(--radius-sm)';
+        item.style.padding = '8px 12px';
+        item.style.marginBottom = '6px';
+        item.style.fontSize = '0.85rem';
+        item.className = 'anim-fade';
+        
+        item.innerHTML = `
+            <div>
+                <span style="font-weight:600; color:var(--text-primary);">${escapeHtml(p.name)}</span>
+                <span style="color:var(--text-secondary); margin-left: 8px;">(${p.time} min)</span>
+            </div>
+            <button type="button" class="btn-icon" style="color:var(--danger); padding:0; border:none; background:none; cursor:pointer;" title="Eliminar punto">
+                <i class="bx bx-trash" style="font-size: 1.1rem;"></i>
+            </button>
+        `;
+        
+        item.querySelector('button').addEventListener('click', () => {
+            deleteRoundPoint(p.id);
+        });
+        
+        listContainer.appendChild(item);
+    });
+}
+
+function calculateRoundsCost() {
+    const km = parseFloat(document.getElementById('input-rounds-km').value) || 0;
+    const travelTime = parseInt(document.getElementById('input-rounds-travel-time').value) || 0;
+    
+    const points = state.commercial.rounds.points || [];
+    const pointsTime = points.reduce((acc, p) => acc + p.time, 0);
+    
+    const kmCost = km * 0.50;
+    const travelCost = travelTime * 1.00;
+    const pointsCost = pointsTime * 1.00;
+    const totalCost = kmCost + travelCost + pointsCost;
+    
+    document.getElementById('cost-rounds-km').innerText = kmCost.toFixed(2) + ' €';
+    document.getElementById('cost-rounds-travel').innerText = travelCost.toFixed(2) + ' €';
+    document.getElementById('cost-rounds-points').innerText = pointsCost.toFixed(2) + ' €';
+    document.getElementById('cost-rounds-total').innerText = totalCost.toFixed(2) + ' €';
+}
+
 // Inventory table
 function renderInventoryTable() {
     const tbody = document.getElementById('inventory-tbody');
@@ -4040,6 +4212,45 @@ function generateSummary() {
             }
             container.innerHTML += blockHtml;
         });
+    } else if (state.commercial.mode === 'rondas') {
+        const rounds = state.commercial.rounds || { travelTime: 0, travelKm: 0, points: [] };
+        const points = rounds.points || [];
+        const pointsTime = points.reduce((acc, p) => acc + p.time, 0);
+        
+        const kmCost = rounds.travelKm * 0.50;
+        const travelCost = rounds.travelTime * 1.00;
+        const pointsCost = pointsTime * 1.00;
+        const totalCost = kmCost + travelCost + pointsCost;
+        
+        let roundsHtml = `
+            <div class="summary-block">
+                <div class="summary-header">RONDAS DE VIGILANTES</div>
+                <div class="summary-item"><span class="summary-label">Distancia desde Base:</span> <span class="summary-value">${rounds.travelKm.toFixed(1)} km</span></div>
+                <div class="summary-item"><span class="summary-label">Tiempo Desplazamiento:</span> <span class="summary-value">${rounds.travelTime} min</span></div>
+                <div class="summary-item"><span class="summary-label">Tiempo Total en Puntos:</span> <span class="summary-value">${pointsTime} min</span></div>
+            </div>
+            
+            <div class="summary-block">
+                <div class="summary-header">PUNTOS DE CONTROL REGISTRADOS</div>
+                <div style="margin-top: 5px;">
+                    ${points.map(p => `
+                        <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <span style="color: var(--text-primary); font-weight:600;">• ${escapeHtml(p.name)}</span>
+                            <span style="color: var(--text-secondary);">${p.time} min</span>
+                        </div>
+                    `).join('') || '<div style="text-align: center; color: var(--text-secondary); font-size: 0.85rem; padding: 10px;">Sin puntos registrados</div>'}
+                </div>
+            </div>
+            
+            <div class="summary-block">
+                <div class="summary-header">DESGLOSE DE COSTES DE RONDAS</div>
+                <div class="summary-item"><span class="summary-label">Coste Kilómetros (0.50€/km):</span> <span class="summary-value">${kmCost.toFixed(2)} €</span></div>
+                <div class="summary-item"><span class="summary-label">Coste Tiempo Desplazamiento (1€/min):</span> <span class="summary-value">${travelCost.toFixed(2)} €</span></div>
+                <div class="summary-item"><span class="summary-label">Coste Tiempo Rondas (1€/min):</span> <span class="summary-value">${pointsCost.toFixed(2)} €</span></div>
+                <div class="summary-item" style="border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; margin-top:8px; font-weight:bold;"><span class="summary-label" style="color: var(--text-primary); font-size:1rem;">Coste Total del Servicio:</span> <span class="summary-value" style="color: var(--success); font-size:1.1rem;">${totalCost.toFixed(2)} €</span></div>
+            </div>
+        `;
+        container.innerHTML += roundsHtml;
     } else {
         // Migration details
         let migHtml = `
@@ -4111,7 +4322,8 @@ async function handlePdfGenerationAndSharing() {
         });
 
         const reportDate = new Date().toLocaleDateString('es-ES');
-        const filename = state.commercial.mode === 'nueva' ? 'instalanueva.pdf' : 'migracion.pdf';
+        const filename = state.commercial.mode === 'nueva' ? 'instalanueva.pdf' : 
+                         state.commercial.mode === 'rondas' ? 'informe_rondas.pdf' : 'migracion.pdf';
         const emailSubject = `Informe Técnico Comercial - ${state.commercial.client.name}`;
 
         let y = 15;
@@ -4133,12 +4345,13 @@ async function handlePdfGenerationAndSharing() {
         doc.setTextColor(100, 116, 139);
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(8.5);
-        doc.text(`Versión App: v1.14.07 by JMSYSTEMS`, 195, 16, { align: 'right' });
+        doc.text(`Versión App: v1.15.00 by JMSYSTEMS`, 195, 16, { align: 'right' });
         
         doc.setFontSize(11);
         doc.setFont('Helvetica', 'bold');
         doc.setTextColor(209, 10, 36); // Red corporate title
-        const typeLabel = state.commercial.mode === 'nueva' ? 'DISEÑO DE INSTALACIÓN NUEVA' : 'AUDITORÍA Y MIGRACIÓN';
+        const typeLabel = state.commercial.mode === 'nueva' ? 'DISEÑO DE INSTALACIÓN NUEVA' : 
+                          state.commercial.mode === 'rondas' ? 'RONDAS DE VIGILANCIA Y COSTES' : 'AUDITORÍA Y MIGRACIÓN';
         doc.text(typeLabel, 195, 26, { align: 'right' });
         
         doc.setFontSize(9);
@@ -4304,6 +4517,120 @@ async function handlePdfGenerationAndSharing() {
                 }
                 y += 5;
             }
+        } else if (state.commercial.mode === 'rondas') {
+            const rounds = state.commercial.rounds || { travelTime: 0, travelKm: 0, points: [] };
+            const points = rounds.points || [];
+            const pointsTime = points.reduce((acc, p) => acc + p.time, 0);
+            
+            const kmCost = rounds.travelKm * 0.50;
+            const travelCost = rounds.travelTime * 1.00;
+            const pointsCost = pointsTime * 1.00;
+            const totalCost = kmCost + travelCost + pointsCost;
+
+            doc.setFillColor(241, 245, 249);
+            doc.rect(15, y, 180, 7, 'F');
+            doc.setTextColor(1, 30, 65); // Navy
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(10.5);
+            doc.text('DETALLES DEL SERVICIO DE RONDAS', 18, y + 5);
+            y += 12;
+
+            doc.setTextColor(30, 41, 59);
+            doc.setFont('Helvetica', 'normal');
+            doc.setFontSize(9.5);
+            doc.text(`• Distancia de Desplazamiento Base: ${rounds.travelKm.toFixed(1)} km`, 20, y);
+            doc.text(`• Tiempo de Desplazamiento Base: ${rounds.travelTime} minutos`, 20, y + 5);
+            doc.text(`• Tiempo Total de Rondas en Cliente: ${pointsTime} minutos`, 20, y + 10);
+            
+            y += 20;
+
+            if (y > 240) {
+                doc.addPage();
+                y = 20;
+            }
+
+            // Table of points
+            doc.setFillColor(1, 30, 65);
+            doc.rect(15, y, 180, 6, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(8.5);
+            doc.text('Punto de Control / Ubicación', 18, y + 4.5);
+            doc.text('Tiempo Estimado', 160, y + 4.5);
+            
+            y += 6;
+
+            doc.setTextColor(51, 65, 85);
+            doc.setFont('Helvetica', 'normal');
+            
+            if (points.length === 0) {
+                doc.setTextColor(100, 116, 139);
+                doc.setFont('Helvetica', 'italic');
+                doc.text('No se han registrado puntos de control.', 20, y + 5);
+                y += 10;
+            } else {
+                points.forEach(p => {
+                    doc.text(p.name, 18, y + 5);
+                    doc.text(`${p.time} minutos`, 160, y + 5);
+                    
+                    doc.setDrawColor(241, 245, 249);
+                    doc.line(15, y + 7, 195, y + 7);
+                    y += 7;
+
+                    if (y > 270) {
+                        doc.addPage();
+                        y = 20;
+                    }
+                });
+                y += 5;
+            }
+
+            if (y > 200) {
+                doc.addPage();
+                y = 20;
+            }
+
+            // Cost Summary Block
+            doc.setFillColor(241, 245, 249);
+            doc.rect(15, y, 180, 7, 'F');
+            doc.setTextColor(209, 10, 36); // Red section accent
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(10.5);
+            doc.text('DESGLOSE DE COSTES (Tarifa: 1€/min y 0.50€/km)', 18, y + 5);
+            
+            y += 12;
+
+            doc.setTextColor(30, 41, 59);
+            doc.setFont('Helvetica', 'normal');
+            doc.setFontSize(9.5);
+
+            doc.text(`• Coste de Kilometraje (${rounds.travelKm.toFixed(1)} km x 0.50 €/km):`, 20, y);
+            doc.setFont('Helvetica', 'bold');
+            doc.text(`${kmCost.toFixed(2)} €`, 160, y);
+            doc.setFont('Helvetica', 'normal');
+
+            doc.text(`• Coste de Tiempo Desplazamiento (${rounds.travelTime} min x 1.00 €/min):`, 20, y + 6);
+            doc.setFont('Helvetica', 'bold');
+            doc.text(`${travelCost.toFixed(2)} €`, 160, y + 6);
+            doc.setFont('Helvetica', 'normal');
+
+            doc.text(`• Coste de Tiempo Rondas (${pointsTime} min x 1.00 €/min):`, 20, y + 12);
+            doc.setFont('Helvetica', 'bold');
+            doc.text(`${pointsCost.toFixed(2)} €`, 160, y + 12);
+            doc.setFont('Helvetica', 'normal');
+
+            y += 20;
+            doc.setDrawColor(30, 41, 59);
+            doc.setLineWidth(0.5);
+            doc.line(15, y, 195, y);
+            y += 6;
+
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(11);
+            doc.setTextColor(16, 185, 129); // Green
+            doc.text('COSTE TOTAL DEL SERVICIO:', 20, y);
+            doc.text(`${totalCost.toFixed(2)} €`, 160, y);
+            y += 10;
         } else {
             // Migration mode
             doc.setFillColor(241, 245, 249);
@@ -4523,7 +4850,8 @@ async function saveCommercialReportToHistory() {
         incendios: { ...state.commercial.incendios },
         generalPhotos: { ...state.commercial.generalPhotos },
         migration: { ...state.commercial.migration },
-        inventory: JSON.parse(JSON.stringify(state.commercial.inventory || []))
+        inventory: JSON.parse(JSON.stringify(state.commercial.inventory || [])),
+        rounds: state.commercial.rounds ? JSON.parse(JSON.stringify(state.commercial.rounds)) : { travelTime: 0, travelKm: 0, points: [] }
     };
     
     if (isNew) {
@@ -4579,8 +4907,12 @@ function renderCommercialHistory() {
     filtered.forEach(r => {
         const clientName = r.client?.name || "Sin nombre";
         const dateStr = new Date(r.date).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-        const typeStr = r.mode === 'nueva' ? 'Nueva Instalación' : 'Migración / Auditoría';
-        const typeClass = r.mode === 'nueva' ? 'badge-new' : 'badge-migrate';
+        const typeStr = r.mode === 'nueva' ? 'Nueva Instalación' : 
+                        r.mode === 'rondas' ? 'Rondas de Vigilantes' : 'Migración / Auditoría';
+        const typeClass = r.mode === 'nueva' ? 'badge-new' : 
+                          r.mode === 'rondas' ? 'badge-rounds' : 'badge-migrate';
+        const badgeBg = r.mode === 'nueva' ? 'var(--accent)' : 
+                        r.mode === 'rondas' ? 'var(--success)' : '#e0a800';
         const authorStr = r.author || 'técnico';
         
         const card = document.createElement("div");
@@ -4598,7 +4930,7 @@ function renderCommercialHistory() {
             <div class="card-main" style="display: flex; flex-direction: column; gap: 4px;">
                 <div class="card-title-row" style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
                     <span class="card-title" style="font-weight: 600; font-size: 1rem; color: var(--text-primary);">${escapeHtml(clientName)}</span>
-                    <span class="badge ${typeClass}" style="padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; color: #fff; background: ${r.mode === 'nueva' ? 'var(--accent)' : '#e0a800'};">${typeStr}</span>
+                    <span class="badge ${typeClass}" style="padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; color: #fff; background: ${badgeBg};">${typeStr}</span>
                 </div>
                 <div class="card-detail-row" style="margin-top: 6px; font-size: 0.8rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 4px;">
                     <div>📅 ${dateStr}</div>
@@ -4641,6 +4973,7 @@ function loadCommercialReportForEdit(id) {
     state.commercial.generalPhotos = { ...report.generalPhotos };
     state.commercial.migration = { ...report.migration };
     state.commercial.inventory = JSON.parse(JSON.stringify(report.inventory || []));
+    state.commercial.rounds = report.rounds ? JSON.parse(JSON.stringify(report.rounds)) : { travelTime: 0, travelKm: 0, points: [] };
     
     // Set UI client form values
     document.getElementById('input-client-name').value = state.commercial.client.name || '';
@@ -4650,6 +4983,10 @@ function loadCommercialReportForEdit(id) {
     
     if (state.commercial.mode === 'nueva') {
         document.getElementById('client-title').innerText = 'Datos de Nueva Instalación';
+    } else if (state.commercial.mode === 'rondas') {
+        document.getElementById('client-title').innerText = 'Datos de Rondas de Vigilantes';
+        document.getElementById('input-rounds-km').value = state.commercial.rounds.travelKm || 0;
+        document.getElementById('input-rounds-travel-time').value = state.commercial.rounds.travelTime || 0;
     } else {
         document.getElementById('client-title').innerText = 'Datos de Auditoría / Migración';
         // Set migration values
