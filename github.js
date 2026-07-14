@@ -48,8 +48,13 @@ class GitHubClient {
             
             // GitHub returns base64 content with newlines, clean it
             const cleanedBase64 = data.content.replace(/\s/g, '');
-            // Decode base64 to UTF-8 string
-            const decodedContent = decodeURIComponent(escape(atob(cleanedBase64)));
+            // Decode base64 to UTF-8 string using TextDecoder and Uint8Array (no escape/unescape)
+            const binaryString = atob(cleanedBase64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            const decodedContent = new TextDecoder().decode(bytes);
 
             return {
                 content: decodedContent,
@@ -69,8 +74,13 @@ class GitHubClient {
      */
     async saveFile(content, sha = null) {
         try {
-            // Encode content to base64 safely supporting unicode
-            const base64Content = btoa(unescape(encodeURIComponent(content)));
+            // Encode content to base64 safely supporting unicode using TextEncoder and Uint8Array (no escape/unescape)
+            const bytes = new TextEncoder().encode(content);
+            let binaryString = "";
+            for (let i = 0; i < bytes.byteLength; i++) {
+                binaryString += String.fromCharCode(bytes[i]);
+            }
+            const base64Content = btoa(binaryString);
 
             const body = {
                 message: `Sincronización Gestor Contraseñas V4.0 - ${new Date().toISOString()}`,

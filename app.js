@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.14.07",
+        version: "1.14.08",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -237,9 +237,9 @@ function setupEventListeners() {
     document.getElementById("btn-new-material").addEventListener("click", () => openMaterialForm(null));
 
     // V1.05 Search filters
-    document.getElementById("search-hours").addEventListener("input", renderHours);
-    document.getElementById("search-diets").addEventListener("input", renderDiets);
-    document.getElementById("search-materials").addEventListener("input", renderMaterials);
+    document.getElementById("search-hours").addEventListener("input", debounce(renderHours));
+    document.getElementById("search-diets").addEventListener("input", debounce(renderDiets));
+    document.getElementById("search-materials").addEventListener("input", debounce(renderMaterials));
 
     // V1.05 Form submits
     document.getElementById("form-hour").addEventListener("submit", saveHourEntry);
@@ -262,10 +262,10 @@ function setupEventListeners() {
     // Sync button
     els.btnSyncTrigger.addEventListener("click", syncWithCloud);
 
-    // List Search Filter Triggers
-    els.searchPasswords.addEventListener("input", renderPasswords);
-    els.searchSubscribers.addEventListener("input", renderSubscribers);
-    els.searchManuals.addEventListener("input", renderManualsList);
+    // List Search Filter Triggers (debounced for mobile performance)
+    els.searchPasswords.addEventListener("input", debounce(renderPasswords));
+    els.searchSubscribers.addEventListener("input", debounce(renderSubscribers));
+    els.searchManuals.addEventListener("input", debounce(renderManualsList));
 
     // Expenses Category Filter
     els.filterExpensesCat.addEventListener("change", renderExpenses);
@@ -534,7 +534,7 @@ function setupEventListeners() {
     }
     const searchCommHistory = document.getElementById("search-commercial-history");
     if (searchCommHistory) {
-        searchCommHistory.addEventListener("input", renderCommercialHistory);
+        searchCommHistory.addEventListener("input", debounce(renderCommercialHistory));
     }
     const btnSaveCommHistory = document.getElementById("btn-save-commercial-history");
     if (btnSaveCommHistory) {
@@ -5661,6 +5661,15 @@ function renderAdminVacationsSummary() {
         `;
         list.appendChild(item);
     });
+}
+
+// Debounce helper to optimize search input event rendering
+function debounce(func, delay = 250) {
+    let timer;
+    return function(...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => func.apply(this, args), delay);
+    };
 }
 
 
