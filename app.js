@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.15.03",
+        version: "1.15.04",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -6211,7 +6211,7 @@ function exportVacationsReport() {
     
     if (activeView === "yearly") {
         titlePeriod = `Año ${year}`;
-        calendarContentHtml = `<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px;">`;
+        calendarContentHtml = `<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; width: 100%;">`;
         for (let m = 0; m < 12; m++) {
             const firstDayOfMonth = new Date(year, m, 1);
             let startDayOfWeek = firstDayOfMonth.getDay() - 1;
@@ -6246,7 +6246,7 @@ function exportVacationsReport() {
             }
             
             calendarContentHtml += `
-                <div style="border: 1px solid #ccc; padding: 6px; border-radius: 4px; background: #fafafa;">
+                <div style="border: 1px solid #ccc; padding: 6px; border-radius: 4px; background: #fafafa; width: 31.5%; box-sizing: border-box; margin-bottom: 10px;">
                     <div style="font-size: 0.8rem; font-weight: bold; text-align: center; color: #3b82f6; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin-bottom: 5px;">${months[m]}</div>
                     <table style="width: 100%; border-collapse: collapse; text-align: center;">
                         <thead>
@@ -6441,11 +6441,11 @@ function exportVacationsReport() {
         margin:       10,
         filename:     fileName,
         image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0, windowWidth: 750 },
+        html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0, windowWidth: 720 },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
     
-    const contentWithWidth = `<div style="width: 730px; color: #000; background: #fff; font-family: Arial, sans-serif; padding: 10px; box-sizing: border-box;">${reportHtml}</div>`;
+    const contentWithWidth = `<div style="width: 700px; color: #000; background: #fff; font-family: Arial, sans-serif; padding: 10px; box-sizing: border-box;">${reportHtml}</div>`;
     
     html2pdf().set(opt).from(contentWithWidth).save().then(() => {
         showToast("PDF generado y descargado correctamente");
