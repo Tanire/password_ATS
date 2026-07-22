@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.15.02",
+        version: "1.15.03",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -678,6 +678,10 @@ function setupEventListeners() {
             btnMonthly.classList.add("btn-secondary");
             renderVacationCalendar();
         });
+    }
+    const btnExportVacPDF = document.getElementById("btn-export-vacations-pdf");
+    if (btnExportVacPDF) {
+        btnExportVacPDF.addEventListener("click", exportVacationsReport);
     }
 }
 
@@ -6182,6 +6186,272 @@ function renderAdminVacationsSummary() {
             </div>
         `;
         list.appendChild(item);
+    });
+}
+
+// v1.15.03 Export vacations calendar and summary as PDF report
+function exportVacationsReport() {
+    const isAdmin = state.currentUser && (state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico");
+    if (!isAdmin) {
+        showToast("Error: Sólo los administradores pueden exportar este informe");
+        return;
+    }
+    
+    showToast("Generando reporte de vacaciones...");
+    
+    const d = state.vacation.currentDate;
+    const year = d.getFullYear();
+    const activeView = state.vacation.activeView || "monthly";
+    const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    
+    let titlePeriod = "";
+    let calendarContentHtml = "";
+    
+    const vacations = state.vault.vacations || [];
+    
+    if (activeView === "yearly") {
+        titlePeriod = `Año ${year}`;
+        calendarContentHtml = `<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px;">`;
+        for (let m = 0; m < 12; m++) {
+            const firstDayOfMonth = new Date(year, m, 1);
+            let startDayOfWeek = firstDayOfMonth.getDay() - 1;
+            if (startDayOfWeek < 0) startDayOfWeek = 6;
+            const daysInMonth = new Date(year, m + 1, 0).getDate();
+            
+            let daysHtml = "";
+            for (let i = 0; i < startDayOfWeek; i++) {
+                daysHtml += `<td style="padding: 2px; text-align: center; font-size: 0.6rem; color: #ccc;">&nbsp;</td>`;
+            }
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${year}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const matchingRequests = vacations.filter(v => v.dates && v.dates.includes(dateStr) && v.status !== "rejected");
+                
+                let cellStyle = "padding: 2px; text-align: center; font-size: 0.65rem; border: 0.5px solid #ddd;";
+                let cellText = day;
+                
+                if (matchingRequests.length > 0) {
+                    const hasPending = matchingRequests.some(r => r.status === "pending");
+                    const color = getTechColor(matchingRequests[0].username);
+                    cellStyle += `background-color: ${color}; color: #fff; font-weight: bold;`;
+                    if (hasPending) {
+                        cellStyle += "border: 1px solid #eab308;";
+                    }
+                }
+                
+                if ((startDayOfWeek + day - 1) % 7 === 0 && day > 1) {
+                    daysHtml += `</tr><tr>`;
+                }
+                daysHtml += `<td style="${cellStyle}">${cellText}</td>`;
+            }
+            
+            calendarContentHtml += `
+                <div style="border: 1px solid #ccc; padding: 6px; border-radius: 4px; background: #fafafa;">
+                    <div style="font-size: 0.8rem; font-weight: bold; text-align: center; color: #3b82f6; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin-bottom: 5px;">${months[m]}</div>
+                    <table style="width: 100%; border-collapse: collapse; text-align: center;">
+                        <thead>
+                            <tr style="font-size: 0.55rem; color: #666; font-weight: bold;">
+                                <th>L</th><th>M</th><th>X</th><th>J</th><th>V</th><th>S</th><th>D</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                ${daysHtml}
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+        calendarContentHtml += `</div>`;
+    } else {
+        const month = d.getMonth();
+        titlePeriod = `${months[month]} de ${year}`;
+        
+        const firstDay = new Date(year, month, 1);
+        let startDayOfWeek = firstDay.getDay() - 1;
+        if (startDayOfWeek < 0) startDayOfWeek = 6;
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        
+        let rowsHtml = "<tr>";
+        for (let i = 0; i < startDayOfWeek; i++) {
+            rowsHtml += `<td style="border: 1.5px solid #000; height: 45px; background: #fafafa;">&nbsp;</td>`;
+        }
+        
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const matchingRequests = vacations.filter(v => v.dates && v.dates.includes(dateStr) && v.status !== "rejected");
+            
+            let cellStyle = "border: 1.5px solid #000; height: 45px; vertical-align: top; padding: 4px; font-size: 0.85rem; position: relative;";
+            let innerText = `<div style="font-weight: bold; font-size: 0.8rem; margin-bottom: 2px;">${day}</div>`;
+            
+            if (matchingRequests.length > 0) {
+                const colors = matchingRequests.map(r => getTechColor(r.username));
+                const uniqueColors = [...new Set(colors)];
+                
+                let bgStyle = "";
+                if (uniqueColors.length === 1) {
+                    bgStyle = `background: ${uniqueColors[0]};`;
+                } else {
+                    const percent = 100 / uniqueColors.length;
+                    let gradParts = [];
+                    uniqueColors.forEach((color, idx) => {
+                        gradParts.push(`${color} ${idx * percent}%`);
+                        gradParts.push(`${color} ${(idx + 1) * percent}%`);
+                    });
+                    bgStyle = `background: linear-gradient(135deg, ${gradParts.join(', ')});`;
+                }
+                
+                cellStyle += bgStyle + " color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,0.5);";
+                
+                const initialNames = matchingRequests.map(r => {
+                    const parts = (r.fullName || r.username).split(" ");
+                    const initials = parts.map(p => p[0]).join("").toUpperCase().substring(0, 2);
+                    const statusText = r.status === 'pending' ? '?' : '';
+                    return `${initials}${statusText}`;
+                }).join("+");
+                
+                innerText += `<div style="font-size: 0.65rem; background: rgba(0,0,0,0.3); padding: 1px 3px; border-radius: 3px; text-align: center; margin-top: 5px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${initialNames}</div>`;
+            }
+            
+            if ((startDayOfWeek + day - 1) % 7 === 0 && day > 1) {
+                rowsHtml += `</tr><tr>`;
+            }
+            rowsHtml += `<td style="${cellStyle}">${innerText}</td>`;
+        }
+        
+        const totalCells = startDayOfWeek + daysInMonth;
+        const remainingCells = (7 - (totalCells % 7)) % 7;
+        for (let i = 0; i < remainingCells; i++) {
+            rowsHtml += `<td style="border: 1.5px solid #000; height: 45px; background: #fafafa;">&nbsp;</td>`;
+        }
+        rowsHtml += "</tr>";
+        
+        calendarContentHtml = `
+            <table style="width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: fixed;">
+                <thead>
+                    <tr style="background: #f1f5f9;">
+                        <th style="border: 1.5px solid #000; padding: 6px; font-size: 0.8rem; font-weight: bold; width: 14.28%;">Lunes</th>
+                        <th style="border: 1.5px solid #000; padding: 6px; font-size: 0.8rem; font-weight: bold; width: 14.28%;">Martes</th>
+                        <th style="border: 1.5px solid #000; padding: 6px; font-size: 0.8rem; font-weight: bold; width: 14.28%;">Miércoles</th>
+                        <th style="border: 1.5px solid #000; padding: 6px; font-size: 0.8rem; font-weight: bold; width: 14.28%;">Jueves</th>
+                        <th style="border: 1.5px solid #000; padding: 6px; font-size: 0.8rem; font-weight: bold; width: 14.28%;">Viernes</th>
+                        <th style="border: 1.5px solid #000; padding: 6px; font-size: 0.8rem; font-weight: bold; width: 14.28%;">Sábado</th>
+                        <th style="border: 1.5px solid #000; padding: 6px; font-size: 0.8rem; font-weight: bold; width: 14.28%;">Domingo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+        `;
+    }
+    
+    let summaryRowsHtml = "";
+    const users = state.vault.users || [];
+    const todayStr = new Date().toISOString().split('T')[0];
+    
+    users.forEach(u => {
+        let approvedDays = 0;
+        let pendingDays = 0;
+        let enjoyedDays = 0;
+        
+        const userVacations = vacations.filter(v => (v.username || "").toLowerCase() === u.username.toLowerCase());
+        userVacations.forEach(v => {
+            const bizDays = getBusinessDaysCount(v.dates);
+            if (v.status === "approved") {
+                approvedDays += bizDays;
+                
+                const enjoyedBizDays = getBusinessDaysCount(v.dates.filter(d => d < todayStr));
+                enjoyedDays += enjoyedBizDays;
+            } else if (v.status === "pending") {
+                pendingDays += bizDays;
+            }
+        });
+        
+        const allowance = getUserVacationAllowance(u, year);
+        const remainingDays = allowance - approvedDays - pendingDays;
+        const color = getTechColor(u.username);
+        const displayName = u.fullName || u.username.toUpperCase();
+        
+        summaryRowsHtml += `
+            <tr>
+                <td style="border: 1.5px solid #000; padding: 8px; font-size: 0.85rem;">
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: ${color}; display: inline-block; border: 1.5px solid #000; margin-right: 6px;"></span>
+                    <span style="font-weight: bold;">${escapeHtml(displayName)}</span>
+                </td>
+                <td style="border: 1.5px solid #000; padding: 8px; font-size: 0.85rem; text-align: center;">${enjoyedDays}</td>
+                <td style="border: 1.5px solid #000; padding: 8px; font-size: 0.85rem; text-align: center;">${approvedDays}</td>
+                <td style="border: 1.5px solid #000; padding: 8px; font-size: 0.85rem; text-align: center;">${pendingDays}</td>
+                <td style="border: 1.5px solid #000; padding: 8px; font-size: 0.85rem; text-align: center; font-weight: bold; background: #f0fdf4;">${remainingDays}</td>
+                <td style="border: 1.5px solid #000; padding: 8px; font-size: 0.85rem; text-align: center;">${allowance}</td>
+            </tr>
+        `;
+    });
+    
+    const logoUrl = state.commercial.logoBase64 || 'logo.png';
+    const company = (state.vault.company_name || "ALTA TECNOLOGIA PARA LA SEGURIDAD").toUpperCase();
+    
+    const reportHtml = `
+        <div style="font-family: Arial, sans-serif; color: #000; padding: 10px;">
+            <div style="display: flex; align-items: center; border: 2.5px solid #000; margin-bottom: 20px;">
+                <div style="flex: 1; text-align: center; font-size: 1.3rem; font-weight: 800; padding: 12px; border-right: 2.5px solid #000; letter-spacing: 0.5px;">INFORME DE VACACIONES</div>
+                <div style="width: 200px; text-align: center; font-size: 1.1rem; font-weight: 800; padding: 12px; background: #f8fafc;">${titlePeriod.toUpperCase()}</div>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 0.9rem; line-height: 1.6;">
+                <div style="flex: 1;">
+                    <div><span style="font-weight: 700;">EMPRESA:</span> <span style="font-weight: 600;">${company}</span></div>
+                    <div style="margin-top: 5px;"><span style="font-weight: 700;">FECHA GENERACIÓN:</span> <span style="font-weight: 600;">${new Date().toLocaleDateString('es-ES')}</span></div>
+                </div>
+                <div style="text-align: right;">
+                    <img src="${logoUrl}" alt="Logo" style="height: 42px;" onerror="this.style.display='none'">
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 25px;">
+                <h3 style="font-size: 1rem; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 10px; font-weight: bold;">CALENDARIO DE DÍAS</h3>
+                ${calendarContentHtml}
+            </div>
+            
+            <div>
+                <h3 style="font-size: 1rem; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 10px; font-weight: bold;">RESUMEN DE DÍAS POR TÉCNICO</h3>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                    <thead>
+                        <tr style="background: #f1f5f9;">
+                            <th style="border: 1.5px solid #000; padding: 8px; font-size: 0.8rem; font-weight: bold; text-align: left;">Técnico</th>
+                            <th style="border: 1.5px solid #000; padding: 8px; font-size: 0.8rem; font-weight: bold; text-align: center; width: 15%;">Disfrutados</th>
+                            <th style="border: 1.5px solid #000; padding: 8px; font-size: 0.8rem; font-weight: bold; text-align: center; width: 15%;">Aprobados</th>
+                            <th style="border: 1.5px solid #000; padding: 8px; font-size: 0.8rem; font-weight: bold; text-align: center; width: 15%;">Pendientes</th>
+                            <th style="border: 1.5px solid #000; padding: 8px; font-size: 0.8rem; font-weight: bold; text-align: center; width: 15%; background: #e2f0d9;">Saldo Restante</th>
+                            <th style="border: 1.5px solid #000; padding: 8px; font-size: 0.8rem; font-weight: bold; text-align: center; width: 15%;">Total Asignado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${summaryRowsHtml}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    const fileName = `Informe_Vacaciones_${titlePeriod.replace(/\s+/g, "_")}.pdf`;
+    
+    const opt = {
+        margin:       10,
+        filename:     fileName,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0, windowWidth: 750 },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    
+    const contentWithWidth = `<div style="width: 730px; color: #000; background: #fff; font-family: Arial, sans-serif; padding: 10px; box-sizing: border-box;">${reportHtml}</div>`;
+    
+    html2pdf().set(opt).from(contentWithWidth).save().then(() => {
+        showToast("PDF generado y descargado correctamente");
+    }).catch(err => {
+        console.error("PDF Generation error", err);
+        showToast("Error al generar PDF");
     });
 }
 

@@ -161,9 +161,10 @@ header {
 }
 
 .header-logo img {
-    width: 32px;
     height: 32px;
-    border-radius: 50%;
+    width: auto;
+    object-fit: contain;
+    border-radius: 4px;
 }
 
 .header-logo h1 {
