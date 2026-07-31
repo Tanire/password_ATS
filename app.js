@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.15.06",
+        version: "1.15.07",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -851,6 +851,7 @@ async function handleUnlock() {
         if (!state.vault.materials) state.vault.materials = [];
         if (!state.vault.commercial_reports) state.vault.commercial_reports = [];
         if (!state.vault.vacations) state.vault.vacations = [];
+        if (!state.vault.notifications) state.vault.notifications = [];
         if (!state.vault.manual_categories) {
             state.vault.manual_categories = ["Ademco", "DSC", "Paradox", "Risco", "Galaxy", "Ajax", "Texecom", "General"];
         }
@@ -884,20 +885,21 @@ async function handleUnlock() {
         state.currentUser = activeUser;
         applyUserPrivileges(activeUser);
         
-        // Apply configs
-        if (state.vault.theme) {
-            applyTheme(state.vault.theme);
-            els.setTheme.value = state.vault.theme;
-        }
-        if (state.vault.ui_style) {
-            applyUiStyle(state.vault.ui_style);
-            els.setUiStyle.value = state.vault.ui_style;
-            localStorage.setItem("ats_ui_style", state.vault.ui_style);
-        }
-        if (state.vault.sounds) {
-            els.setSounds.value = state.vault.sounds;
-            localStorage.setItem("ats_sounds", state.vault.sounds);
-        }
+        // Apply configs (user-specific with vault level fallback)
+        const userTheme = activeUser.theme || state.vault.theme || "default";
+        const userUiStyle = activeUser.ui_style || state.vault.ui_style || "glass";
+        const userSounds = activeUser.sounds || state.vault.sounds || "on";
+
+        applyTheme(userTheme);
+        els.setTheme.value = userTheme;
+        localStorage.setItem(STORAGE_KEYS.THEME, userTheme);
+
+        applyUiStyle(userUiStyle);
+        els.setUiStyle.value = userUiStyle;
+        localStorage.setItem("ats_ui_style", userUiStyle);
+
+        els.setSounds.value = userSounds;
+        localStorage.setItem("ats_sounds", userSounds);
         if (state.vault.company_name) {
             els.lblCompanyName.textContent = state.vault.company_name;
             els.setCompanyName.value = state.vault.company_name;
@@ -911,6 +913,9 @@ async function handleUnlock() {
         playSound("success");
         switchScreen("dashboard");
         showToast(isOffline ? "Bóveda abierta fuera de línea" : "Bóveda abierta correctamente");
+        
+        // Check for personal notifications
+        setTimeout(checkForNotifications, 800);
     } catch (e) {
         console.error("Decryption failed:", e);
         playSound("error");
@@ -1608,10 +1613,21 @@ function saveSettingsAction() {
     applyUiStyle(uiStyle);
     els.lblCompanyName.textContent = company;
 
-    // Apply inside vault schema as well for sharing configurations
-    state.vault.theme = theme;
-    state.vault.ui_style = uiStyle;
-    state.vault.sounds = sounds;
+    // Apply to current user specific configuration
+    if (state.currentUser) {
+        state.currentUser.theme = theme;
+        state.currentUser.ui_style = uiStyle;
+        state.currentUser.sounds = sounds;
+        
+        const idx = state.vault.users.findIndex(u => u.username.toLowerCase() === state.currentUser.username.toLowerCase());
+        if (idx !== -1) {
+            state.vault.users[idx].theme = theme;
+            state.vault.users[idx].ui_style = uiStyle;
+            state.vault.users[idx].sounds = sounds;
+        }
+    }
+    
+    // Fallback company name at vault level
     state.vault.company_name = company;
     
     playSound("success");
@@ -2082,6 +2098,86 @@ function playSound(type) {
         }
     } catch (e) {
         console.warn("Web Audio API not allowed or supported yet.", e);
+    }
+}
+
+function showNotificationModal(message) {
+    const modal = document.createElement("div");
+    modal.style.position = "fixed";
+    modal.style.top = "0";
+    modal.style.left = "0";
+    modal.style.width = "100%";
+    modal.style.height = "100%";
+    modal.style.backgroundColor = "rgba(0,0,0,0.85)";
+    modal.style.display = "flex";
+    modal.style.justifyContent = "center";
+    modal.style.alignItems = "center";
+    modal.style.zIndex = "9999";
+    modal.style.padding = "20px";
+    modal.className = "anim-fade";
+
+    const box = document.createElement("div");
+    box.style.background = "var(--bg-secondary)";
+    box.style.border = "1px solid var(--border-glass)";
+    box.style.borderRadius = "var(--radius-lg)";
+    box.style.padding = "30px";
+    box.style.maxWidth = "400px";
+    box.style.width = "100%";
+    box.style.textAlign = "center";
+    box.style.boxShadow = "var(--shadow-premium)";
+
+    const icon = document.createElement("div");
+    icon.innerHTML = "🔔";
+    icon.style.fontSize = "3rem";
+    icon.style.marginBottom = "15px";
+
+    const title = document.createElement("h3");
+    title.innerText = "Aviso de Vacaciones";
+    title.style.fontSize = "1.3rem";
+    title.style.fontWeight = "700";
+    title.style.marginBottom = "15px";
+    title.style.color = "var(--accent)";
+
+    const text = document.createElement("p");
+    text.innerText = message;
+    text.style.fontSize = "0.95rem";
+    text.style.color = "var(--text-primary)";
+    text.style.lineHeight = "1.5";
+    text.style.marginBottom = "25px";
+
+    const btn = document.createElement("button");
+    btn.className = "btn-premium";
+    btn.innerText = "ENTENDIDO";
+    btn.style.width = "100%";
+    btn.addEventListener("click", () => {
+        playSound("click");
+        modal.remove();
+    });
+
+    box.appendChild(icon);
+    box.appendChild(title);
+    box.appendChild(text);
+    box.appendChild(btn);
+    modal.appendChild(box);
+    document.body.appendChild(modal);
+}
+
+function checkForNotifications() {
+    if (!state.currentUser || !state.vault) return;
+    
+    const notifications = state.vault.notifications || [];
+    const username = state.currentUser.username.toLowerCase();
+    
+    const unread = notifications.filter(n => n.toUser === username && !n.read);
+    
+    if (unread.length > 0) {
+        unread.forEach(n => {
+            showNotificationModal(n.message);
+            n.read = true;
+        });
+        
+        setSyncStatus(false);
+        syncWithCloud();
     }
 }
 
@@ -6033,17 +6129,29 @@ async function resolveVacationRequest(id, status) {
     updateVacationCounter();
     renderAdminVacationsSummary();
     
+    const rangeText = request.dates.length === 1 ? `${request.dates[0]}` : `${request.dates[0]} al ${request.dates[request.dates.length - 1]} (${request.dates.length} días)`;
+    const adminUser = state.currentUser ? (state.currentUser.fullName || state.currentUser.username.toUpperCase()) : "ADMIN";
+
+    // Add In-App notification for the requester
+    if (!state.vault.notifications) state.vault.notifications = [];
+    state.vault.notifications.push({
+        id: Date.now() + "_" + Math.random().toString(36).substr(2, 9),
+        toUser: (request.username || "").toLowerCase(),
+        fromUser: state.currentUser.username,
+        message: `Tu solicitud de vacaciones del ${rangeText} ha sido ${status === "approved" ? "APROBADA" : "DENEGADA"} por ${adminUser}.`,
+        read: false,
+        timestamp: Date.now()
+    });
+    
     await syncWithCloud();
     showToast(status === "approved" ? "Vacaciones validadas" : "Vacaciones denegadas");
     
     // Telegram notification
-    const rangeText = request.dates.length === 1 ? `${request.dates[0]}` : `${request.dates[0]} al ${request.dates[request.dates.length - 1]} (${request.dates.length} días)`;
-    const adminUser = state.currentUser ? (state.currentUser.fullName || state.currentUser.username.toUpperCase()) : "ADMIN";
     enviarAlertaTelegram("Vacaciones", {
         subtipo: "Resolución",
         tecnico: request.fullName,
         detalle: `Resolución para el rango: ${rangeText}`,
-        estado: status === "approved" ? `APROBADO por ${adminUser}` : `DENEGADO por ${adminUser}`
+        estado: status === "approved" ? `APROBADO por ${adminUser} (Notificación interna enviada a ${request.username})` : `DENEGADO por ${adminUser} (Notificación interna enviada a ${request.username})`
     });
 }
 
