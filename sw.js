@@ -2,7 +2,7 @@
  * Service Worker for Offline Cache
  */
 
-const CACHE_NAME = "ats-tec-cache-v1.15.05";
+const CACHE_NAME = "ats-tec-cache-v1.15.06";
 const ASSETS = [
     "index.html",
     "style.css",

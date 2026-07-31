@@ -1172,5 +1172,24 @@ select.input-control {
     border: 1px solid rgba(239, 68, 68, 0.4);
 }
 
+/* UI Style Override - Flat (Solid colors, no glassmorphism backdrop-filter) */
+[data-ui-style="flat"] {
+    --bg-glass: var(--bg-secondary);
+    --border-glass: rgba(255, 255, 255, 0.05);
+}
+[data-ui-style="flat"] header,
+[data-ui-style="flat"] nav,
+[data-ui-style="flat"] .login-box,
+[data-ui-style="flat"] .menu-card,
+[data-ui-style="flat"] .users-list-container,
+[data-ui-style="flat"] .pass-options-panel,
+[data-ui-style="flat"] .expenses-summary,
+[data-ui-style="flat"] .user-profile,
+[data-ui-style="flat"] #profile-summary-card {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+}
+
 
 

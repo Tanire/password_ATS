@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.15.05",
+        version: "1.15.06",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -172,6 +172,8 @@ const els = {
     
     // Settings fields (UI only)
     setTheme: document.getElementById("set-theme"),
+    setUiStyle: document.getElementById("set-ui-style"),
+    setSounds: document.getElementById("set-sounds"),
     setCompanyName: document.getElementById("set-company-name"),
     btnSaveSettings: document.getElementById("btn-save-settings"),
     btnLogout: document.getElementById("btn-logout")
@@ -189,9 +191,12 @@ document.addEventListener("DOMContentLoaded", () => {
 // Load settings into UI fields
 function loadSettingsFromStorage() {
     els.setTheme.value = localStorage.getItem(STORAGE_KEYS.THEME) || "default";
+    els.setUiStyle.value = localStorage.getItem("ats_ui_style") || "glass";
+    els.setSounds.value = localStorage.getItem("ats_sounds") || "on";
     els.setCompanyName.value = localStorage.getItem(STORAGE_KEYS.COMPANY_NAME) || "JMSystems";
     
     applyTheme(els.setTheme.value);
+    applyUiStyle(els.setUiStyle.value);
     els.lblCompanyName.textContent = els.setCompanyName.value;
 }
 
@@ -689,6 +694,7 @@ function setupEventListeners() {
 
 // Switch UI active view
 function switchScreen(screenId) {
+    playSound("click");
     // Check privileges for non-admin users
     if (state.currentUser && state.currentUser.role !== "admin") {
         const scopes = state.currentUser.scope || [];
@@ -883,6 +889,15 @@ async function handleUnlock() {
             applyTheme(state.vault.theme);
             els.setTheme.value = state.vault.theme;
         }
+        if (state.vault.ui_style) {
+            applyUiStyle(state.vault.ui_style);
+            els.setUiStyle.value = state.vault.ui_style;
+            localStorage.setItem("ats_ui_style", state.vault.ui_style);
+        }
+        if (state.vault.sounds) {
+            els.setSounds.value = state.vault.sounds;
+            localStorage.setItem("ats_sounds", state.vault.sounds);
+        }
         if (state.vault.company_name) {
             els.lblCompanyName.textContent = state.vault.company_name;
             els.setCompanyName.value = state.vault.company_name;
@@ -893,10 +908,12 @@ async function handleUnlock() {
 
         els.screenLogin.style.display = "none";
         els.appBody.style.display = "flex";
+        playSound("success");
         switchScreen("dashboard");
         showToast(isOffline ? "Bóveda abierta fuera de línea" : "Bóveda abierta correctamente");
     } catch (e) {
         console.error("Decryption failed:", e);
+        playSound("error");
         showToast("Clave maestra o contraseña incorrecta");
     } finally {
         showLoading(false);
@@ -1577,19 +1594,27 @@ async function deleteExpenseEntry(id) {
 // Settings form save
 function saveSettingsAction() {
     const theme = els.setTheme.value;
+    const uiStyle = els.setUiStyle.value;
+    const sounds = els.setSounds.value;
     const company = els.setCompanyName.value.trim();
 
     localStorage.setItem(STORAGE_KEYS.THEME, theme);
+    localStorage.setItem("ats_ui_style", uiStyle);
+    localStorage.setItem("ats_sounds", sounds);
     localStorage.setItem(STORAGE_KEYS.COMPANY_NAME, company);
 
     // Apply immediate settings locally
     applyTheme(theme);
+    applyUiStyle(uiStyle);
     els.lblCompanyName.textContent = company;
 
     // Apply inside vault schema as well for sharing configurations
     state.vault.theme = theme;
+    state.vault.ui_style = uiStyle;
+    state.vault.sounds = sounds;
     state.vault.company_name = company;
     
+    playSound("success");
     setSyncStatus(false);
     showToast("Ajustes y Perfil guardados. Sincronizando...");
     syncWithCloud();
@@ -1925,6 +1950,7 @@ function showToast(message) {
 function copyToClipboard(text) {
     if (!text) return;
     
+    playSound("copy");
     // Fallback support for older devices or webviews
     if (navigator.clipboard) {
         navigator.clipboard.writeText(text).then(() => {
@@ -1983,6 +2009,80 @@ function setSyncStatus(status) {
 // CSS Variable themes switcher
 function applyTheme(theme) {
     document.getElementById("app-container").setAttribute("data-theme", theme);
+}
+
+function applyUiStyle(style) {
+    document.getElementById("app-container").setAttribute("data-ui-style", style);
+}
+
+// Web Audio API Sound Effects Synthesizer
+let audioCtx = null;
+function playSound(type) {
+    const isSoundsEnabled = (state.vault && state.vault.sounds === "on") || localStorage.getItem("ats_sounds") === "on";
+    if (!isSoundsEnabled) return;
+    
+    try {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        const now = audioCtx.currentTime;
+
+        if (type === 'click') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1000, now);
+            gain.gain.setValueAtTime(0.04, now);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+            osc.start(now);
+            osc.stop(now + 0.05);
+        } else if (type === 'success') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, now);
+            osc.frequency.exponentialRampToValueAtTime(1200, now + 0.15);
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+            osc.start(now);
+            osc.stop(now + 0.2);
+        } else if (type === 'copy') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(880, now);
+            gain.gain.setValueAtTime(0.06, now);
+            gain.gain.setValueAtTime(0.06, now + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+            
+            const osc2 = audioCtx.createOscillator();
+            const gain2 = audioCtx.createGain();
+            osc2.connect(gain2);
+            gain2.connect(audioCtx.destination);
+            osc2.type = 'triangle';
+            osc2.frequency.setValueAtTime(1760, now + 0.06);
+            gain2.gain.setValueAtTime(0.06, now + 0.06);
+            gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
+            
+            osc.start(now);
+            osc.stop(now + 0.05);
+            osc2.start(now + 0.06);
+            osc2.stop(now + 0.15);
+        } else if (type === 'error') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(150, now);
+            gain.gain.setValueAtTime(0.06, now);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
+            osc.start(now);
+            osc.stop(now + 0.15);
+        }
+    } catch (e) {
+        console.warn("Web Audio API not allowed or supported yet.", e);
+    }
 }
 
 function generateCustomPassword(length = 6, options = {}) {
