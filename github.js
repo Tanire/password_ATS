@@ -46,15 +46,32 @@ class GitHubClient {
 
             const data = await response.json();
             
-            // GitHub returns base64 content with newlines, clean it
-            const cleanedBase64 = data.content.replace(/\s/g, '');
-            // Decode base64 to UTF-8 string using TextDecoder and Uint8Array (no escape/unescape)
-            const binaryString = atob(cleanedBase64);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
+            let decodedContent = "";
+            if (data.content !== undefined && data.content !== null && data.content !== "") {
+                // GitHub returns base64 content with newlines, clean it
+                const cleanedBase64 = data.content.replace(/\s/g, '');
+                // Decode base64 to UTF-8 string using TextDecoder and Uint8Array (no escape/unescape)
+                const binaryString = atob(cleanedBase64);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                decodedContent = new TextDecoder().decode(bytes);
+            } else {
+                // File is larger than 1MB, fetch raw content
+                const rawResponse = await fetch(this.baseUrl, {
+                    method: "GET",
+                    headers: {
+                        ...this.getHeaders(),
+                        "Accept": "application/vnd.github.v3.raw"
+                    },
+                    cache: "no-store"
+                });
+                if (!rawResponse.ok) {
+                    throw new Error(`Failed to fetch raw content! Status: ${rawResponse.status}`);
+                }
+                decodedContent = await rawResponse.text();
             }
-            const decodedContent = new TextDecoder().decode(bytes);
 
             return {
                 content: decodedContent,
