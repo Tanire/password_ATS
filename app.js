@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.16.01",
+        version: "1.16.02",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -1683,13 +1683,13 @@ function populateVehicleSelector() {
     if (state.vault.users) {
         state.vault.users.forEach(u => {
             if (u.vehiculo) {
-                const cleaned = u.vehiculo.trim();
-                if (cleaned) {
-                    const parts = cleaned.split(" ");
-                    const plate = parts[0].toUpperCase();
-                    const brand = parts.slice(1).join(" ") || "";
-                    userVehicles.set(plate, brand);
+                const plate = u.vehiculo.trim().toUpperCase();
+                let brand = (u.vehiculoBrandModel || "").trim();
+                if (!brand && u.vehiculo.includes(" ")) {
+                    const parts = u.vehiculo.trim().split(" ");
+                    brand = parts.slice(1).join(" ");
                 }
+                userVehicles.set(plate, brand);
             }
         });
     }
@@ -1732,16 +1732,24 @@ function populateVehicleSelector() {
     
     // Auto-select current technician's vehicle if available
     const myVehicle = state.currentUser ? (state.currentUser.vehiculo || "").trim() : "";
+    const myBrand = state.currentUser ? (state.currentUser.vehiculoBrandModel || "").trim() : "";
     let matched = false;
     if (myVehicle) {
-        const parts = myVehicle.split(" ");
-        const myPlate = parts[0].toUpperCase();
+        let myPlate = myVehicle.trim();
+        let guessedBrand = myBrand;
+        if (myPlate.includes(" ")) {
+            const parts = myPlate.split(" ");
+            myPlate = parts[0];
+            if (!guessedBrand) guessedBrand = parts.slice(1).join(" ");
+        }
+        myPlate = myPlate.toUpperCase();
+
         for (let option of selector.options) {
             if (option.value.startsWith(myPlate + "|") || option.value === myPlate) {
                 option.selected = true;
                 vehicleInput.value = myPlate;
                 vehicleInput.readOnly = true;
-                brandModelInput.value = parts.slice(1).join(" ");
+                brandModelInput.value = guessedBrand || option.value.split("|")[1] || "";
                 brandModelInput.readOnly = true;
                 matched = true;
                 break;
@@ -2541,8 +2549,17 @@ function applyUserPrivileges(user) {
     setEl("prof-summary-name", user.fullName);
     setEl("prof-summary-zona", user.zona);
     setEl("prof-summary-delegacion", user.delegacion);
-    setEl("prof-summary-vehiculo", user.vehiculo);
+    
+    const vehicleText = user.vehiculo ? (user.vehiculo + (user.vehiculoBrandModel ? ` (${user.vehiculoBrandModel})` : "")) : "—";
+    const elVeh = document.getElementById("prof-summary-vehiculo");
+    if (elVeh) elVeh.textContent = vehicleText;
+    
     setEl("prof-summary-tarjeta", user.tarjeta);
+    
+    const hireStr = user.hireDate ? formatSpanishDate(user.hireDate) : "—";
+    const endStr = user.contractEnd ? formatSpanishDate(user.contractEnd) : "Activo";
+    const elContr = document.getElementById("prof-summary-contrato");
+    if (elContr) elContr.textContent = `${hireStr} a ${endStr}`;
     
     // "Editar mi perfil" button wires to openUserForm with own user object
     const btnEditProfile = document.getElementById("btn-edit-my-profile");
@@ -2816,8 +2833,10 @@ function openUserForm(u = null) {
         document.getElementById("user-profile-zona").value = u.zona || "";
         document.getElementById("user-profile-delegacion").value = u.delegacion || "";
         document.getElementById("user-profile-vehiculo").value = u.vehiculo || "";
+        document.getElementById("user-profile-brand-model").value = u.vehiculoBrandModel || "";
         document.getElementById("user-profile-tarjeta").value = u.tarjeta || "";
         document.getElementById("user-profile-hiredate").value = u.hireDate || "";
+        document.getElementById("user-profile-contractend").value = u.contractEnd || "";
     } else {
         title.textContent = "Nuevo Usuario";
         nameInput.value = "";
@@ -2839,8 +2858,10 @@ function openUserForm(u = null) {
         document.getElementById("user-profile-zona").value = "";
         document.getElementById("user-profile-delegacion").value = "";
         document.getElementById("user-profile-vehiculo").value = "";
+        document.getElementById("user-profile-brand-model").value = "";
         document.getElementById("user-profile-tarjeta").value = "";
         document.getElementById("user-profile-hiredate").value = "";
+        document.getElementById("user-profile-contractend").value = "";
     }
     
     switchScreen("form-user");
@@ -2878,8 +2899,10 @@ async function saveUserAction(evt) {
     const zona = document.getElementById("user-profile-zona").value.trim();
     const delegacion = document.getElementById("user-profile-delegacion").value.trim();
     const vehiculo = document.getElementById("user-profile-vehiculo").value.trim();
+    const vehiculoBrandModel = document.getElementById("user-profile-brand-model").value.trim();
     const tarjeta = document.getElementById("user-profile-tarjeta").value.trim();
     const hireDate = document.getElementById("user-profile-hiredate").value;
+    const contractEnd = document.getElementById("user-profile-contractend").value;
     
     if (!username) {
         showToast("Escribe un nombre de usuario");
@@ -2902,8 +2925,10 @@ async function saveUserAction(evt) {
                 state.vault.users[idx].zona = zona;
                 state.vault.users[idx].delegacion = delegacion;
                 state.vault.users[idx].vehiculo = vehiculo;
+                state.vault.users[idx].vehiculoBrandModel = vehiculoBrandModel;
                 state.vault.users[idx].tarjeta = tarjeta;
                 state.vault.users[idx].hireDate = hireDate;
+                state.vault.users[idx].contractEnd = contractEnd;
                 
                 if (password) {
                     const wrappedKey = await encryptData(state.masterPassword, password);
@@ -2912,7 +2937,7 @@ async function saveUserAction(evt) {
                 
                 // Update currentUser in state if editing own profile
                 if (editId.toLowerCase() === state.currentUser.username.toLowerCase()) {
-                    state.currentUser = { ...state.currentUser, fullName, zona, delegacion, vehiculo, tarjeta, hireDate };
+                    state.currentUser = { ...state.currentUser, fullName, zona, delegacion, vehiculo, vehiculoBrandModel, tarjeta, hireDate, contractEnd };
                     applyUserPrivileges(state.currentUser);
                 }
             }
@@ -2923,7 +2948,7 @@ async function saveUserAction(evt) {
                 return;
             }
             
-            state.vault.users.push({ username, role, scope, fullName, zona, delegacion, vehiculo, tarjeta, hireDate });
+            state.vault.users.push({ username, role, scope, fullName, zona, delegacion, vehiculo, vehiculoBrandModel, tarjeta, hireDate, contractEnd });
             
             const wrappedKey = await encryptData(state.masterPassword, password);
             state.usersMetadata[username] = wrappedKey;
@@ -6453,38 +6478,58 @@ function getBusinessDaysCount(datesArray) {
     return count;
 }
 
-// v1.14.06 Calculate vacation allowance proportionally based on company entry date
 function getUserVacationAllowance(user, year) {
     if (!user) return 23;
     const hireDateStr = user.hireDate;
-    if (!hireDateStr) return 23;
+    const contractEndStr = user.contractEnd;
     
-    // Parse entry date safely (YYYY-MM-DD)
-    const parts = hireDateStr.split('-');
-    if (parts.length !== 3) return 23;
-    const entryDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-    if (isNaN(entryDate.getTime())) return 23;
-    
-    const entryYear = entryDate.getFullYear();
-    
-    if (entryYear < year) {
-        return 23; // Entered before this year, full 23 days
-    } else if (entryYear > year) {
-        return 0; // Has not entered company yet in this year
-    } else {
-        // Entered during this year. Calculate proportional days.
-        const endOfYear = new Date(year, 11, 31);
-        const diffTime = Math.abs(endOfYear - entryDate);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // inclusive
-        
-        // Total days in this year
-        const startOfYear = new Date(year, 0, 1);
-        const totalYearTime = Math.abs(endOfYear - startOfYear);
-        const totalYearDays = Math.ceil(totalYearTime / (1000 * 60 * 60 * 24)) + 1;
-        
-        const proportion = diffDays / totalYearDays;
-        return Math.round(proportion * 23);
+    // Total days in the year
+    const startOfYear = new Date(year, 0, 1);
+    const endOfYear = new Date(year, 11, 31);
+    const totalYearTime = Math.abs(endOfYear - startOfYear);
+    const totalYearDays = Math.ceil(totalYearTime / (1000 * 60 * 60 * 24)) + 1;
+
+    let periodStart = startOfYear;
+    if (hireDateStr) {
+        const parts = hireDateStr.split('-');
+        if (parts.length === 3) {
+            const hireDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            if (!isNaN(hireDate.getTime())) {
+                if (hireDate.getFullYear() > year) {
+                    return 0; // Not hired yet
+                }
+                if (hireDate.getFullYear() === year) {
+                    periodStart = hireDate;
+                }
+            }
+        }
     }
+
+    let periodEnd = endOfYear;
+    if (contractEndStr) {
+        const parts = contractEndStr.split('-');
+        if (parts.length === 3) {
+            const contractEndDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            if (!isNaN(contractEndDate.getTime())) {
+                if (contractEndDate.getFullYear() < year) {
+                    return 0; // Contract already ended before this year
+                }
+                if (contractEndDate.getFullYear() === year) {
+                    periodEnd = contractEndDate;
+                }
+            }
+        }
+    }
+
+    if (periodStart > periodEnd) {
+        return 0;
+    }
+
+    const diffTime = Math.abs(periodEnd - periodStart);
+    const workedDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // inclusive
+
+    const proportion = workedDays / totalYearDays;
+    return Math.round(proportion * 23);
 }
 
 // v1.14.02 Update vacation counter panel

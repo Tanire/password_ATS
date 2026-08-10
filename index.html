@@ -48,7 +48,7 @@
                     <i class="bx bx-key"></i> DESBLOQUEAR
                 </button>
                 <div style="margin-top: 20px; font-size: 0.8rem; color: var(--text-secondary); text-align: center;">
-                    Versión 1.16.01 - By JMSYSTEMAS
+                    Versión 1.16.02 - By JMSYSTEMAS
                 </div>
             </div>
         </div>
@@ -105,7 +105,7 @@
                         </div>
                     </div>
                     <div style="text-align: center; margin-top: 40px; font-size: 0.8rem; color: var(--text-secondary);" class="dashboard-footer">
-                        Versión 1.16.01 - JMSYSTEMAS
+                        Versión 1.16.02 - JMSYSTEMAS
                     </div>
                 </div>
 
@@ -491,6 +491,7 @@
                                 <div><span style="color: var(--text-secondary); width: 80px; display: inline-block;">Delegación:</span> <span id="prof-summary-delegacion">—</span></div>
                                 <div><span style="color: var(--text-secondary); width: 80px; display: inline-block;">Vehículo:</span> <span id="prof-summary-vehiculo">—</span></div>
                                 <div><span style="color: var(--text-secondary); width: 80px; display: inline-block;">Tarjeta:</span> <span id="prof-summary-tarjeta">—</span></div>
+                                <div><span style="color: var(--text-secondary); width: 80px; display: inline-block;">Contrato:</span> <span id="prof-summary-contrato">—</span></div>
                             </div>
                         </div>
 
@@ -593,9 +594,15 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Vehículo / Matrícula</label>
+                        <label>Matrícula Vehículo</label>
                         <input type="text" id="user-profile-vehiculo" class="input-control" placeholder="Ej. 1234ABC">
                     </div>
+                    <div class="form-group">
+                        <label>Marca y Modelo Vehículo</label>
+                        <input type="text" id="user-profile-brand-model" class="input-control" placeholder="Ej. Peugeot Partner">
+                    </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
                         <label>Tarjeta Nº</label>
                         <input type="text" id="user-profile-tarjeta" class="input-control" placeholder="Ej. 1234 5678...">
@@ -605,6 +612,10 @@
                     <div class="form-group">
                         <label>Fecha de Ingreso</label>
                         <input type="date" id="user-profile-hiredate" class="input-control" style="font-size: 0.85rem;">
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha Fin de Contrato</label>
+                        <input type="date" id="user-profile-contractend" class="input-control" style="font-size: 0.85rem;">
                     </div>
                 </div>
 
