@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.15.07",
+        version: "1.16.00",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -285,6 +285,7 @@ function setupEventListeners() {
 
     // Expenses Category Filter
     els.filterExpensesCat.addEventListener("change", renderExpenses);
+    document.getElementById("fuel-report-year").addEventListener("change", renderFuelReport);
 
     // Dynamic fuel field toggling in expense form
     document.getElementById("exp-category").addEventListener("change", (e) => {
@@ -698,6 +699,7 @@ function switchScreen(screenId) {
     // Check privileges for non-admin users
     if (state.currentUser && state.currentUser.role !== "admin") {
         const scopes = state.currentUser.scope || [];
+        const isFuelAdmin = state.currentUser.role === "encargado_combustible";
         if (screenId === "passwords" && !scopes.includes("passwords")) return;
         if (screenId === "subscribers" && !scopes.includes("subscribers")) return;
         if (screenId === "subscriber-view" && !scopes.includes("subscribers")) return;
@@ -705,7 +707,7 @@ function switchScreen(screenId) {
         if (screenId === "manuals-list" && !scopes.includes("manuals")) return;
         if (screenId === "manual-view" && !scopes.includes("manuals")) return;
         if (["commercial-home", "commercial-client-details", "commercial-disciplines", "commercial-wizard", "commercial-migration", "commercial-summary", "commercial-rounds"].includes(screenId) && !scopes.includes("commercial")) return;
-        if (["expenses-submenu", "hours", "diets", "materials", "form-hour", "form-diet", "form-material", "expenses", "form-expense"].includes(screenId) && !scopes.includes("expenses")) return;
+        if (["expenses-submenu", "hours", "diets", "materials", "form-hour", "form-diet", "form-material", "expenses", "form-expense"].includes(screenId) && !scopes.includes("expenses") && !isFuelAdmin) return;
         if (screenId === "vacations" && !scopes.includes("vacations")) return;
     }
 
@@ -1307,6 +1309,7 @@ function openManualView(m) {
 
 // E. Expenses List
 function renderExpenses() {
+    renderFuelReport();
     els.listExpenses.innerHTML = "";
     const categoryFilter = els.filterExpensesCat.value;
     
@@ -1344,7 +1347,7 @@ function renderExpenses() {
         
         let detailsText = `${e.concept || "-"}`;
         if (e.category === "Combustible") {
-            detailsText += ` [${e.vehicle || "S/M"}] ${e.kilometers ? '• ' + e.kilometers + ' km' : ''}`;
+            detailsText += ` [${e.vehicle || "S/M"}]${e.brand_model ? ' ' + e.brand_model : ''} ${e.liters ? '• ' + e.liters + ' L' : ''} ${e.kilometers ? '• ' + e.kilometers + ' km' : ''}`;
         }
         
         const displayCategory = (e.category === "Material") ? "OTROS" : e.category.toUpperCase();
@@ -1371,6 +1374,114 @@ function renderExpenses() {
 
         els.listExpenses.appendChild(card);
     });
+}
+
+function renderFuelReport() {
+    const container = document.getElementById("admin-fuel-report-container");
+    if (!container) return;
+
+    const isFuelAdmin = state.currentUser && (state.currentUser.role === "admin" || state.currentUser.role === "encargado_combustible");
+    
+    if (!isFuelAdmin) {
+        container.style.display = "none";
+        return;
+    }
+
+    container.style.display = "flex";
+
+    // Gather all years from Combustible expenses
+    const fuelExpenses = state.vault.expenses.filter(e => e.category === "Combustible");
+    const years = [...new Set(fuelExpenses.map(e => {
+        if (!e.date) return null;
+        return new Date(e.date).getFullYear();
+    }).filter(Boolean))];
+
+    const currentYear = new Date().getFullYear();
+    if (!years.includes(currentYear)) {
+        years.push(currentYear);
+    }
+    years.sort((a, b) => b - a);
+
+    const yearSelect = document.getElementById("fuel-report-year");
+    const selectedYear = parseInt(yearSelect.value) || currentYear;
+    
+    yearSelect.innerHTML = "";
+    years.forEach(y => {
+        const opt = document.createElement("option");
+        opt.value = y;
+        opt.textContent = y;
+        if (y === selectedYear) opt.selected = true;
+        yearSelect.appendChild(opt);
+    });
+
+    const activeYear = parseInt(yearSelect.value) || currentYear;
+
+    // Filter fuel expenses for the selected year
+    const yearFuelExpenses = fuelExpenses.filter(e => {
+        if (!e.date) return false;
+        return new Date(e.date).getFullYear() === activeYear;
+    });
+
+    // Calculate annual total cost and liters
+    let annualTotalCost = 0.0;
+    let annualTotalLiters = 0.0;
+    
+    // Monthly stats placeholder
+    const monthlyStats = Array.from({ length: 12 }, (_, i) => ({
+        monthName: ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][i],
+        cost: 0.0,
+        liters: 0.0
+    }));
+
+    yearFuelExpenses.forEach(e => {
+        const cost = parseFloat(e.amount) || 0.0;
+        const liters = parseFloat(e.liters) || 0.0;
+        annualTotalCost += cost;
+        annualTotalLiters += liters;
+
+        // Extract month index from e.date (YYYY-MM-DD)
+        if (e.date) {
+            const dateParts = e.date.split("-");
+            if (dateParts.length >= 2) {
+                const monthIdx = parseInt(dateParts[1], 10) - 1;
+                if (monthIdx >= 0 && monthIdx < 12) {
+                    monthlyStats[monthIdx].cost += cost;
+                    monthlyStats[monthIdx].liters += liters;
+                }
+            }
+        }
+    });
+
+    document.getElementById("fuel-annual-total").textContent = `${annualTotalCost.toFixed(2)} €`;
+    document.getElementById("fuel-annual-liters").textContent = `${annualTotalLiters.toFixed(1)} L`;
+
+    // Render monthly rows
+    const breakdownContainer = document.getElementById("fuel-monthly-breakdown");
+    breakdownContainer.innerHTML = "";
+
+    let hasData = false;
+    monthlyStats.forEach(m => {
+        if (m.cost > 0 || m.liters > 0) {
+            hasData = true;
+            const row = document.createElement("div");
+            row.style.display = "flex";
+            row.style.justify = "space-between";
+            row.style.padding = "6px 0";
+            row.style.borderBottom = "1px solid rgba(255, 255, 255, 0.03)";
+            row.innerHTML = `
+                <span style="font-weight: 500;">${m.monthName}</span>
+                <div style="display: flex; gap: 15px;">
+                    <span style="color: var(--text-secondary);">${m.liters.toFixed(1)} L</span>
+                    <span style="font-weight: 600; color: var(--danger);">${m.cost.toFixed(2)} €</span>
+                </div>
+            `;
+            breakdownContainer.appendChild(row);
+        }
+    });
+
+    if (!hasData) {
+        breakdownContainer.innerHTML = `<div style="text-align: center; color: var(--text-secondary); padding: 10px 0;">No hay repostajes registrados en ${activeYear}</div>`;
+    }
 }
 
 // --- CRUD LOGIC FOR FORMS ---
@@ -1556,6 +1667,8 @@ async function saveExpenseEntry(evt) {
     
     const vehicle = document.getElementById("exp-vehicle").value.trim();
     const kilometers = parseFloat(document.getElementById("exp-kilometers").value) || 0.0;
+    const brandModel = document.getElementById("exp-brand-model").value.trim();
+    const liters = parseFloat(document.getElementById("exp-liters").value) || 0.0;
     const location = document.getElementById("exp-location").value.trim();
 
     const expenseData = {
@@ -1570,6 +1683,8 @@ async function saveExpenseEntry(evt) {
         // Fuel details if combustible
         vehicle: category === "Combustible" ? vehicle : "",
         kilometers: category === "Combustible" ? kilometers : 0.0,
+        brand_model: category === "Combustible" ? brandModel : "",
+        liters: category === "Combustible" ? liters : 0.0,
         location: category === "Combustible" ? location : ""
     };
 
@@ -2344,7 +2459,7 @@ function applyUserPrivileges(user) {
     const hasPass = scopes.includes("passwords") || user.role === "admin";
     const hasSubs = scopes.includes("subscribers") || user.role === "admin";
     const hasManuals = scopes.includes("manuals") || user.role === "admin";
-    const hasExpenses = scopes.includes("expenses") || user.role === "admin";
+    const hasExpenses = scopes.includes("expenses") || user.role === "admin" || user.role === "encargado_combustible";
     const hasComm = scopes.includes("commercial") || user.role === "admin";
     const hasVacations = scopes.includes("vacations") || user.role === "admin";
     
@@ -2372,7 +2487,7 @@ function applyUserPrivileges(user) {
 
 // Helper: returns true if user can see all technicians' expenses
 function canSeeAllExpenses(user) {
-    return user && (user.role === "admin" || user.role === "responsable_tecnico");
+    return user && (user.role === "admin" || user.role === "responsable_tecnico" || user.role === "encargado_combustible");
 }
 
 // Helper: check if a record belongs to a specific user (handles legacy logs without owner property)

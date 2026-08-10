@@ -48,7 +48,7 @@
                     <i class="bx bx-key"></i> DESBLOQUEAR
                 </button>
                 <div style="margin-top: 20px; font-size: 0.8rem; color: var(--text-secondary); text-align: center;">
-                    Versión 1.15.07 - By JMSYSTEMAS
+                    Versión 1.16.00 - By JMSYSTEMAS
                 </div>
             </div>
         </div>
@@ -105,7 +105,7 @@
                         </div>
                     </div>
                     <div style="text-align: center; margin-top: 40px; font-size: 0.8rem; color: var(--text-secondary);" class="dashboard-footer">
-                        Versión 1.15.07 - JMSYSTEMAS
+                        Versión 1.16.00 - JMSYSTEMAS
                     </div>
                 </div>
 
@@ -319,6 +319,30 @@
                         <div class="expenses-summary-title">Gasto Total de Combustible</div>
                         <div class="expenses-summary-value" id="expenses-total-value">0.00 €</div>
                     </div>
+                    
+                    <!-- Reporte de Combustible para Administradores / Encargados -->
+                    <div id="admin-fuel-report-container" class="expenses-summary anim-fade" style="display: none; flex-direction: column; gap: 15px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); margin-top: -10px; margin-bottom: 20px; padding: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div class="expenses-summary-title" style="font-weight: 600; color: var(--accent); margin-bottom: 0; display: flex; align-items: center; gap: 6px;"><i class="bx bx-stats"></i> Resumen de Combustible</div>
+                            <select id="fuel-report-year" class="input-control" style="width: auto; padding: 4px 8px; font-size: 0.85rem; margin-bottom: 0;">
+                                <!-- Dynamic years -->
+                            </select>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center;">
+                            <div style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 8px;">
+                                <div style="font-size: 0.75rem; color: var(--text-secondary);">Gasto de este Año</div>
+                                <div id="fuel-annual-total" style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">0.00 €</div>
+                            </div>
+                            <div style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 8px;">
+                                <div style="font-size: 0.75rem; color: var(--text-secondary);">Litros Consumidos</div>
+                                <div id="fuel-annual-liters" style="font-size: 1.1rem; font-weight: 700; color: var(--success);">0.0 L</div>
+                            </div>
+                        </div>
+                        <div id="fuel-monthly-breakdown" style="max-height: 150px; overflow-y: auto; font-size: 0.85rem; border-top: 1px solid var(--border-glass); padding-top: 10px;">
+                            <!-- Monthly rows dynamic -->
+                        </div>
+                    </div>
+
                     <div class="form-group">
                         <label>Filtrar por Categoría</label>
                         <select id="filter-expenses-category" class="input-control">
@@ -363,6 +387,16 @@
                                 <div class="form-group">
                                     <label>Kilómetros</label>
                                     <input type="number" step="0.1" id="exp-kilometers" class="input-control" placeholder="Ej. 145200">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Marca y Modelo</label>
+                                    <input type="text" id="exp-brand-model" class="input-control" placeholder="Ej. Peugeot Partner">
+                                </div>
+                                <div class="form-group">
+                                    <label>Litros</label>
+                                    <input type="number" step="0.01" id="exp-liters" class="input-control" placeholder="Ej. 45.5">
                                 </div>
                             </div>
                             <div class="form-group">
@@ -503,6 +537,7 @@
                         <option value="viewer">Solo Ver (Lector)</option>
                         <option value="editor">Técnico (Editor)</option>
                         <option value="responsable_tecnico">Responsable Técnico</option>
+                        <option value="encargado_combustible">Gestor de Combustible</option>
                         <option value="admin">Administrador</option>
                     </select>
                 </div>
