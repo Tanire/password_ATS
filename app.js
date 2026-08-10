@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.16.03",
+        version: "1.16.04",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -2694,6 +2694,9 @@ function renderAuditScreen() {
             const endStr = u.contractEnd ? formatSpanishDate(u.contractEnd) : "Activo";
             const contractPeriod = `${hireStr} / ${endStr}`;
             
+            // Antigüedad calculation
+            const seniority = getYearsInCompany(u.hireDate, u.contractEnd);
+            
             // Vacation calculation
             const allowedDays = getUserVacationAllowance(u, currentYear);
             let approvedDays = 0;
@@ -2718,6 +2721,9 @@ function renderAuditScreen() {
                 <td style="padding: 8px; font-weight: 600;">
                     ${u.fullName || u.username.toUpperCase()}<br>
                     <span style="font-size: 0.65rem; color: var(--text-secondary);">${roleName}</span>
+                </td>
+                <td style="padding: 8px; font-size: 0.75rem; color: var(--text-primary);">
+                    ${seniority}
                 </td>
                 <td style="padding: 8px; font-size: 0.75rem; color: var(--text-secondary); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                     ${vehicleText}
@@ -6709,6 +6715,49 @@ function getBusinessDaysCount(datesArray) {
         }
     });
     return count;
+}
+
+function getYearsInCompany(hireDateStr, contractEndStr) {
+    if (!hireDateStr) return "—";
+    const parts = hireDateStr.split('-');
+    if (parts.length !== 3) return "—";
+    const start = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    if (isNaN(start.getTime())) return "—";
+    
+    let end = new Date(); // default today
+    if (contractEndStr) {
+        const endParts = contractEndStr.split('-');
+        if (endParts.length === 3) {
+            const parsedEnd = new Date(parseInt(endParts[0], 10), parseInt(endParts[1], 10) - 1, parseInt(endParts[2], 10));
+            if (!isNaN(parsedEnd.getTime())) {
+                end = parsedEnd;
+            }
+        }
+    }
+    
+    if (start > end) return "0 meses";
+    
+    let years = end.getFullYear() - start.getFullYear();
+    let months = end.getMonth() - start.getMonth();
+    let days = end.getDate() - start.getDate();
+    
+    if (days < 0) {
+        months--;
+    }
+    if (months < 0) {
+        years--;
+        months += 12;
+    }
+    
+    const partsStr = [];
+    if (years > 0) {
+        partsStr.push(`${years} ${years === 1 ? 'año' : 'años'}`);
+    }
+    if (months > 0 || years === 0) {
+        partsStr.push(`${months} ${months === 1 ? 'mes' : 'meses'}`);
+    }
+    
+    return partsStr.join(" y ");
 }
 
 function getUserVacationAllowance(user, year) {
