@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.16.02",
+        version: "1.16.03",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -230,6 +230,8 @@ function setupEventListeners() {
     document.getElementById("menu-subscribers").addEventListener("click", () => switchScreen("subscribers"));
     document.getElementById("menu-manuals").addEventListener("click", () => switchScreen("manuals"));
     document.getElementById("menu-expenses").addEventListener("click", () => switchScreen("expenses-submenu"));
+    document.getElementById("menu-audit").addEventListener("click", () => switchScreen("audit"));
+    document.getElementById("btn-back-audit").addEventListener("click", () => switchScreen("dashboard"));
 
     // V1.05 Expenses Submenu Navigation
     document.getElementById("menu-sub-hours").addEventListener("click", () => switchScreen("hours"));
@@ -710,6 +712,8 @@ function switchScreen(screenId) {
         if (["commercial-home", "commercial-client-details", "commercial-disciplines", "commercial-wizard", "commercial-migration", "commercial-summary", "commercial-rounds"].includes(screenId) && !scopes.includes("commercial")) return;
         if (["expenses-submenu", "hours", "diets", "materials", "form-hour", "form-diet", "form-material", "expenses", "form-expense"].includes(screenId) && !scopes.includes("expenses") && !isFuelAdmin) return;
         if (screenId === "vacations" && !scopes.includes("vacations")) return;
+        if (screenId === "audit") return; // Non-admin cannot access audit
+    }
     }
 
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -739,6 +743,7 @@ function switchScreen(screenId) {
     if (screenId === "expenses") renderExpenses();
     if (screenId === "commercial-history") renderCommercialHistory();
     if (screenId === "vacations") initVacationsScreen();
+    if (screenId === "audit") renderAuditScreen();
 }
 
 // Derive keys and pull vault from GitHub or local cache
@@ -2141,18 +2146,31 @@ function getGeoLocation() {
             const lat = position.coords.latitude.toFixed(5);
             const lon = position.coords.longitude.toFixed(5);
             
-            // Try fetching reverse geocoding via free open street maps API
+            // Try fetching reverse geocoding via free open street maps API (zoom=18 for street/house precision)
             try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=14`, {
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18`, {
                     headers: { "Accept-Language": "es" }
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    // Extract town/city/suburb
-                    const address = data.address;
-                    const city = address.city || address.town || address.village || address.suburb || "";
+                    const address = data.address || {};
+                    const road = address.road || "";
+                    const num = address.house_number ? ` ${address.house_number}` : "";
+                    const city = address.city || address.town || address.village || "";
                     const county = address.county || address.state || "";
-                    locationInput.value = `${city}, ${county}`.replace(/^,\s*/, '').trim() || `${lat}, ${lon}`;
+                    
+                    let fullAddr = "";
+                    if (road) {
+                        fullAddr += road + num;
+                    }
+                    if (city) {
+                        fullAddr += (fullAddr ? ", " : "") + city;
+                    }
+                    if (county) {
+                        fullAddr += (fullAddr ? " (" : "") + county + (fullAddr ? ")" : "");
+                    }
+                    
+                    locationInput.value = fullAddr.trim() || `${lat}, ${lon}`;
                 } else {
                     locationInput.value = `${lat}, ${lon}`;
                 }
@@ -2615,9 +2633,224 @@ function applyUserPrivileges(user) {
     
     document.getElementById("menu-vacations").style.display = hasVacations ? "flex" : "none";
     document.querySelector('nav [data-screen="vacations"]').style.display = hasVacations ? "flex" : "none";
+    
+    const isAuditUser = user.role === "admin" || user.role === "responsable_tecnico";
+    const elAudit = document.getElementById("menu-audit");
+    if (elAudit) {
+        elAudit.style.display = isAuditUser ? "flex" : "none";
+    }
 
     // Update vacation badge
     updateVacationBadge();
+}
+
+function renderAuditScreen() {
+    // 1. Metric Overview
+    const countPasswords = (state.vault.entries || []).length;
+    const countSubscribers = (state.vault.subscribers || []).length;
+    const countManuals = (state.vault.manuals || []).length;
+    
+    let fuelCost = 0;
+    let fuelLiters = 0;
+    const expenses = state.vault.expenses || [];
+    expenses.forEach(e => {
+        if (e.category === "Combustible") {
+            fuelCost += parseFloat(e.amount || 0);
+            fuelLiters += parseFloat(e.liters || 0);
+        }
+    });
+
+    const elPass = document.getElementById("audit-metric-passwords");
+    const elSub = document.getElementById("audit-metric-subscribers");
+    const elMan = document.getElementById("audit-metric-manuals");
+    const elFuel = document.getElementById("audit-metric-fuel");
+    if (elPass) elPass.textContent = countPasswords;
+    if (elSub) elSub.textContent = countSubscribers;
+    if (elMan) elMan.textContent = countManuals;
+    if (elFuel) elFuel.innerHTML = `${fuelCost.toFixed(2)} €<br><span style="font-size: 0.75rem; font-weight: normal; color: var(--text-secondary);">${fuelLiters.toFixed(1)} L</span>`;
+
+    // 2. Technicians and Vacations Registry Table
+    const tbody = document.getElementById("audit-techs-table-body");
+    if (tbody) {
+        tbody.innerHTML = "";
+        const users = state.vault.users || [];
+        const currentYear = new Date().getFullYear();
+        
+        users.forEach(u => {
+            const roleLabels = {
+                admin: "Administrador",
+                responsable_tecnico: "Resp. Técnico",
+                encargado_combustible: "Gestor Comb.",
+                editor: "Técnico",
+                viewer: "Solo Lectura"
+            };
+            const roleName = roleLabels[u.role] || u.role || "Técnico";
+            
+            // Format vehicle text
+            const vehicleText = u.vehiculo ? `${u.vehiculo}${u.vehiculoBrandModel ? ` (${u.vehiculoBrandModel})` : ""}` : "—";
+            
+            // Format hire dates
+            const hireStr = u.hireDate ? formatSpanishDate(u.hireDate) : "—";
+            const endStr = u.contractEnd ? formatSpanishDate(u.contractEnd) : "Activo";
+            const contractPeriod = `${hireStr} / ${endStr}`;
+            
+            // Vacation calculation
+            const allowedDays = getUserVacationAllowance(u, currentYear);
+            let approvedDays = 0;
+            let pendingDays = 0;
+            
+            const vacations = state.vault.vacations || [];
+            vacations.forEach(v => {
+                if ((v.username || "").toLowerCase() === u.username.toLowerCase()) {
+                    const bizDays = getBusinessDaysCount(v.dates);
+                    if (v.status === "approved") {
+                        approvedDays += bizDays;
+                    } else if (v.status === "pending") {
+                        pendingDays += bizDays;
+                    }
+                }
+            });
+            const remainingDays = allowedDays - approvedDays - pendingDays;
+            
+            const tr = document.createElement("tr");
+            tr.style.borderBottom = "1px solid var(--border-glass)";
+            tr.innerHTML = `
+                <td style="padding: 8px; font-weight: 600;">
+                    ${u.fullName || u.username.toUpperCase()}<br>
+                    <span style="font-size: 0.65rem; color: var(--text-secondary);">${roleName}</span>
+                </td>
+                <td style="padding: 8px; font-size: 0.75rem; color: var(--text-secondary); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    ${vehicleText}
+                </td>
+                <td style="padding: 8px; font-size: 0.72rem; color: var(--text-secondary);">
+                    ${contractPeriod}
+                </td>
+                <td style="padding: 8px; text-align: center; font-weight: 700;">
+                    <span style="color: var(--accent);">${allowedDays}</span> / 
+                    <span style="color: var(--success);">${approvedDays}</span> / 
+                    <span style="color: ${remainingDays < 0 ? 'var(--error)' : 'var(--text-primary)'};">${remainingDays}</span>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // 3. Recent Activity Log (Top 10 entries)
+    const logList = document.getElementById("audit-recent-activity-list");
+    if (logList) {
+        logList.innerHTML = "";
+        
+        const recentItems = [];
+        
+        // Passwords (entries)
+        if (state.vault.entries) {
+            state.vault.entries.forEach(e => {
+                recentItems.push({
+                    type: "password",
+                    title: `Contraseña: ${e.title || "Sin título"}`,
+                    detail: e.category || "General",
+                    timestamp: e.last_modified || e.created_at || Date.now(),
+                    icon: "🌐",
+                    iconColor: "#3b82f6"
+                });
+            });
+        }
+        
+        // Subscribers
+        if (state.vault.subscribers) {
+            state.vault.subscribers.forEach(s => {
+                recentItems.push({
+                    type: "subscriber",
+                    title: `Abonado: ${s.nombre || "Sin nombre"}`,
+                    detail: `Código: ${s.subscriber_code || "—"}`,
+                    timestamp: s.id || Date.now(),
+                    icon: "🔔",
+                    iconColor: "#10b981"
+                });
+            });
+        }
+        
+        // Manuals
+        if (state.vault.manuals) {
+            state.vault.manuals.forEach(m => {
+                recentItems.push({
+                    type: "manual",
+                    title: `Manual: ${m.title || "Sin título"}`,
+                    detail: m.brand || "—",
+                    timestamp: m.id || Date.now(),
+                    icon: "📚",
+                    iconColor: "#f59e0b"
+                });
+            });
+        }
+        
+        // Expenses
+        if (state.vault.expenses) {
+            state.vault.expenses.forEach(ex => {
+                const categoryLabels = {
+                    "Dieta": "Dieta",
+                    "Horas Extra": "Horas Extra",
+                    "Materiales": "Materiales",
+                    "Combustible": "Combustible"
+                };
+                recentItems.push({
+                    type: "expense",
+                    title: `${categoryLabels[ex.category] || "Gasto"}: ${ex.concept || "—"}`,
+                    detail: `${parseFloat(ex.amount || 0).toFixed(2)} € | ${ex.conductor || ex.owner || "—"}`,
+                    timestamp: ex.id || Date.now(),
+                    icon: "💰",
+                    iconColor: "#ef4444"
+                });
+            });
+        }
+
+        // Vacations
+        if (state.vault.vacations) {
+            state.vault.vacations.forEach(v => {
+                const statusLabels = {
+                    pending: "Pendiente",
+                    approved: "Aprobada",
+                    rejected: "Rechazada"
+                };
+                const datesCount = (v.dates || []).length;
+                recentItems.push({
+                    type: "vacation",
+                    title: `Vacación: ${v.fullName || v.username.toUpperCase()}`,
+                    detail: `${datesCount} días (${statusLabels[v.status] || v.status})`,
+                    timestamp: v.id || Date.now(),
+                    icon: "📅",
+                    iconColor: "#ec4899"
+                });
+            });
+        }
+        
+        // Sort newest first
+        recentItems.sort((a, b) => b.timestamp - a.timestamp);
+        
+        // Take top 10
+        const top10 = recentItems.slice(0, 10);
+        if (top10.length === 0) {
+            const emptyEl = document.createElement("div");
+            emptyEl.style.cssText = "font-size: 0.8rem; color: var(--text-secondary); text-align: center; padding: 20px;";
+            emptyEl.textContent = "No hay actividad reciente registrada";
+            logList.appendChild(emptyEl);
+        } else {
+            top10.forEach(item => {
+                const itemDiv = document.createElement("div");
+                itemDiv.style.cssText = "display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: var(--radius-sm); background: var(--bg-secondary); border: 1px solid var(--border-glass);";
+                itemDiv.innerHTML = `
+                    <div style="font-size: 1.1rem; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: ${item.iconColor}15; color: ${item.iconColor};">
+                        ${item.icon}
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${item.title}</div>
+                        <div style="font-size: 0.7rem; color: var(--text-secondary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${item.detail}</div>
+                    </div>
+                `;
+                logList.appendChild(itemDiv);
+            });
+        }
+    }
 }
 
 // Helper: returns true if user can see all technicians' expenses

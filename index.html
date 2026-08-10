@@ -48,7 +48,7 @@
                     <i class="bx bx-key"></i> DESBLOQUEAR
                 </button>
                 <div style="margin-top: 20px; font-size: 0.8rem; color: var(--text-secondary); text-align: center;">
-                    Versión 1.16.02 - By JMSYSTEMAS
+                    Versión 1.16.03 - By JMSYSTEMAS
                 </div>
             </div>
         </div>
@@ -103,9 +103,13 @@
                             <span class="card-title">Vacaciones</span>
                             <span id="vacation-badge" class="badge-notification" style="display: none; position: absolute; top: -5px; right: -5px; background: var(--warning); color: #000; border-radius: 50%; width: 20px; height: 20px; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg-secondary);">0</span>
                         </div>
+                        <div class="menu-card" id="menu-audit" style="display: none;">
+                            <span class="card-icon" style="color: #06b6d4;">📊</span>
+                            <span class="card-title">Auditoría</span>
+                        </div>
                     </div>
                     <div style="text-align: center; margin-top: 40px; font-size: 0.8rem; color: var(--text-secondary);" class="dashboard-footer">
-                        Versión 1.16.02 - JMSYSTEMAS
+                        Versión 1.16.03 - JMSYSTEMAS
                     </div>
                 </div>
 
@@ -430,6 +434,69 @@
                             <i class="bx bx-save"></i> GUARDAR
                         </button>
                     </form>
+                </div>
+
+                <!-- AUDIT SCREEN -->
+                <div id="screen-audit" class="screen">
+                    <div class="list-header">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <button class="btn-icon" id="btn-back-audit"><i class="bx bx-arrow-back"></i></button>
+                            <h2>Auditoría General</h2>
+                        </div>
+                    </div>
+                    
+                    <div class="vacations-container anim-fade" style="display: flex; flex-direction: column; gap: 1.2rem; overflow-y: auto; flex: 1; padding: 5px 0 80px 0;">
+                        <!-- 1. System Metrics Overview -->
+                        <div class="glass-card" style="padding: 16px; border-color: rgba(59, 130, 246, 0.2); background: linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, rgba(6, 182, 212, 0.03) 100%);">
+                            <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: var(--accent); display: flex; align-items: center; gap: 6px;"><i class="bx bx-pie-chart-alt-2"></i> Métricas del Sistema</h3>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                                <div style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 10px; text-align: center;">
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary);">Contraseñas</div>
+                                    <div id="audit-metric-passwords" style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary);">0</div>
+                                </div>
+                                <div style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 10px; text-align: center;">
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary);">Abonados</div>
+                                    <div id="audit-metric-subscribers" style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary);">0</div>
+                                </div>
+                                <div style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 10px; text-align: center;">
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary);">Manuales</div>
+                                    <div id="audit-metric-manuals" style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary);">0</div>
+                                </div>
+                                <div style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 10px; text-align: center;">
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary);">Combustible (Coste / Litros)</div>
+                                    <div id="audit-metric-fuel" style="font-size: 0.95rem; font-weight: 700; color: var(--success); line-height: 1.3;">0 €<br><span style="font-size: 0.75rem; font-weight: normal; color: var(--text-secondary);">0 L</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Technicians Registry Table -->
+                        <div class="glass-card" style="padding: 16px; border-color: var(--border-glass); display: flex; flex-direction: column; gap: 10px;">
+                            <h3 style="font-size: 0.95rem; color: var(--accent); display: flex; align-items: center; gap: 6px;"><i class="bx bx-group"></i> Control de Técnicos y Vacaciones</h3>
+                            <div style="overflow-x: auto; width: 100%;">
+                                <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem; text-align: left; min-width: 500px;">
+                                    <thead>
+                                        <tr style="border-bottom: 2px solid var(--border-glass); color: var(--text-secondary);">
+                                            <th style="padding: 8px;">Técnico</th>
+                                            <th style="padding: 8px;">Vehículo</th>
+                                            <th style="padding: 8px;">Contrato (Alta - Fin)</th>
+                                            <th style="padding: 8px; text-align: center;">Vacaciones<br><span style="font-size: 0.65rem;">(Perm/Cons/Rest)</span></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="audit-techs-table-body">
+                                        <!-- Populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 3. Recent Activity Log -->
+                        <div class="glass-card" style="padding: 16px; border-color: rgba(16, 185, 129, 0.2); background: rgba(16, 185, 129, 0.01);">
+                            <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: var(--success); display: flex; align-items: center; gap: 6px;"><i class="bx bx-history"></i> Historial Reciente</h3>
+                            <div id="audit-recent-activity-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 250px; overflow-y: auto;">
+                                <!-- Dynamic recent logs -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- K. SETTINGS SCREEN -->
