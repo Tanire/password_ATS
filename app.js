@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.16.05",
+        version: "1.17.01",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -756,7 +756,7 @@ async function handleUnlock() {
         return;
     }
 
-    showLoading(true, "Descifrando bóveda...");
+    showLoading(true, "Iniciando sesión...");
 
     const gitUser = GIT_CONFIG.user;
     const gitRepo = GIT_CONFIG.repo;
@@ -919,7 +919,7 @@ async function handleUnlock() {
         els.appBody.style.display = "flex";
         playSound("success");
         switchScreen("dashboard");
-        showToast(isOffline ? "Bóveda abierta fuera de línea" : "Bóveda abierta correctamente");
+        showToast(isOffline ? "Sesión iniciada fuera de línea" : "Sesión iniciada correctamente");
         
         // Check for App Update/Changelog notification
         const lastSeen = localStorage.getItem("ats_last_seen_version");
@@ -1063,7 +1063,7 @@ function lockVault() {
     
     els.appBody.style.display = "none";
     els.screenLogin.style.display = "flex";
-    showToast("Bóveda cerrada");
+    showToast("Sesión cerrada");
 }
 
 // --- RENDERING VIEWS ---
@@ -2550,12 +2550,12 @@ function adaptLoginFields() {
     const userCount = Object.keys(state.usersMetadata || {}).length;
     if (userCount > 0) {
         if (usernameGroup) usernameGroup.style.display = "block";
-        if (loginSubtitle) loginSubtitle.textContent = "Introduce tus credenciales para acceder a ALTA TECNOLOGIA PARA LA SEGURIDAD.";
+        if (loginSubtitle) loginSubtitle.textContent = "Introduce tus credenciales para acceder a ALTA TECNOLOGIA PARA LA SEGURIDAD - APP SISTEMAS.";
         if (loginPassInput) loginPassInput.placeholder = "Contraseña";
     } else {
         if (usernameGroup) usernameGroup.style.display = "none";
-        if (loginSubtitle) loginSubtitle.textContent = "Introduce tu Clave Maestra para descifrar la base de datos de ALTA TECNOLOGIA PARA LA SEGURIDAD.";
-        if (loginPassInput) loginPassInput.placeholder = "Clave Maestra";
+        if (loginSubtitle) loginSubtitle.textContent = "Introduce tu contraseña de acceso a ALTA TECNOLOGIA PARA LA SEGURIDAD - APP SISTEMAS.";
+        if (loginPassInput) loginPassInput.placeholder = "Contraseña";
     }
 }
 

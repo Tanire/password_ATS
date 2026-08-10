@@ -304,7 +304,7 @@ main {
 
 .input-control:focus {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-glow);
+    box-shadow: 0 0 0 3px var(--accent-glow), 0 0 15px rgba(59, 130, 246, 0.25);
 }
 
 /* Select element styling reset */
@@ -417,6 +417,12 @@ select.input-control {
     gap: 6px;
     cursor: pointer;
     transition: var(--transition-smooth);
+}
+
+.menu-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--accent);
+    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15);
 }
 
 .menu-card:active {
