@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.16.04",
+        version: "1.16.05",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -920,6 +920,23 @@ async function handleUnlock() {
         playSound("success");
         switchScreen("dashboard");
         showToast(isOffline ? "Bóveda abierta fuera de línea" : "Bóveda abierta correctamente");
+        
+        // Check for App Update/Changelog notification
+        const lastSeen = localStorage.getItem("ats_last_seen_version");
+        const currentVer = state.vault.version || "1.16.05";
+        if (lastSeen !== currentVer) {
+            const modal = document.getElementById("changelog-modal");
+            if (modal) {
+                modal.style.display = "flex";
+                const closeBtn = document.getElementById("btn-close-changelog");
+                if (closeBtn) {
+                    closeBtn.onclick = () => {
+                        modal.style.display = "none";
+                        localStorage.setItem("ats_last_seen_version", currentVer);
+                    };
+                }
+            }
+        }
         
         // Check for personal notifications
         setTimeout(checkForNotifications, 800);
