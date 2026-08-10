@@ -714,7 +714,6 @@ function switchScreen(screenId) {
         if (screenId === "vacations" && !scopes.includes("vacations")) return;
         if (screenId === "audit") return; // Non-admin cannot access audit
     }
-    }
 
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
     
