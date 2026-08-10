@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.16.00",
+        version: "1.16.01",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -286,6 +286,7 @@ function setupEventListeners() {
     // Expenses Category Filter
     els.filterExpensesCat.addEventListener("change", renderExpenses);
     document.getElementById("fuel-report-year").addEventListener("change", renderFuelReport);
+    document.getElementById("exp-vehicle-select").addEventListener("change", handleVehicleSelectionChange);
 
     // Dynamic fuel field toggling in expense form
     document.getElementById("exp-category").addEventListener("change", (e) => {
@@ -1655,7 +1656,124 @@ function openExpenseForm() {
     els.formExpense.reset();
     document.getElementById("exp-date").value = new Date().toISOString().split('T')[0];
     document.getElementById("fuel-fields-container").style.display = "block"; // Fuel defaults on reset
+    
+    // Auto-complete conductor
+    const condField = document.getElementById("exp-conductor");
+    if (condField) {
+        condField.value = state.currentUser ? (state.currentUser.fullName || state.currentUser.username.toUpperCase()) : "TÉCNICO";
+    }
+
+    // Populate vehicles select list
+    populateVehicleSelector();
+
     switchScreen("form-expense");
+    
+    // Fetch geo-location automatically
+    getGeoLocation();
+}
+
+function populateVehicleSelector() {
+    const selector = document.getElementById("exp-vehicle-select");
+    if (!selector) return;
+
+    selector.innerHTML = "";
+
+    // 1. Gather vehicles from user profiles
+    const userVehicles = new Map(); // plate -> brand/model
+    if (state.vault.users) {
+        state.vault.users.forEach(u => {
+            if (u.vehiculo) {
+                const cleaned = u.vehiculo.trim();
+                if (cleaned) {
+                    const parts = cleaned.split(" ");
+                    const plate = parts[0].toUpperCase();
+                    const brand = parts.slice(1).join(" ") || "";
+                    userVehicles.set(plate, brand);
+                }
+            }
+        });
+    }
+
+    // 2. Gather vehicles from existing combustible expenses
+    if (state.vault.expenses) {
+        state.vault.expenses.forEach(e => {
+            if (e.category === "Combustible" && e.vehicle) {
+                const plate = e.vehicle.trim().toUpperCase();
+                const brand = e.brand_model ? e.brand_model.trim() : "";
+                if (plate) {
+                    if (!userVehicles.has(plate) || (brand && !userVehicles.get(plate))) {
+                        userVehicles.set(plate, brand);
+                    }
+                }
+            }
+        });
+    }
+
+    // 3. Create options
+    const defaultOpt = document.createElement("option");
+    defaultOpt.value = "";
+    defaultOpt.textContent = "— Seleccionar Vehículo —";
+    selector.appendChild(defaultOpt);
+
+    userVehicles.forEach((brand, plate) => {
+        const opt = document.createElement("option");
+        opt.value = `${plate}|${brand}`;
+        opt.textContent = brand ? `${plate} - ${brand}` : plate;
+        selector.appendChild(opt);
+    });
+
+    const newOpt = document.createElement("option");
+    newOpt.value = "new";
+    newOpt.textContent = "+ Otro Vehículo (Ingresar matrícula...)";
+    selector.appendChild(newOpt);
+
+    const vehicleInput = document.getElementById("exp-vehicle");
+    const brandModelInput = document.getElementById("exp-brand-model");
+    
+    // Auto-select current technician's vehicle if available
+    const myVehicle = state.currentUser ? (state.currentUser.vehiculo || "").trim() : "";
+    let matched = false;
+    if (myVehicle) {
+        const parts = myVehicle.split(" ");
+        const myPlate = parts[0].toUpperCase();
+        for (let option of selector.options) {
+            if (option.value.startsWith(myPlate + "|") || option.value === myPlate) {
+                option.selected = true;
+                vehicleInput.value = myPlate;
+                vehicleInput.readOnly = true;
+                brandModelInput.value = parts.slice(1).join(" ");
+                brandModelInput.readOnly = true;
+                matched = true;
+                break;
+            }
+        }
+    }
+    
+    if (!matched) {
+        vehicleInput.value = "";
+        brandModelInput.value = "";
+        vehicleInput.readOnly = false;
+        brandModelInput.readOnly = false;
+    }
+}
+
+function handleVehicleSelectionChange(e) {
+    const selectedVal = e.target.value;
+    const vehicleInput = document.getElementById("exp-vehicle");
+    const brandModelInput = document.getElementById("exp-brand-model");
+    
+    if (selectedVal === "new" || selectedVal === "") {
+        vehicleInput.value = "";
+        brandModelInput.value = "";
+        vehicleInput.readOnly = false;
+        brandModelInput.readOnly = false;
+    } else {
+        const parts = selectedVal.split("|");
+        vehicleInput.value = parts[0] || "";
+        brandModelInput.value = parts[1] || "";
+        vehicleInput.readOnly = true;
+        brandModelInput.readOnly = true;
+    }
 }
 
 async function saveExpenseEntry(evt) {
