@@ -831,6 +831,7 @@ function switchScreen(screenId) {
     if (screenId === "routes") {
         initRoutesScreen();
         renderDbClientsSelectorList();
+        refreshVaultFromCloud(); // Descarga en segundo plano los últimos clientes
     }
 }
 
@@ -7915,12 +7916,13 @@ function importRoutesClientsExcel(e) {
 
             state.vault.routes_clients = importedClients;
             
-            // Activar botón de sincronización de la app
-            setSyncStatus(false);
-            
             showToast(`¡Éxito! Se importaron ${importedClients.length} clientes`);
-            if (statusDiv) statusDiv.textContent = `Listo: ${importedClients.length} clientes. ¡Sincroniza para guardar!`;
+            if (statusDiv) statusDiv.textContent = `Guardando y sincronizando ${importedClients.length} clientes...`;
             
+            // Sincronizar automáticamente con la nube para que se propague a todos los dispositivos
+            await syncWithCloud();
+            
+            if (statusDiv) statusDiv.textContent = `Listo: ${importedClients.length} clientes. Sincronizado correctamente.`;
             e.target.value = "";
         } catch (err) {
             console.error("Excel import error", err);
@@ -8058,17 +8060,23 @@ async function addDbClientToRouteByIndex(idx) {
     }
 }
 
-function clearDbClients() {
+async function clearDbClients() {
     if (!confirm("¿Estás seguro de que deseas borrar TODA la base de datos de clientes?\nEsta acción vaciará la lista de clientes registrados de forma permanente.")) {
         return;
     }
 
     state.vault.routes_clients = [];
-    setSyncStatus(false); // Forzar sincronización posterior
 
     const statusDiv = document.getElementById("routes-import-status");
     if (statusDiv) {
-        statusDiv.textContent = "Base de datos vaciada. Sincroniza para guardar cambios.";
+        statusDiv.textContent = "Borrando y sincronizando base de datos...";
+    }
+
+    // Sincronizar automáticamente con la nube
+    await syncWithCloud();
+
+    if (statusDiv) {
+        statusDiv.textContent = "Base de datos vaciada y sincronizada con éxito.";
     }
 
     // Limpiar buscador y refrescar selector
@@ -8076,7 +8084,52 @@ function clearDbClients() {
     if (searchInput) searchInput.value = "";
     renderDbClientsSelectorList();
 
-    showToast("Base de datos de clientes vaciada. Sincroniza para confirmar.");
+    showToast("Base de datos de clientes vaciada en la nube.");
+}
+
+async function refreshVaultFromCloud() {
+    if (!state.masterPassword || isOffline) return;
+
+    if (!state.gitClient) {
+        state.gitClient = new GitHubClient(
+            GIT_CONFIG.user,
+            GIT_CONFIG.repo,
+            GIT_CONFIG.token,
+            GIT_CONFIG.path
+        );
+    }
+
+    try {
+        const fileData = await state.gitClient.fetchFile();
+        if (fileData && fileData.content) {
+            state.gitSha = fileData.sha;
+            
+            const encryptedPayload = JSON.parse(fileData.content);
+            state.usersMetadata = encryptedPayload.users || {};
+            
+            const decryptedData = await decryptData(
+                encryptedPayload.ciphertext,
+                state.masterPassword,
+                encryptedPayload.salt,
+                encryptedPayload.iv
+            );
+            
+            const freshVault = JSON.parse(decryptedData);
+            
+            state.vault = freshVault;
+            localStorage.setItem(STORAGE_KEYS.VAULT_CACHE, fileData.content);
+            
+            // Refrescar lista de selección si el técnico está visualizando las rutas
+            const activeScreen = document.querySelector(".screen.active");
+            if (activeScreen && activeScreen.id === "screen-routes") {
+                renderDbClientsSelectorList();
+            }
+            
+            console.log("Refresco en segundo plano completado. Clientes de rutas actualizados.");
+        }
+    } catch (e) {
+        console.warn("Fallo al sincronizar base de datos desde la nube en segundo plano:", e);
+    }
 }
 
 
