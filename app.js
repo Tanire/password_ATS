@@ -7976,7 +7976,8 @@ function renderDbClientsSelectorList(query = "") {
 
     listContainer.innerHTML = "";
 
-    const dbClients = state.vault.routes_clients || [];
+    // Saneamiento de base de datos
+    const dbClients = (state.vault.routes_clients || []).filter(c => c && typeof c === 'object');
     if (dbClients.length === 0) {
         listContainer.innerHTML = `<div style="text-align: center; color: var(--text-secondary); font-size: 0.75rem; padding: 12px;">No hay clientes en la base de datos. Sube un Excel desde Ajustes.</div>`;
         return;
@@ -7988,16 +7989,17 @@ function renderDbClientsSelectorList(query = "") {
     // Mapear con su índice original para no perder la referencia al filtrar
     const mappedClients = dbClients.map((client, originalIdx) => ({ client, originalIdx }));
 
-    // Filtrar por query usando lógica multi-palabra (AND)
+    // Filtrar por query usando lógica multi-palabra (AND) de forma segura
     const filtered = mappedClients.filter(item => {
+        if (!item.client) return false;
         if (queryWords.length === 0) return true;
-        const nameClean = item.client.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const addressClean = item.client.address.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const abonadoClean = (item.client.abonado || "").toLowerCase();
+        
+        const nameClean = (item.client.name || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const addressClean = (item.client.address || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const abonadoClean = String(item.client.abonado || "").toLowerCase();
         const provinciaClean = (item.client.provincia || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const sistemaClean = (item.client.sistema || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         
-        // Cada palabra clave de la búsqueda debe estar contenida en al menos uno de los campos
         return queryWords.every(word => {
             return nameClean.includes(word) || 
                    addressClean.includes(word) || 
@@ -8012,11 +8014,16 @@ function renderDbClientsSelectorList(query = "") {
         return;
     }
 
-    // Ordenar alfabéticamente
-    filtered.sort((a, b) => a.client.name.localeCompare(b.client.name));
+    // Ordenar alfabéticamente de forma segura
+    filtered.sort((a, b) => {
+        const nameA = (a.client && a.client.name) ? String(a.client.name) : "";
+        const nameB = (b.client && b.client.name) ? String(b.client.name) : "";
+        return nameA.localeCompare(nameB);
+    });
 
     filtered.forEach(item => {
         const client = item.client;
+        if (!client) return;
         const origIdx = item.originalIdx;
 
         // Comprobar si ya está seleccionado en la ruta del día
@@ -8175,7 +8182,8 @@ function renderAdminRoutesClients(query = "") {
 
     listContainer.innerHTML = "";
 
-    const dbClients = state.vault.routes_clients || [];
+    // Saneamiento inicial: filtrar elementos nulos o no válidos
+    const dbClients = (state.vault.routes_clients || []).filter(c => c && typeof c === 'object');
     if (countEl) {
         countEl.textContent = `Total: ${dbClients.length}`;
     }
@@ -8188,15 +8196,17 @@ function renderAdminRoutesClients(query = "") {
     const cleanQuery = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const queryWords = cleanQuery.split(/\s+/).filter(Boolean);
 
-    // Mapear con su índice original para poder borrar de forma correcta
+    // Mapear con su índice original para no perder la referencia de borrado
     const mapped = dbClients.map((client, originalIdx) => ({ client, originalIdx }));
 
-    // Filtrar por query multi-palabra
+    // Filtrar por query multi-palabra de forma segura
     const filtered = mapped.filter(item => {
+        if (!item.client) return false;
         if (queryWords.length === 0) return true;
-        const nameClean = item.client.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const addressClean = item.client.address.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const abonadoClean = (item.client.abonado || "").toLowerCase();
+        
+        const nameClean = (item.client.name || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const addressClean = (item.client.address || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const abonadoClean = String(item.client.abonado || "").toLowerCase();
         const provinciaClean = (item.client.provincia || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const sistemaClean = (item.client.sistema || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
@@ -8214,11 +8224,16 @@ function renderAdminRoutesClients(query = "") {
         return;
     }
 
-    // Ordenar alfabéticamente por nombre de cliente
-    filtered.sort((a, b) => a.client.name.localeCompare(b.client.name));
+    // Ordenar de forma robusta tolerando nombres faltantes
+    filtered.sort((a, b) => {
+        const nameA = (a.client && a.client.name) ? String(a.client.name) : "";
+        const nameB = (b.client && b.client.name) ? String(b.client.name) : "";
+        return nameA.localeCompare(nameB);
+    });
 
     filtered.forEach(item => {
         const client = item.client;
+        if (!client) return;
         const origIdx = item.originalIdx;
 
         const card = document.createElement("div");
@@ -8228,14 +8243,15 @@ function renderAdminRoutesClients(query = "") {
         const sistemaText = client.sistema ? `<div style="font-size: 0.75rem; color: var(--text-secondary);"><i class="bx bx-cog" style="vertical-align: middle;"></i> Sistema: <b>${escapeHtml(client.sistema)}</b></div>` : "";
         const phoneText = client.phone ? `<div style="font-size: 0.75rem; color: var(--text-secondary);"><i class="bx bx-phone" style="vertical-align: middle;"></i> Teléfono: <b>${escapeHtml(client.phone)}</b></div>` : "";
         const provText = client.provincia ? ` (${escapeHtml(client.provincia)})` : "";
+        const streetPart = client.address ? String(client.address).split(',')[0] : "Sin dirección";
 
         card.innerHTML = `
             <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; padding-right: 10px;">
                 <div style="font-weight: 600; color: var(--text-primary); font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                    ${abonadoText}${escapeHtml(client.name)}
+                    ${abonadoText}${escapeHtml(client.name || "Sin nombre")}
                 </div>
                 <div style="font-size: 0.75rem; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                    <i class="bx bx-map" style="vertical-align: middle;"></i> Dirección: ${escapeHtml(client.address)}${provText}
+                    <i class="bx bx-map" style="vertical-align: middle;"></i> Dirección: ${escapeHtml(streetPart)}${provText}
                 </div>
                 <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 2px;">
                     ${sistemaText}
