@@ -40,17 +40,17 @@
                 <div style="text-align: center;">
                     <div style="font-size: 2.2rem; margin-bottom: 8px;">🚀</div>
                     <h2 style="font-size: 1.3rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">¡Aplicación Actualizada!</h2>
-                    <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3);">Versión 1.18.02</span>
+                    <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3);">Versión 1.18.03</span>
                 </div>
                 
                 <div style="border-top: 1px solid var(--border-glass); border-bottom: 1px solid var(--border-glass); padding: 14px 0; max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; line-height: 1.4; color: var(--text-primary);">
                     <div>
-                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">📊 v1.18.02 - Gestión de Clientes por Excel</strong>
-                        <p style="margin: 0; color: var(--text-secondary);">El administrador ahora puede importar y exportar la base de datos completa de clientes mediante plantillas Excel desde los Ajustes. Los técnicos pueden seleccionarlos de forma directa al planificar rutas.</p>
+                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">📊 v1.18.03 - Campos Ampliados de Clientes</strong>
+                        <p style="margin: 0; color: var(--text-secondary);">Se han expandido los campos de los clientes (Abonado, Provincia, Sistema) tanto en la importación por Excel como en la creación e itinerario diario de rutas.</p>
                     </div>
                     <div>
-                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">🚗 v1.18.01 - Módulo de Rutas Óptimas</strong>
-                        <p style="margin: 0; color: var(--text-secondary);">Nuevo panel de rutas para técnicos que permite geolocalizar y calcular la ruta de visitas diaria más óptima con mapa interactivo y enlace a Google Maps.</p>
+                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">📊 v1.18.02 - Gestión de Clientes por Excel</strong>
+                        <p style="margin: 0; color: var(--text-secondary);">El administrador ahora puede importar y exportar la base de datos completa de clientes mediante plantillas Excel desde los Ajustes. Los técnicos pueden seleccionarlos de forma directa al planificar rutas.</p>
                     </div>
                 </div>
                 
@@ -80,7 +80,7 @@
                     <i class="bx bx-key"></i> DESBLOQUEAR
                 </button>
                 <div style="margin-top: 20px; font-size: 0.8rem; color: var(--text-secondary); text-align: center;">
-                    Versión 1.18.02 - By JMSYSTEMAS
+                    Versión 1.18.03 - By JMSYSTEMAS
                 </div>
             </div>
         </div>
@@ -145,7 +145,7 @@
                         </div>
                     </div>
                     <div style="text-align: center; margin-top: 40px; font-size: 0.8rem; color: var(--text-secondary);" class="dashboard-footer">
-                        Versión 1.18.01 - JMSYSTEMAS
+                        Versión 1.18.03 - JMSYSTEMAS
                     </div>
                 </div>
 
@@ -1809,13 +1809,29 @@
                     <div class="glass-card anim-fade" style="padding: 16px; margin-bottom: 16px;">
                         <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 12px; color: var(--text-primary);"><i class="bx bx-user-plus" style="color: var(--accent);"></i> Agregar Cliente Manualmente</h3>
                         <form id="form-routes-add-client" style="display: flex; flex-direction: column; gap: 10px;">
-                            <div class="form-group" style="margin: 0;">
-                                <label style="font-size: 0.75rem;">Nombre de Cliente / Empresa</label>
-                                <input type="text" id="route-client-name" class="input-control" placeholder="Ej. Cliente de Mantenimiento X" required style="font-size: 0.85rem; padding: 8px 12px;">
+                            <div class="form-row" style="display: flex; gap: 10px;">
+                                <div class="form-group" style="flex: 1; margin: 0;">
+                                    <label style="font-size: 0.75rem;">Nº Abonado</label>
+                                    <input type="text" id="route-client-abonado" class="input-control" placeholder="Ej. A105" required style="font-size: 0.85rem; padding: 8px 12px;">
+                                </div>
+                                <div class="form-group" style="flex: 2; margin: 0;">
+                                    <label style="font-size: 0.75rem;">Nombre de Cliente / Empresa</label>
+                                    <input type="text" id="route-client-name" class="input-control" placeholder="Ej. Cliente Ejemplo X" required style="font-size: 0.85rem; padding: 8px 12px;">
+                                </div>
                             </div>
                             <div class="form-group" style="margin: 0;">
                                 <label style="font-size: 0.75rem;">Dirección Completa (Calle, Nº, Ciudad)</label>
                                 <input type="text" id="route-client-address" class="input-control" placeholder="Ej. Calle Gran Via 12, Madrid" required style="font-size: 0.85rem; padding: 8px 12px;">
+                            </div>
+                            <div class="form-row" style="display: flex; gap: 10px;">
+                                <div class="form-group" style="flex: 1; margin: 0;">
+                                    <label style="font-size: 0.75rem;">Provincia</label>
+                                    <input type="text" id="route-client-provincia" class="input-control" placeholder="Ej. Madrid" required style="font-size: 0.85rem; padding: 8px 12px;">
+                                </div>
+                                <div class="form-group" style="flex: 1; margin: 0;">
+                                    <label style="font-size: 0.75rem;">Sistema</label>
+                                    <input type="text" id="route-client-sistema" class="input-control" placeholder="Ej. Alarma Paradox" required style="font-size: 0.85rem; padding: 8px 12px;">
+                                </div>
                             </div>
                             <div class="form-group" style="margin: 0;">
                                 <label style="font-size: 0.75rem;">Teléfono de Contacto</label>

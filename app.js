@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.18.02",
+        version: "1.18.03",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -7362,15 +7362,21 @@ function initRoutesScreen() {
 
 async function addRouteClient(e) {
     e.preventDefault();
+    const abonadoInput = document.getElementById("route-client-abonado");
     const nameInput = document.getElementById("route-client-name");
     const addressInput = document.getElementById("route-client-address");
+    const provinciaInput = document.getElementById("route-client-provincia");
+    const sistemaInput = document.getElementById("route-client-sistema");
     const phoneInput = document.getElementById("route-client-phone");
 
+    const abonado = abonadoInput.value.trim();
     const name = nameInput.value.trim();
     const address = addressInput.value.trim();
+    const provincia = provinciaInput.value.trim();
+    const sistema = sistemaInput.value.trim();
     const phone = phoneInput.value.trim();
 
-    if (!name || !address || !phone) {
+    if (!abonado || !name || !address || !provincia || !sistema || !phone) {
         showToast("Por favor, rellena todos los campos");
         return;
     }
@@ -7381,8 +7387,11 @@ async function addRouteClient(e) {
         const coords = await geocodeAddress(address);
         
         state.routes.clients.push({
+            abonado: abonado,
             name: name,
             address: address,
+            provincia: provincia,
+            sistema: sistema,
             phone: phone,
             lat: coords ? coords.lat : null,
             lon: coords ? coords.lon : null
@@ -7391,8 +7400,11 @@ async function addRouteClient(e) {
         localStorage.setItem("ats_routes_clients", JSON.stringify(state.routes.clients));
         
         // Limpiar formulario
+        abonadoInput.value = "";
         nameInput.value = "";
         addressInput.value = "";
+        provinciaInput.value = "";
+        sistemaInput.value = "";
         phoneInput.value = "";
 
         renderRouteClients();
@@ -7423,11 +7435,16 @@ function renderRouteClients() {
             ? `<span style="color: #10b981; font-size: 0.75rem;"><i class="bx bx-check-circle"></i> Localizado</span>` 
             : `<span style="color: #ef4444; font-size: 0.75rem;"><i class="bx bx-x-circle"></i> No geolocalizado</span>`;
 
+        const abonadoLabel = client.abonado ? `[${client.abonado}] ` : '';
+        const provinciaLabel = client.provincia ? ` (${client.provincia})` : '';
+        const sistemaLabel = client.sistema ? ` - ${client.sistema}` : '';
+
         html += `
             <div class="route-client-card">
                 <div class="route-client-info">
-                    <span class="route-client-title">${escapeHtml(client.name)}</span>
+                    <span class="route-client-title">${abonadoLabel}${escapeHtml(client.name)}${provinciaLabel}</span>
                     <span class="route-client-meta">
+                        <span><i class="bx bx-cog"></i> Sistema: <strong>${escapeHtml(client.sistema || 'General')}</strong></span>
                         <span><i class="bx bx-map"></i> ${escapeHtml(client.address)}</span>
                         <span><i class="bx bx-phone"></i> ${escapeHtml(client.phone)}</span>
                         ${mapBadge}
@@ -7619,12 +7636,16 @@ async function optimizeRoute() {
         orderedPath.forEach((client, idx) => {
             const distStr = client.distanceFromPrev.toFixed(1) + " km";
             const unlocWarning = client.unlocalized ? `<span style="color: var(--warning); display: block; font-size: 0.7rem; margin-top: 3px;"><i class="bx bx-error"></i> Dirección aproximada (no localizada exacta)</span>` : '';
+            const abonadoText = client.abonado ? `[${client.abonado}] ` : '';
+            const provinciaText = client.provincia ? ` (${client.provincia})` : '';
+
             itinHtml += `
                 <div class="itinerary-step">
                     <div class="itinerary-step-badge">${idx + 1}</div>
                     <div class="itinerary-step-content">
-                        <strong>${escapeHtml(client.name)}</strong>
+                        <strong>${abonadoText}${escapeHtml(client.name)}${provinciaText}</strong>
                         <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 3px;">
+                            <span><i class="bx bx-cog"></i> Sistema: <strong>${escapeHtml(client.sistema || 'General')}</strong></span><br>
                             <span><i class="bx bx-map"></i> ${escapeHtml(client.address)}</span><br>
                             <span><i class="bx bx-phone"></i> ${escapeHtml(client.phone)}</span><br>
                             <span style="color: var(--accent); font-weight: 600;"><i class="bx bx-right-arrow-alt"></i> A ${distStr} de la parada anterior</span>
@@ -7731,15 +7752,15 @@ function drawRouteOnMap(origin, path) {
 }
 
 // ==========================================
-// EXPORTACIÓN/IMPORTACIÓN EXCEL DE CLIENTES v1.18.02
+// EXPORTACIÓN/IMPORTACIÓN EXCEL DE CLIENTES v1.18.03
 // ==========================================
 
 function exportRoutesClientsTemplate() {
     try {
-        // Datos de ejemplo para guiar al usuario
+        // Datos de ejemplo para guiar al usuario con las nuevas columnas
         const data = [
-            { Nombre: "Cliente Ejemplo A", Direccion: "Gran Via 1, Madrid", Telefono: "600111222" },
-            { Nombre: "Cliente Ejemplo B", Direccion: "Paseo de la Castellana 50, Madrid", Telefono: "699333444" }
+            { Abonado: "A101", "Nombre Cliente": "Cliente Ejemplo A", Direccion: "Gran Via 1, Madrid", Provincia: "Madrid", Sistema: "Alarma Grado 2", Telefono: "600111222" },
+            { Abonado: "A102", "Nombre Cliente": "Cliente Ejemplo B", Direccion: "Paseo de la Castellana 50, Madrid", Provincia: "Madrid", Sistema: "Grabador IP", Telefono: "699333444" }
         ];
 
         const worksheet = XLSX.utils.json_to_sheet(data);
@@ -7779,18 +7800,27 @@ function importRoutesClientsExcel(e) {
 
             const importedClients = [];
             rows.forEach((row) => {
-                let name = row["Nombre"] || row["nombre"] || row["Name"] || row["name"] || "";
-                let address = row["Direccion"] || row["dirección"] || row["Dirección"] || row["address"] || row["Address"] || "";
-                let phone = row["Telefono"] || row["teléfono"] || row["Teléfono"] || row["phone"] || row["Phone"] || "";
+                let abonado = row["Abonado"] || row["abonado"] || row["Nº Abonado"] || row["Código"] || "";
+                let name = row["Nombre Cliente"] || row["Nombre"] || row["nombre"] || row["Client"] || "";
+                let address = row["Direccion"] || row["dirección"] || row["Dirección"] || row["address"] || "";
+                let provincia = row["Provincia"] || row["provincia"] || row["State"] || "";
+                let sistema = row["Sistema"] || row["sistema"] || row["System"] || "";
+                let phone = row["Telefono"] || row["teléfono"] || row["Teléfono"] || row["phone"] || "";
 
+                abonado = String(abonado).trim();
                 name = String(name).trim();
                 address = String(address).trim();
+                provincia = String(provincia).trim();
+                sistema = String(sistema).trim();
                 phone = String(phone).trim();
 
                 if (name && address) {
                     importedClients.push({
+                        abonado: abonado,
                         name: name,
                         address: address,
+                        provincia: provincia,
+                        sistema: sistema,
                         phone: phone
                     });
                 }
@@ -7845,10 +7875,18 @@ function populateDbClientsSelect() {
     sorted.forEach((client, idx) => {
         const option = document.createElement("option");
         option.value = idx;
-        option.textContent = `${client.name} (${client.address.split(',')[0]})`;
+        
+        const abonadoText = client.abonado ? `[${client.abonado}] ` : '';
+        const provinciaText = client.provincia ? ` (${client.provincia})` : '';
+        const sistemaText = client.sistema ? ` - ${client.sistema}` : '';
+        
+        option.textContent = `${abonadoText}${client.name}${provinciaText}${sistemaText}`;
+        option.setAttribute("data-abonado", client.abonado || '');
         option.setAttribute("data-name", client.name);
         option.setAttribute("data-address", client.address);
-        option.setAttribute("data-phone", client.phone);
+        option.setAttribute("data-provincia", client.provincia || '');
+        option.setAttribute("data-sistema", client.sistema || '');
+        option.setAttribute("data-phone", client.phone || '');
         select.appendChild(option);
     });
 }
@@ -7864,8 +7902,11 @@ async function addSelectedRouteClient() {
     }
 
     const selectedOption = select.options[select.selectedIndex];
+    const abonado = selectedOption.getAttribute("data-abonado");
     const name = selectedOption.getAttribute("data-name");
     const address = selectedOption.getAttribute("data-address");
+    const provincia = selectedOption.getAttribute("data-provincia");
+    const sistema = selectedOption.getAttribute("data-sistema");
     const phone = selectedOption.getAttribute("data-phone");
 
     showLoading(true, "Buscando dirección del cliente...");
@@ -7874,8 +7915,11 @@ async function addSelectedRouteClient() {
         const coords = await geocodeAddress(address);
 
         state.routes.clients.push({
+            abonado: abonado,
             name: name,
             address: address,
+            provincia: provincia,
+            sistema: sistema,
             phone: phone,
             lat: coords ? coords.lat : null,
             lon: coords ? coords.lon : null
