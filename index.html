@@ -1762,8 +1762,8 @@
                     <h3 id="vac-summary-title" style="font-size: 1rem; font-weight: 600; margin-bottom: 12px; color: var(--text-primary);">Resumen de mis Solicitudes</h3>
                     <div id="vacations-summary-list" style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; max-height: 250px;">
                         <!-- Generado dinámicamente -->
+                    </div>
                 </div>
-
             </div>
         </div>
 
@@ -1794,15 +1794,13 @@
                     <div class="glass-card anim-fade" style="padding: 16px; margin-bottom: 16px;" id="routes-db-select-card">
                         <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 10px; color: var(--text-primary);"><i class="bx bx-folder-open" style="color: var(--accent);"></i> Base de Datos de Clientes</h3>
                         <div style="display: flex; flex-direction: column; gap: 10px;">
-                            <div class="form-group" style="margin: 0;">
-                                <label style="font-size: 0.75rem;">Seleccionar Cliente Registrado</label>
-                                <select id="routes-db-client-select" class="input-control" style="font-size: 0.85rem; padding: 10px 14px;">
-                                    <option value="">-- Selecciona un cliente registrado --</option>
-                                </select>
+                            <div class="search-container" style="margin-bottom: 5px;">
+                                <i class="bx bx-search search-icon"></i>
+                                <input type="text" id="routes-db-client-search" class="search-input" placeholder="Buscar por nombre, abonado o provincia..." style="padding-left: 38px;">
                             </div>
-                            <button type="button" id="btn-routes-add-selected-client" class="btn-premium" style="width: 100%; padding: 10px;">
-                                <i class="bx bx-plus-circle"></i> Añadir Seleccionado
-                            </button>
+                            <div id="routes-db-clients-selector-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto; padding: 4px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass); background: rgba(15, 23, 42, 0.4);">
+                                <!-- Rellenado dinámicamente -->
+                            </div>
                         </div>
                     </div>
 

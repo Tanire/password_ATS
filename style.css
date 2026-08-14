@@ -1276,5 +1276,22 @@ select.input-control {
     padding: 10px 14px;
 }
 
+/* Selector interactivo de clientes v1.18.04 */
+.db-client-selector-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+}
+.db-client-selector-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
 
 

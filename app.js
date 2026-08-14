@@ -759,7 +759,7 @@ function setupEventListeners() {
     // Excel and DB Client Selection listeners
     const btnExportExcel = document.getElementById("btn-routes-export-excel");
     const inputImportExcel = document.getElementById("input-routes-import-excel");
-    const btnAddSelectedClient = document.getElementById("btn-routes-add-selected-client");
+    const clientSearchInput = document.getElementById("routes-db-client-search");
 
     if (btnExportExcel) {
         btnExportExcel.addEventListener("click", exportRoutesClientsTemplate);
@@ -767,8 +767,10 @@ function setupEventListeners() {
     if (inputImportExcel) {
         inputImportExcel.addEventListener("change", importRoutesClientsExcel);
     }
-    if (btnAddSelectedClient) {
-        btnAddSelectedClient.addEventListener("click", addSelectedRouteClient);
+    if (clientSearchInput) {
+        clientSearchInput.addEventListener("input", debounce(() => {
+            renderDbClientsSelectorList(clientSearchInput.value.trim());
+        }, 150));
     }
 }
 
@@ -823,7 +825,7 @@ function switchScreen(screenId) {
     if (screenId === "audit") renderAuditScreen();
     if (screenId === "routes") {
         initRoutesScreen();
-        populateDbClientsSelect();
+        renderDbClientsSelectorList();
     }
 }
 
@@ -7466,6 +7468,11 @@ function deleteRouteClient(idx) {
         state.routes.clients.splice(idx, 1);
         localStorage.setItem("ats_routes_clients", JSON.stringify(state.routes.clients));
         renderRouteClients();
+        
+        // Refrescar selector interactivo
+        const searchInput = document.getElementById("routes-db-client-search");
+        renderDbClientsSelectorList(searchInput ? searchInput.value.trim() : "");
+        
         showToast("Cliente eliminado de la lista");
     }
 }
@@ -7475,6 +7482,11 @@ function clearRoutesData() {
     localStorage.removeItem("ats_routes_clients");
     document.getElementById("routes-results-container").style.display = "none";
     renderRouteClients();
+    
+    // Refrescar selector interactivo
+    const searchInput = document.getElementById("routes-db-client-search");
+    renderDbClientsSelectorList(searchInput ? searchInput.value.trim() : "");
+    
     showToast("Lista de clientes limpiada");
 }
 
@@ -7854,86 +7866,118 @@ function importRoutesClientsExcel(e) {
     reader.readAsBinaryString(file);
 }
 
-function populateDbClientsSelect() {
-    const select = document.getElementById("routes-db-client-select");
-    if (!select) return;
+function renderDbClientsSelectorList(query = "") {
+    const listContainer = document.getElementById("routes-db-clients-selector-list");
+    if (!listContainer) return;
 
-    select.innerHTML = '<option value="">-- Selecciona un cliente registrado --</option>';
+    listContainer.innerHTML = "";
 
     const dbClients = state.vault.routes_clients || [];
     if (dbClients.length === 0) {
-        const option = document.createElement("option");
-        option.value = "";
-        option.textContent = "No hay clientes (Importar por Excel en Ajustes)";
-        option.disabled = true;
-        select.appendChild(option);
+        listContainer.innerHTML = `<div style="text-align: center; color: var(--text-secondary); font-size: 0.75rem; padding: 12px;">No hay clientes en la base de datos. Sube un Excel desde Ajustes.</div>`;
         return;
     }
 
-    const sorted = [...dbClients].sort((a, b) => a.name.localeCompare(b.name));
+    const cleanQuery = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-    sorted.forEach((client, idx) => {
-        const option = document.createElement("option");
-        option.value = idx;
+    // Mapear con su índice original para no perder la referencia al filtrar
+    const mappedClients = dbClients.map((client, originalIdx) => ({ client, originalIdx }));
+
+    // Filtrar por query
+    const filtered = mappedClients.filter(item => {
+        if (!cleanQuery) return true;
+        const nameClean = item.client.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const addressClean = item.client.address.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const abonadoClean = (item.client.abonado || "").toLowerCase();
+        const provinciaClean = (item.client.provincia || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         
-        const abonadoText = client.abonado ? `[${client.abonado}] ` : '';
-        const provinciaText = client.provincia ? ` (${client.provincia})` : '';
-        const sistemaText = client.sistema ? ` - ${client.sistema}` : '';
+        return nameClean.includes(cleanQuery) || 
+               addressClean.includes(cleanQuery) || 
+               abonadoClean.includes(cleanQuery) || 
+               provinciaClean.includes(cleanQuery);
+    });
+
+    if (filtered.length === 0) {
+        listContainer.innerHTML = `<div style="text-align: center; color: var(--text-secondary); font-size: 0.75rem; padding: 12px;">No se encontraron resultados para "${escapeHtml(query)}".</div>`;
+        return;
+    }
+
+    // Ordenar alfabéticamente
+    filtered.sort((a, b) => a.item?.client?.name?.localeCompare(b.item?.client?.name));
+
+    filtered.forEach(item => {
+        const client = item.client;
+        const origIdx = item.originalIdx;
+
+        // Comprobar si ya está seleccionado en la ruta del día
+        const isAdded = state.routes.clients.some(c => c.name === client.name && c.address === client.address);
+
+        const card = document.createElement("div");
+        card.className = "db-client-selector-item";
         
-        option.textContent = `${abonadoText}${client.name}${provinciaText}${sistemaText}`;
-        option.setAttribute("data-abonado", client.abonado || '');
-        option.setAttribute("data-name", client.name);
-        option.setAttribute("data-address", client.address);
-        option.setAttribute("data-provincia", client.provincia || '');
-        option.setAttribute("data-sistema", client.sistema || '');
-        option.setAttribute("data-phone", client.phone || '');
-        select.appendChild(option);
+        const abonadoBadge = client.abonado ? `<span style="color: var(--accent); font-weight: bold;">[${escapeHtml(client.abonado)}]</span> ` : "";
+        const provinciaText = client.provincia ? ` • ${escapeHtml(client.provincia)}` : "";
+        const sistemaText = client.sistema ? ` • ${escapeHtml(client.sistema)}` : "";
+
+        card.innerHTML = `
+            <div style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0;">
+                <span style="font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${abonadoBadge}${escapeHtml(client.name)}</span>
+                <span style="font-size: 0.7rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(client.address.split(',')[0])}${provinciaText}${sistemaText}</span>
+            </div>
+        `;
+
+        if (isAdded) {
+            const badge = document.createElement("span");
+            badge.style.cssText = "color: #10b981; font-size: 0.75rem; font-weight: 600; padding: 4px 8px; background: rgba(16, 185, 129, 0.1); border-radius: 4px; display: flex; align-items: center; gap: 3px;";
+            badge.innerHTML = `<i class="bx bx-check"></i> Añadido`;
+            card.appendChild(badge);
+        } else {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "btn-premium";
+            btn.style.cssText = "padding: 5px 10px; font-size: 0.7rem; border-radius: 4px; margin-left: 10px; display: flex; align-items: center; gap: 3px;";
+            btn.innerHTML = `<i class="bx bx-plus"></i> Añadir`;
+            btn.addEventListener("click", () => addDbClientToRouteByIndex(origIdx));
+            card.appendChild(btn);
+        }
+
+        listContainer.appendChild(card);
     });
 }
 
-async function addSelectedRouteClient() {
-    const select = document.getElementById("routes-db-client-select");
-    if (!select) return;
+async function addDbClientToRouteByIndex(idx) {
+    const dbClients = state.vault.routes_clients || [];
+    const client = dbClients[idx];
+    if (!client) return;
 
-    const selectedIdx = select.value;
-    if (selectedIdx === "") {
-        showToast("Selecciona un cliente de la lista");
-        return;
-    }
-
-    const selectedOption = select.options[select.selectedIndex];
-    const abonado = selectedOption.getAttribute("data-abonado");
-    const name = selectedOption.getAttribute("data-name");
-    const address = selectedOption.getAttribute("data-address");
-    const provincia = selectedOption.getAttribute("data-provincia");
-    const sistema = selectedOption.getAttribute("data-sistema");
-    const phone = selectedOption.getAttribute("data-phone");
-
-    showLoading(true, "Buscando dirección del cliente...");
+    showLoading(true, `Buscando ubicación de ${client.name}...`);
 
     try {
-        const coords = await geocodeAddress(address);
+        const coords = await geocodeAddress(client.address);
 
         state.routes.clients.push({
-            abonado: abonado,
-            name: name,
-            address: address,
-            provincia: provincia,
-            sistema: sistema,
-            phone: phone,
+            abonado: client.abonado || "",
+            name: client.name,
+            address: client.address,
+            provincia: client.provincia || "",
+            sistema: client.sistema || "",
+            phone: client.phone || "",
             lat: coords ? coords.lat : null,
             lon: coords ? coords.lon : null
         });
 
         localStorage.setItem("ats_routes_clients", JSON.stringify(state.routes.clients));
         
-        select.value = "";
-
         renderRouteClients();
-        showToast(coords ? "Cliente añadido de base de datos" : "Cliente añadido (dirección no localizada)");
+        
+        // Refrescar selector para mostrar que se añadió
+        const searchInput = document.getElementById("routes-db-client-search");
+        renderDbClientsSelectorList(searchInput ? searchInput.value.trim() : "");
+        
+        showToast(coords ? `${client.name} añadido` : `${client.name} añadido (sin coordenadas exactas)`);
     } catch (err) {
-        console.error("Error al añadir cliente de base de datos:", err);
-        showToast("Error al procesar la dirección");
+        console.error("Error al añadir cliente:", err);
+        showToast("Error al procesar dirección del cliente");
     } finally {
         showLoading(false);
     }
