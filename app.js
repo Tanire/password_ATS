@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.19.02",
+        version: "1.19.03",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -415,6 +415,37 @@ function setupEventListeners() {
     els.btnSaveSettings.addEventListener("click", saveSettingsAction);
     els.btnLogout.addEventListener("click", lockVault);
 
+    // Acordeón de Personalización v1.19.03
+    const accHeader = document.getElementById("accordion-personalization");
+    const accContent = document.getElementById("personalization-content");
+    if (accHeader && accContent) {
+        accHeader.addEventListener("click", () => {
+            accHeader.classList.toggle("active");
+            if (accContent.style.maxHeight && accContent.style.maxHeight !== "0px") {
+                accContent.style.maxHeight = "0px";
+                accContent.style.margin = "0px";
+            } else {
+                accContent.style.maxHeight = accContent.scrollHeight + "px";
+                accContent.style.margin = "0px 0px 16px 0px";
+            }
+        });
+    }
+
+    // Modal Editar Cliente en BD v1.19.03
+    const btnCloseEditModal = document.getElementById("btn-close-edit-client-modal");
+    const btnCancelEditClient = document.getElementById("btn-cancel-edit-client");
+    const modalEditClient = document.getElementById("modal-edit-db-client");
+    const formEditClient = document.getElementById("form-edit-db-client");
+
+    const closeClientModal = () => {
+        if (modalEditClient) modalEditClient.style.display = "none";
+        if (formEditClient) formEditClient.reset();
+    };
+
+    if (btnCloseEditModal) btnCloseEditModal.addEventListener("click", closeClientModal);
+    if (btnCancelEditClient) btnCancelEditClient.addEventListener("click", closeClientModal);
+    if (formEditClient) formEditClient.addEventListener("submit", saveEditDbClient);
+
     // ==========================================
     // COMMERCIAL LISTENERS
     // ==========================================
@@ -797,9 +828,18 @@ function setupEventListeners() {
         inputImportExcel.addEventListener("change", importRoutesClientsExcel);
     }
     if (clientSearchInput) {
-        clientSearchInput.addEventListener("input", debounce(() => {
-            renderDbClientsSelectorList(clientSearchInput.value.trim());
-        }, 150));
+        clientSearchInput.addEventListener("input", (e) => {
+            const val = e.target.value.trim();
+            renderDbClientsSelectorList(val);
+            showRouteSearchSuggestions(val);
+        });
+        // Ocultar sugerencias al hacer clic fuera
+        document.addEventListener("click", (e) => {
+            const suggestionsBox = document.getElementById("routes-search-suggestions");
+            if (suggestionsBox && !clientSearchInput.contains(e.target) && !suggestionsBox.contains(e.target)) {
+                suggestionsBox.style.display = "none";
+            }
+        });
     }
 
     const btnClearDb = document.getElementById("btn-routes-clear-db");
@@ -8354,8 +8394,15 @@ function renderAdminRoutesClients(query = "") {
             </button>
         `;
 
-        card.querySelector("button").addEventListener("click", () => {
+        const deleteBtn = card.querySelector("button");
+        deleteBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
             deleteDbClientByIndex(origIdx);
+        });
+
+        card.style.cursor = "pointer";
+        card.addEventListener("click", () => {
+            openEditDbClientModal(origIdx);
         });
 
         listContainer.appendChild(card);
@@ -8687,6 +8734,142 @@ async function saveCustomLayout() {
         showLoading(false);
     }
 }
+
+// Modal Editar Cliente en Base de Datos v1.19.03
+function openEditDbClientModal(idx) {
+    const dbClients = state.vault.routes_clients || [];
+    const client = dbClients[idx];
+    if (!client) return;
+
+    const modal = document.getElementById("modal-edit-db-client");
+    if (!modal) return;
+
+    document.getElementById("edit-client-index").value = idx;
+    document.getElementById("edit-client-name").value = client.name || "";
+    document.getElementById("edit-client-address").value = client.address || "";
+    document.getElementById("edit-client-phone").value = client.phone || "";
+    document.getElementById("edit-client-lat").value = client.lat || "";
+    document.getElementById("edit-client-lon").value = client.lon || "";
+
+    modal.style.display = "flex";
+}
+
+async function saveEditDbClient(e) {
+    e.preventDefault();
+    const idx = parseInt(document.getElementById("edit-client-index").value, 10);
+    const dbClients = state.vault.routes_clients || [];
+    if (isNaN(idx) || !dbClients[idx]) return;
+
+    const modal = document.getElementById("modal-edit-db-client");
+
+    dbClients[idx].name = document.getElementById("edit-client-name").value.trim();
+    dbClients[idx].address = document.getElementById("edit-client-address").value.trim();
+    dbClients[idx].phone = document.getElementById("edit-client-phone").value.trim();
+    
+    const latVal = parseFloat(document.getElementById("edit-client-lat").value);
+    const lonVal = parseFloat(document.getElementById("edit-client-lon").value);
+    dbClients[idx].lat = isNaN(latVal) ? null : latVal;
+    dbClients[idx].lon = isNaN(lonVal) ? null : lonVal;
+
+    state.vault.routes_clients = dbClients;
+
+    if (modal) modal.style.display = "none";
+    showToast("Cliente actualizado en la base de datos.");
+
+    // Refrescar paneles
+    const searchInput = document.getElementById("admin-clients-search");
+    renderAdminRoutesClients(searchInput ? searchInput.value.trim() : "");
+    renderDbClientsSelectorList();
+
+    // Sincronizar cambios en la nube
+    await syncWithCloud();
+}
+
+// Buscador predictivo en pantalla de rutas v1.19.03
+function showRouteSearchSuggestions(query) {
+    const suggestionsBox = document.getElementById("routes-search-suggestions");
+    if (!suggestionsBox) return;
+
+    if (!query) {
+        suggestionsBox.style.display = "none";
+        suggestionsBox.innerHTML = "";
+        return;
+    }
+
+    const dbClients = (state.vault.routes_clients || []).filter(c => c && typeof c === 'object');
+    const cleanQuery = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+    // Filtrar coincidencias
+    const matched = dbClients.filter(c => {
+        const nameClean = (c.name || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const addressClean = (c.address || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const abonadoClean = String(c.abonado || "").toLowerCase();
+        return nameClean.includes(cleanQuery) || addressClean.includes(cleanQuery) || abonadoClean.includes(cleanQuery);
+    });
+
+    if (matched.length === 0) {
+        suggestionsBox.style.display = "block";
+        suggestionsBox.innerHTML = `<div style="padding: 10px; font-size: 0.78rem; color: var(--text-secondary); text-align: center;">Sin coincidencias en la base de datos</div>`;
+        return;
+    }
+
+    suggestionsBox.innerHTML = "";
+    suggestionsBox.style.display = "block";
+
+    matched.slice(0, 10).forEach(c => {
+        const item = document.createElement("div");
+        item.className = "suggestion-item anim-fade";
+
+        const info = document.createElement("div");
+        info.className = "suggestion-info";
+
+        const name = document.createElement("div");
+        name.className = "suggestion-name";
+        const codeText = c.abonado ? `[${c.abonado}] ` : "";
+        name.innerHTML = `${codeText}${escapeHtml(c.name)}`;
+
+        const addr = document.createElement("div");
+        addr.className = "suggestion-addr";
+        addr.textContent = c.address || "Sin dirección";
+
+        info.appendChild(name);
+        info.appendChild(addr);
+
+        const addBtn = document.createElement("button");
+        addBtn.type = "button";
+        addBtn.className = "suggestion-add-btn";
+        addBtn.textContent = "Añadir";
+        addBtn.addEventListener("click", () => {
+            // Añadir a la ruta actual
+            const newClient = {
+                name: c.name || "Sin nombre",
+                address: c.address || "",
+                phone: c.phone || "",
+                lat: c.lat || null,
+                lon: c.lon || null,
+                provincia: c.provincia || "",
+                sistema: c.sistema || "",
+                abonado: c.abonado || ""
+            };
+
+            state.routes.clients.push(newClient);
+            renderRoutesSelectedClients();
+            
+            // Limpiar buscador y cerrar sugerencias
+            const searchInput = document.getElementById("routes-db-client-search");
+            if (searchInput) searchInput.value = "";
+            suggestionsBox.style.display = "none";
+            suggestionsBox.innerHTML = "";
+
+            showToast(`Cliente ${c.name} añadido a la ruta.`);
+        });
+
+        item.appendChild(info);
+        item.appendChild(addBtn);
+        suggestionsBox.appendChild(item);
+    });
+}
+
 
 
 

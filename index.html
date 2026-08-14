@@ -557,63 +557,71 @@
                     </div>
 
                     <div class="anim-fade" style="padding-bottom: 80px;">
-                        <!-- NUEVA SECCIÓN UNIFICADA: PERSONALIZACIÓN v1.19.02 -->
-                        <h3 style="font-size: 0.95rem; margin-top: 10px; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Personalización</h3>
-                        <div class="glass-card" style="padding: 16px; margin-bottom: 16px; border: 1px solid var(--border-glass); border-radius: var(--radius-lg); display: flex; flex-direction: column; gap: 16px;">
-                            
-                            <!-- Subsección A: Apariencia -->
-                            <div>
-                                <h4 style="font-size: 0.85rem; color: var(--accent); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;"><i class="bx bx-palette"></i> Apariencia</h4>
-                                <div class="form-group" style="margin-bottom: 12px;">
-                                    <label>Tema de Color</label>
-                                    <select id="set-theme" class="input-control" style="padding: 10px 14px; font-size: 0.85rem;">
-                                        <option value="default">Oscuro Cyber</option>
-                                        <option value="blue">Azul Océano</option>
-                                        <option value="purple">Morado Nebulosa</option>
-                                        <option value="green">Verde Matrix</option>
-                                    </select>
-                                </div>
-                                <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 5px;">
-                                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                                        <label>Estilo de Interfaz</label>
-                                        <select id="set-ui-style" class="input-control" style="padding: 10px 14px; font-size: 0.85rem;">
-                                            <option value="glass">Cristal (Glassmorphism)</option>
-                                            <option value="flat">Plano Sólido (Flat)</option>
+                        <!-- SECCIÓN DESPLEGABLE: PERSONALIZACIÓN v1.19.03 -->
+                        <div class="accordion-header" id="accordion-personalization" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 12px 16px; background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); margin-top: 15px; margin-bottom: 12px; transition: var(--transition-smooth); user-select: none;">
+                            <h3 style="font-size: 0.95rem; margin: 0; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
+                                <i class="bx bx-slider-alt" style="color: var(--accent);"></i> Personalización
+                            </h3>
+                            <i class="bx bx-chevron-down accordion-arrow" style="font-size: 1.2rem; transition: transform var(--transition-smooth); color: var(--text-secondary);"></i>
+                        </div>
+                        
+                        <div class="accordion-content" id="personalization-content" style="max-height: 0; overflow: hidden; transition: max-height 0.4s ease-out, margin 0.3s ease-out; margin-bottom: 0;">
+                            <div class="glass-card" style="padding: 16px; margin-bottom: 16px; border: 1px solid var(--border-glass); border-radius: var(--radius-lg); display: flex; flex-direction: column; gap: 16px;">
+                                
+                                <!-- Subsección A: Apariencia -->
+                                <div>
+                                    <h4 style="font-size: 0.85rem; color: var(--accent); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;"><i class="bx bx-palette"></i> Apariencia</h4>
+                                    <div class="form-group" style="margin-bottom: 12px;">
+                                        <label>Tema de Color</label>
+                                        <select id="set-theme" class="input-control" style="padding: 10px 14px; font-size: 0.85rem;">
+                                            <option value="default">Oscuro Cyber</option>
+                                            <option value="blue">Azul Océano</option>
+                                            <option value="purple">Morado Nebulosa</option>
+                                            <option value="green">Verde Matrix</option>
                                         </select>
                                     </div>
-                                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                                        <label>Efectos de Sonido</label>
-                                        <select id="set-sounds" class="input-control" style="padding: 10px 14px; font-size: 0.85rem;">
-                                            <option value="on">Activados</option>
-                                            <option value="off">Desactivados</option>
-                                        </select>
+                                    <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 5px;">
+                                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                            <label>Estilo de Interfaz</label>
+                                            <select id="set-ui-style" class="input-control" style="padding: 10px 14px; font-size: 0.85rem;">
+                                                <option value="glass">Cristal (Glassmorphism)</option>
+                                                <option value="flat">Plano Sólido (Flat)</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                            <label>Efectos de Sonido</label>
+                                            <select id="set-sounds" class="input-control" style="padding: 10px 14px; font-size: 0.85rem;">
+                                                <option value="on">Activados</option>
+                                                <option value="off">Desactivados</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <hr style="border: 0; border-top: 1px solid var(--border-glass); margin: 4px 0;">
+                                <hr style="border: 0; border-top: 1px solid var(--border-glass); margin: 4px 0;">
 
-                            <!-- Subsección B: Personalizar Interfaz -->
-                            <div>
-                                <h4 style="font-size: 0.85rem; color: var(--accent); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;"><i class="bx bx-customize"></i> Personalizar Interfaz</h4>
-                                <div style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
-                                    Ordena los accesos rápidos de la pantalla principal (Dashboard) y de la barra inferior (Menú Rápido) a tu comodidad.
+                                <!-- Subsección B: Personalizar Interfaz -->
+                                <div>
+                                    <h4 style="font-size: 0.85rem; color: var(--accent); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;"><i class="bx bx-customize"></i> Personalizar Interfaz</h4>
+                                    <div style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
+                                        Ordena los accesos rápidos de la pantalla principal (Dashboard) y de la barra inferior (Menú Rápido) a tu comodidad.
+                                    </div>
+                                    
+                                    <h5 style="font-size: 0.8rem; color: var(--text-primary); margin-bottom: 6px; font-weight: 600;">1. Orden de la Pantalla Principal (Dashboard)</h5>
+                                    <div id="customize-dashboard-list" class="layout-list" style="margin-bottom: 15px;">
+                                        <!-- Populated dynamically in app.js -->
+                                    </div>
+                                    
+                                    <h5 style="font-size: 0.8rem; color: var(--text-primary); margin-bottom: 6px; font-weight: 600;">2. Orden de la Barra Inferior (Menú Rápido)</h5>
+                                    <div id="customize-nav-list" class="layout-list">
+                                        <!-- Populated dynamically in app.js -->
+                                    </div>
                                 </div>
                                 
-                                <h5 style="font-size: 0.8rem; color: var(--text-primary); margin-bottom: 6px; font-weight: 600;">1. Orden de la Pantalla Principal (Dashboard)</h5>
-                                <div id="customize-dashboard-list" class="layout-list" style="margin-bottom: 15px;">
-                                    <!-- Populated dynamically in app.js -->
-                                </div>
-                                
-                                <h5 style="font-size: 0.8rem; color: var(--text-primary); margin-bottom: 6px; font-weight: 600;">2. Orden de la Barra Inferior (Menú Rápido)</h5>
-                                <div id="customize-nav-list" class="layout-list">
-                                    <!-- Populated dynamically in app.js -->
-                                </div>
+                                <button id="btn-save-layout" type="button" class="btn-premium" style="width: 100%; margin-top: 5px; background: var(--accent-gradient);">
+                                    <i class="bx bx-check-double"></i> APLICAR DISEÑO PERSONALIZADO
+                                </button>
                             </div>
-                            
-                            <button id="btn-save-layout" type="button" class="btn-premium" style="width: 100%; margin-top: 5px; background: var(--accent-gradient);">
-                                <i class="bx bx-check-double"></i> APLICAR DISEÑO PERSONALIZADO
-                            </button>
                         </div>
                         <input type="hidden" id="set-company-name" value="ALTA TECNOLOGIA PARA LA SEGURIDAD">
 
@@ -1823,9 +1831,10 @@
                     <div class="glass-card anim-fade" style="padding: 16px; margin-bottom: 16px;" id="routes-db-select-card">
                         <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 10px; color: var(--text-primary);"><i class="bx bx-folder-open" style="color: var(--accent);"></i> Base de Datos de Clientes</h3>
                         <div style="display: flex; flex-direction: column; gap: 10px;">
-                            <div class="search-container" style="margin-bottom: 5px;">
+                            <div class="search-container" style="margin-bottom: 5px; position: relative;">
                                 <i class="bx bx-search search-icon"></i>
                                 <input type="text" id="routes-db-client-search" class="search-input" placeholder="Buscar por nombre, abonado o provincia..." style="padding-left: 38px;">
+                                <div id="routes-search-suggestions" class="search-suggestions-box" style="display: none; position: absolute; top: 100%; left: 0; width: 100%; max-height: 250px; overflow-y: auto; background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); z-index: 100; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); padding: 5px;"></div>
                             </div>
                             <div id="routes-db-clients-selector-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto; padding: 4px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass); background: rgba(15, 23, 42, 0.4);">
                                 <!-- Rellenado dinámicamente -->
@@ -1982,6 +1991,47 @@
         <!-- Sync Toast Alert -->
         <div id="toast">Notificación...</div>
 
+    </div>
+
+    <!-- MODAL EDITAR CLIENTE EN BASE DE DATOS v1.19.03 -->
+    <div id="modal-edit-db-client" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 1200; align-items: center; justify-content: center; padding: 20px;">
+        <div class="glass-card" style="width: 100%; max-width: 500px; padding: 24px; border: 1px solid var(--border-glass); border-radius: var(--radius-lg); animation: slideUp 0.3s ease-out; display: flex; flex-direction: column; gap: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary); margin: 0;"><i class="bx bx-edit-alt" style="color: var(--accent);"></i> Editar Cliente</h3>
+                <button type="button" class="btn-icon" id="btn-close-edit-client-modal" style="padding: 4px;"><i class="bx bx-x" style="font-size: 1.4rem;"></i></button>
+            </div>
+            
+            <form id="form-edit-db-client" style="display: flex; flex-direction: column; gap: 12px;">
+                <input type="hidden" id="edit-client-index">
+                <div class="form-group">
+                    <label>Nombre del Cliente</label>
+                    <input type="text" id="edit-client-name" class="input-control" required placeholder="Nombre completo o comercial">
+                </div>
+                <div class="form-group">
+                    <label>Dirección</label>
+                    <input type="text" id="edit-client-address" class="input-control" required placeholder="Calle, número, localidad">
+                </div>
+                <div class="form-group">
+                    <label>Teléfono</label>
+                    <input type="text" id="edit-client-phone" class="input-control" placeholder="Teléfono de contacto">
+                </div>
+                <div class="form-row" style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Latitud</label>
+                        <input type="number" step="any" id="edit-client-lat" class="input-control" placeholder="Coordenada Latitud">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Longitud</label>
+                        <input type="number" step="any" id="edit-client-lon" class="input-control" placeholder="Coordenada Longitud">
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 12px; margin-top: 10px;">
+                    <button type="button" id="btn-cancel-edit-client" class="btn-premium btn-secondary" style="flex: 1; margin: 0;">Cancelar</button>
+                    <button type="submit" class="btn-premium" style="flex: 1; margin: 0; background: var(--accent-gradient);">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Crypto, GitHub API, and App Controller Logic -->
