@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.18.05",
+        version: "1.18.06",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -771,6 +771,11 @@ function setupEventListeners() {
         clientSearchInput.addEventListener("input", debounce(() => {
             renderDbClientsSelectorList(clientSearchInput.value.trim());
         }, 150));
+    }
+
+    const btnClearDb = document.getElementById("btn-routes-clear-db");
+    if (btnClearDb) {
+        btnClearDb.addEventListener("click", clearDbClients);
     }
 }
 
@@ -7490,25 +7495,89 @@ function clearRoutesData() {
     showToast("Lista de clientes limpiada");
 }
 
+function cleanAddressForGeocoding(addr) {
+    if (!addr) return "";
+    let clean = addr;
+    // 1. Eliminar aclaraciones dentro de paréntesis
+    clean = clean.replace(/\([^)]*\)/g, ' ');
+    // 2. Normalizar espacios
+    clean = clean.replace(/\s+/g, ' ');
+    return clean.trim();
+}
+
 async function geocodeAddress(address) {
-    try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`;
-        const response = await fetch(url, {
-            headers: {
-                "Accept-Language": "es"
+    if (!address) return null;
+
+    // Función auxiliar de consulta a OpenStreetMap Nominatim
+    const queryAPI = async (q) => {
+        try {
+            const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`;
+            const response = await fetch(url, {
+                headers: {
+                    "Accept-Language": "es"
+                }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.length > 0) {
+                    return {
+                        lat: parseFloat(data[0].lat),
+                        lon: parseFloat(data[0].lon)
+                    };
+                }
             }
-        });
-        if (!response.ok) return null;
-        const data = await response.json();
-        if (data && data.length > 0) {
-            return {
-                lat: parseFloat(data[0].lat),
-                lon: parseFloat(data[0].lon)
-            };
+        } catch (e) {
+            console.error(`Error geocodificando "${q}":`, e);
         }
-    } catch (e) {
-        console.error("Geocoding failed:", e);
+        return null;
+    };
+
+    // 1. Intentar con la dirección limpia original
+    const cleanAddr = cleanAddressForGeocoding(address);
+    let coords = await queryAPI(cleanAddr);
+    if (coords) return coords;
+
+    // 2. Fallback por guiones: Muchas direcciones tienen formato "Calle... - Código - Municipio - Provincia"
+    const parts = cleanAddr.split('-').map(p => p.trim()).filter(Boolean);
+    if (parts.length > 1) {
+        const street = parts[0];
+        const city = parts[parts.length - 1];
+        
+        // Probar: "Calle, Municipio"
+        const queryStreetCity = `${street}, ${city}`;
+        coords = await queryAPI(queryStreetCity);
+        if (coords) return coords;
+
+        if (parts.length > 2) {
+            const postalCode = parts[parts.length - 2];
+            // Probar: "Calle, CP Municipio"
+            const queryStreetCPCity = `${street}, ${postalCode} ${city}`;
+            coords = await queryAPI(queryStreetCPCity);
+            if (coords) return coords;
+        }
     }
+
+    // 3. Fallback simplificando descripciones coloquiales (sin s/n, sin polígono de aclaración)
+    let simplified = cleanAddr.replace(/\s+s\/n\b/gi, '')
+                               .replace(/\bPolígono\b[^,]+/gi, '')
+                               .replace(/,/g, ' ')
+                               .replace(/\s+/g, ' ')
+                               .trim();
+    if (simplified && simplified !== cleanAddr) {
+        coords = await queryAPI(simplified);
+        if (coords) return coords;
+    }
+
+    // 4. Fallback final aproximado: Buscar únicamente el Municipio/Ciudad
+    if (parts.length > 1) {
+        const cityOnly = parts[parts.length - 1];
+        coords = await queryAPI(cityOnly);
+        if (coords) {
+            console.log(`Localización aproximada (municipio): ${cityOnly}`);
+            return coords;
+        }
+    }
+
     return null;
 }
 
@@ -7879,22 +7948,28 @@ function renderDbClientsSelectorList(query = "") {
     }
 
     const cleanQuery = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const queryWords = cleanQuery.split(/\s+/).filter(Boolean);
 
     // Mapear con su índice original para no perder la referencia al filtrar
     const mappedClients = dbClients.map((client, originalIdx) => ({ client, originalIdx }));
 
-    // Filtrar por query
+    // Filtrar por query usando lógica multi-palabra (AND)
     const filtered = mappedClients.filter(item => {
-        if (!cleanQuery) return true;
+        if (queryWords.length === 0) return true;
         const nameClean = item.client.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const addressClean = item.client.address.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const abonadoClean = (item.client.abonado || "").toLowerCase();
         const provinciaClean = (item.client.provincia || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const sistemaClean = (item.client.sistema || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         
-        return nameClean.includes(cleanQuery) || 
-               addressClean.includes(cleanQuery) || 
-               abonadoClean.includes(cleanQuery) || 
-               provinciaClean.includes(cleanQuery);
+        // Cada palabra clave de la búsqueda debe estar contenida en al menos uno de los campos
+        return queryWords.every(word => {
+            return nameClean.includes(word) || 
+                   addressClean.includes(word) || 
+                   abonadoClean.includes(word) || 
+                   provinciaClean.includes(word) ||
+                   sistemaClean.includes(word);
+        });
     });
 
     if (filtered.length === 0) {
@@ -7903,7 +7978,7 @@ function renderDbClientsSelectorList(query = "") {
     }
 
     // Ordenar alfabéticamente
-    filtered.sort((a, b) => a.item?.client?.name?.localeCompare(b.item?.client?.name));
+    filtered.sort((a, b) => a.client.name.localeCompare(b.client.name));
 
     filtered.forEach(item => {
         const client = item.client;
@@ -7981,6 +8056,27 @@ async function addDbClientToRouteByIndex(idx) {
     } finally {
         showLoading(false);
     }
+}
+
+function clearDbClients() {
+    if (!confirm("¿Estás seguro de que deseas borrar TODA la base de datos de clientes?\nEsta acción vaciará la lista de clientes registrados de forma permanente.")) {
+        return;
+    }
+
+    state.vault.routes_clients = [];
+    setSyncStatus(false); // Forzar sincronización posterior
+
+    const statusDiv = document.getElementById("routes-import-status");
+    if (statusDiv) {
+        statusDiv.textContent = "Base de datos vaciada. Sincroniza para guardar cambios.";
+    }
+
+    // Limpiar buscador y refrescar selector
+    const searchInput = document.getElementById("routes-db-client-search");
+    if (searchInput) searchInput.value = "";
+    renderDbClientsSelectorList();
+
+    showToast("Base de datos de clientes vaciada. Sincroniza para confirmar.");
 }
 
 
