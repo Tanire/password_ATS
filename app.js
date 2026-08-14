@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.19.01",
+        version: "1.19.02",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -2772,7 +2772,7 @@ function applyUserPrivileges(user) {
         }
     }
     
-    // Filter Dashboard categories and bottom navigation based on user preferences and scopes v1.19.01
+    // Filter Dashboard categories and bottom navigation based on user preferences and scopes v1.19.02
     const scopes = user.scope || [];
     const menuGrid = document.querySelector(".menu-grid");
     if (menuGrid) {
@@ -2780,7 +2780,6 @@ function applyUserPrivileges(user) {
         const pref = user.preferences || {};
         const dashLayout = pref.dashboard_layout || {};
         const dashOrder = dashLayout.order || DEFAULT_LAYOUTS.dashboard_order;
-        const dashVisible = dashLayout.visible || DEFAULT_LAYOUTS.dashboard_visible;
 
         const cards = {
             passwords: document.getElementById("menu-passwords"),
@@ -2793,7 +2792,7 @@ function applyUserPrivileges(user) {
             audit: document.getElementById("menu-audit")
         };
 
-        // Reordenar y establecer visibilidad
+        // Reordenar y establecer visibilidad obligatoria según permisos
         dashOrder.forEach(key => {
             const card = cards[key];
             if (card) {
@@ -2810,8 +2809,7 @@ function applyUserPrivileges(user) {
                     (key === "audit" && (user.role === "admin" || user.role === "responsable_tecnico"))
                 );
 
-                const isUserVisible = dashVisible[key] !== false;
-                card.style.display = (isAllowed && isUserVisible) ? "flex" : "none";
+                card.style.display = isAllowed ? "flex" : "none";
             }
         });
     }
@@ -8495,25 +8493,7 @@ function renderLocalDashboardList() {
         orderDiv.appendChild(btnUp);
         orderDiv.appendChild(btnDown);
 
-        // Switch de visibilidad
-        const labelSwitch = document.createElement("label");
-        labelSwitch.className = "switch-control";
-
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.checked = localDashboardVisible[key] !== false;
-        checkbox.addEventListener("change", (e) => {
-            localDashboardVisible[key] = e.target.checked;
-        });
-
-        const slider = document.createElement("span");
-        slider.className = "switch-slider";
-
-        labelSwitch.appendChild(checkbox);
-        labelSwitch.appendChild(slider);
-
         actionsDiv.appendChild(orderDiv);
-        actionsDiv.appendChild(labelSwitch);
 
         row.appendChild(titleDiv);
         row.appendChild(actionsDiv);
@@ -8680,8 +8660,7 @@ async function saveCustomLayout() {
         user.preferences = user.preferences || {};
         
         user.preferences.dashboard_layout = {
-            order: localDashboardOrder,
-            visible: localDashboardVisible
+            order: localDashboardOrder
         };
         
         user.preferences.nav_layout = {
