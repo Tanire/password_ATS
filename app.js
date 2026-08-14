@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.17.01",
+        version: "1.18.02",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -31,6 +31,16 @@ const state = {
     usersMetadata: {},   // Wrapped keys metadata
     currentUser: null,   // Current active user
     isProcessingQueue: false, // Prevent double processing of offline queue
+    
+    // Routes module state v1.18.01
+    routes: {
+        clients: [], // Array of {name, address, phone, lat, lon}
+        origin: { type: 'gps', address: '', lat: null, lon: null },
+        optimizedPath: [],
+        map: null,
+        markers: [],
+        polyline: null
+    },
     
     // Commercial module state
     commercial: {
@@ -230,6 +240,8 @@ function setupEventListeners() {
     document.getElementById("menu-subscribers").addEventListener("click", () => switchScreen("subscribers"));
     document.getElementById("menu-manuals").addEventListener("click", () => switchScreen("manuals"));
     document.getElementById("menu-expenses").addEventListener("click", () => switchScreen("expenses-submenu"));
+    document.getElementById("menu-routes").addEventListener("click", () => switchScreen("routes"));
+    document.getElementById("btn-back-routes").addEventListener("click", () => switchScreen("dashboard"));
     document.getElementById("menu-audit").addEventListener("click", () => switchScreen("audit"));
     document.getElementById("btn-back-audit").addEventListener("click", () => switchScreen("dashboard"));
 
@@ -692,6 +704,72 @@ function setupEventListeners() {
     if (btnExportVacPDF) {
         btnExportVacPDF.addEventListener("click", exportVacationsReport);
     }
+
+    // ==========================================
+    // ROUTES LISTENERS v1.18.01
+    // ==========================================
+    const btnGpsOrigin = document.getElementById("btn-routes-gps-origin");
+    const btnManualOrigin = document.getElementById("btn-routes-manual-origin");
+    const inputOriginAddress = document.getElementById("routes-origin-address");
+    const originStatusText = document.getElementById("routes-origin-status");
+    const formAddClient = document.getElementById("form-routes-add-client");
+    const btnOptimize = document.getElementById("btn-routes-optimize");
+    const btnClearRoutes = document.getElementById("btn-routes-clear");
+
+    if (btnGpsOrigin) {
+        btnGpsOrigin.addEventListener("click", () => {
+            state.routes.origin.type = 'gps';
+            btnGpsOrigin.classList.remove("btn-secondary");
+            btnManualOrigin.classList.add("btn-secondary");
+            inputOriginAddress.style.display = "none";
+            originStatusText.textContent = "Origen: Ubicación actual del dispositivo (GPS)";
+            showToast("Origen cambiado a GPS actual");
+        });
+    }
+
+    if (btnManualOrigin) {
+        btnManualOrigin.addEventListener("click", () => {
+            state.routes.origin.type = 'manual';
+            btnManualOrigin.classList.remove("btn-secondary");
+            btnGpsOrigin.classList.add("btn-secondary");
+            inputOriginAddress.style.display = "block";
+            originStatusText.textContent = "Origen: Dirección manual especificada en el campo de texto";
+            showToast("Introduce la dirección de salida");
+        });
+    }
+
+    if (inputOriginAddress) {
+        inputOriginAddress.addEventListener("change", (e) => {
+            state.routes.origin.address = e.target.value.trim();
+        });
+    }
+
+    if (formAddClient) {
+        formAddClient.addEventListener("submit", addRouteClient);
+    }
+
+    if (btnOptimize) {
+        btnOptimize.addEventListener("click", optimizeRoute);
+    }
+
+    if (btnClearRoutes) {
+        btnClearRoutes.addEventListener("click", clearRoutesData);
+    }
+
+    // Excel and DB Client Selection listeners
+    const btnExportExcel = document.getElementById("btn-routes-export-excel");
+    const inputImportExcel = document.getElementById("input-routes-import-excel");
+    const btnAddSelectedClient = document.getElementById("btn-routes-add-selected-client");
+
+    if (btnExportExcel) {
+        btnExportExcel.addEventListener("click", exportRoutesClientsTemplate);
+    }
+    if (inputImportExcel) {
+        inputImportExcel.addEventListener("change", importRoutesClientsExcel);
+    }
+    if (btnAddSelectedClient) {
+        btnAddSelectedClient.addEventListener("click", addSelectedRouteClient);
+    }
 }
 
 // --- CORE FUNCTIONALITY: UNLOCK / SYNC ---
@@ -743,6 +821,10 @@ function switchScreen(screenId) {
     if (screenId === "commercial-history") renderCommercialHistory();
     if (screenId === "vacations") initVacationsScreen();
     if (screenId === "audit") renderAuditScreen();
+    if (screenId === "routes") {
+        initRoutesScreen();
+        populateDbClientsSelect();
+    }
 }
 
 // Derive keys and pull vault from GitHub or local cache
@@ -858,6 +940,7 @@ async function handleUnlock() {
         if (!state.vault.materials) state.vault.materials = [];
         if (!state.vault.commercial_reports) state.vault.commercial_reports = [];
         if (!state.vault.vacations) state.vault.vacations = [];
+        if (!state.vault.routes_clients) state.vault.routes_clients = [];
         if (!state.vault.notifications) state.vault.notifications = [];
         if (!state.vault.manual_categories) {
             state.vault.manual_categories = ["Ademco", "DSC", "Paradox", "Risco", "Galaxy", "Ajax", "Texecom", "General"];
@@ -7247,6 +7330,571 @@ function debounce(func, delay = 250) {
         timer = setTimeout(() => func.apply(this, args), delay);
     };
 }
+
+// ==========================================
+// MÓDULO DE RUTAS ÓPTIMAS v1.18.01
+// ==========================================
+
+function initRoutesScreen() {
+    // Restaurar clientes de la caché
+    try {
+        const cached = localStorage.getItem("ats_routes_clients");
+        if (cached) {
+            state.routes.clients = JSON.parse(cached);
+        } else {
+            state.routes.clients = [];
+        }
+    } catch (e) {
+        state.routes.clients = [];
+    }
+
+    // Ocultar resultados por defecto
+    document.getElementById("routes-results-container").style.display = "none";
+    
+    // Configurar campos iniciales
+    const inputAddr = document.getElementById("routes-origin-address");
+    if (inputAddr) {
+        inputAddr.value = state.routes.origin.address || "Oficina";
+    }
+
+    renderRouteClients();
+}
+
+async function addRouteClient(e) {
+    e.preventDefault();
+    const nameInput = document.getElementById("route-client-name");
+    const addressInput = document.getElementById("route-client-address");
+    const phoneInput = document.getElementById("route-client-phone");
+
+    const name = nameInput.value.trim();
+    const address = addressInput.value.trim();
+    const phone = phoneInput.value.trim();
+
+    if (!name || !address || !phone) {
+        showToast("Por favor, rellena todos los campos");
+        return;
+    }
+
+    showLoading(true, "Buscando dirección...");
+    
+    try {
+        const coords = await geocodeAddress(address);
+        
+        state.routes.clients.push({
+            name: name,
+            address: address,
+            phone: phone,
+            lat: coords ? coords.lat : null,
+            lon: coords ? coords.lon : null
+        });
+
+        localStorage.setItem("ats_routes_clients", JSON.stringify(state.routes.clients));
+        
+        // Limpiar formulario
+        nameInput.value = "";
+        addressInput.value = "";
+        phoneInput.value = "";
+
+        renderRouteClients();
+        showToast(coords ? "Cliente añadido y localizado en el mapa" : "Cliente añadido (dirección no geolocalizada)");
+    } catch (err) {
+        console.error("Error al añadir cliente:", err);
+        showToast("Error al procesar la dirección");
+    } finally {
+        showLoading(false);
+    }
+}
+
+function renderRouteClients() {
+    const container = document.getElementById("routes-clients-list");
+    const btnOpt = document.getElementById("btn-routes-optimize");
+
+    if (!container) return;
+
+    if (state.routes.clients.length === 0) {
+        container.innerHTML = `<div style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; padding: 15px 0;">No has añadido clientes todavía.</div>`;
+        if (btnOpt) btnOpt.style.display = "none";
+        return;
+    }
+
+    let html = "";
+    state.routes.clients.forEach((client, idx) => {
+        const mapBadge = client.lat && client.lon 
+            ? `<span style="color: #10b981; font-size: 0.75rem;"><i class="bx bx-check-circle"></i> Localizado</span>` 
+            : `<span style="color: #ef4444; font-size: 0.75rem;"><i class="bx bx-x-circle"></i> No geolocalizado</span>`;
+
+        html += `
+            <div class="route-client-card">
+                <div class="route-client-info">
+                    <span class="route-client-title">${escapeHtml(client.name)}</span>
+                    <span class="route-client-meta">
+                        <span><i class="bx bx-map"></i> ${escapeHtml(client.address)}</span>
+                        <span><i class="bx bx-phone"></i> ${escapeHtml(client.phone)}</span>
+                        ${mapBadge}
+                    </span>
+                </div>
+                <button type="button" class="btn-icon" onclick="deleteRouteClient(${idx})" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.2);" title="Eliminar">
+                    <i class="bx bx-trash"></i>
+                </button>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+    if (btnOpt) btnOpt.style.display = "block";
+}
+
+function deleteRouteClient(idx) {
+    if (idx >= 0 && idx < state.routes.clients.length) {
+        state.routes.clients.splice(idx, 1);
+        localStorage.setItem("ats_routes_clients", JSON.stringify(state.routes.clients));
+        renderRouteClients();
+        showToast("Cliente eliminado de la lista");
+    }
+}
+
+function clearRoutesData() {
+    state.routes.clients = [];
+    localStorage.removeItem("ats_routes_clients");
+    document.getElementById("routes-results-container").style.display = "none";
+    renderRouteClients();
+    showToast("Lista de clientes limpiada");
+}
+
+async function geocodeAddress(address) {
+    try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`;
+        const response = await fetch(url, {
+            headers: {
+                "Accept-Language": "es"
+            }
+        });
+        if (!response.ok) return null;
+        const data = await response.json();
+        if (data && data.length > 0) {
+            return {
+                lat: parseFloat(data[0].lat),
+                lon: parseFloat(data[0].lon)
+            };
+        }
+    } catch (e) {
+        console.error("Geocoding failed:", e);
+    }
+    return null;
+}
+
+function getGPSLocation() {
+    return new Promise((resolve) => {
+        if (!navigator.geolocation) {
+            showToast("Tu navegador no soporta geolocalización");
+            resolve(null);
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                resolve({
+                    lat: position.coords.latitude,
+                    lon: position.coords.longitude
+                });
+            },
+            (error) => {
+                console.error("Error GPS:", error);
+                showToast("No se pudo obtener la ubicación GPS");
+                resolve(null);
+            },
+            { enableHighAccuracy: true, timeout: 6000 }
+        );
+    });
+}
+
+function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Radio de la Tierra en km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+async function optimizeRoute() {
+    if (state.routes.clients.length === 0) {
+        showToast("Añade al menos un cliente");
+        return;
+    }
+
+    showLoading(true, "Calculando ruta óptima...");
+
+    try {
+        let startLat = null;
+        let startLon = null;
+        let startName = "Mi Ubicación";
+
+        // 1. Obtener coordenadas del punto de partida
+        if (state.routes.origin.type === 'gps') {
+            const gps = await getGPSLocation();
+            if (gps) {
+                startLat = gps.lat;
+                startLon = gps.lon;
+            } else {
+                showToast("Usando Oficina como origen alternativo por fallo GPS");
+                const officeCoords = await geocodeAddress("Madrid, España"); // Coordinada por defecto o fallback
+                if (officeCoords) {
+                    startLat = officeCoords.lat;
+                    startLon = officeCoords.lon;
+                }
+                startName = "Oficina (Fallback)";
+            }
+        } else {
+            const manualAddr = state.routes.origin.address || "Oficina";
+            const manualCoords = await geocodeAddress(manualAddr);
+            if (manualCoords) {
+                startLat = manualCoords.lat;
+                startLon = manualCoords.lon;
+                startName = manualAddr;
+            } else {
+                showToast("No se pudo localizar el origen manual. Usando coordenadas por defecto.");
+                startLat = 40.416775; // Madrid
+                startLon = -3.703790;
+                startName = "Origen (Default)";
+            }
+        }
+
+        // 2. Ejecutar algoritmo TSP del vecino más cercano
+        let unvisited = [...state.routes.clients];
+        let orderedPath = [];
+        let currentLat = startLat;
+        let currentLon = startLon;
+
+        // Si hay clientes sin geolocalización, los ubicamos ficticiamente al lado del origen para que no rompa el algoritmo
+        unvisited.forEach(c => {
+            if (!c.lat || !c.lon) {
+                c.lat = startLat + (Math.random() - 0.5) * 0.01;
+                c.lon = startLon + (Math.random() - 0.5) * 0.01;
+                c.unlocalized = true;
+            }
+        });
+
+        let totalDistance = 0;
+
+        while (unvisited.length > 0) {
+            let nearestIdx = -1;
+            let minDistance = Infinity;
+
+            for (let i = 0; i < unvisited.length; i++) {
+                const dist = calculateHaversineDistance(currentLat, currentLon, unvisited[i].lat, unvisited[i].lon);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    nearestIdx = i;
+                }
+            }
+
+            if (nearestIdx !== -1) {
+                const nextPoint = unvisited.splice(nearestIdx, 1)[0];
+                nextPoint.distanceFromPrev = minDistance;
+                totalDistance += minDistance;
+                orderedPath.push(nextPoint);
+                currentLat = nextPoint.lat;
+                currentLon = nextPoint.lon;
+            } else {
+                break;
+            }
+        }
+
+        state.routes.optimizedPath = orderedPath;
+
+        // 3. Renderizar itinerario
+        const itineraryList = document.getElementById("routes-itinerary-list");
+        let itinHtml = `
+            <div class="itinerary-step">
+                <div class="itinerary-step-badge origin">P</div>
+                <div class="itinerary-step-content">
+                    <strong style="color: #10b981;">Punto de Salida: ${escapeHtml(startName)}</strong>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 3px;">Inicio del trayecto diario.</div>
+                </div>
+            </div>
+        `;
+
+        orderedPath.forEach((client, idx) => {
+            const distStr = client.distanceFromPrev.toFixed(1) + " km";
+            const unlocWarning = client.unlocalized ? `<span style="color: var(--warning); display: block; font-size: 0.7rem; margin-top: 3px;"><i class="bx bx-error"></i> Dirección aproximada (no localizada exacta)</span>` : '';
+            itinHtml += `
+                <div class="itinerary-step">
+                    <div class="itinerary-step-badge">${idx + 1}</div>
+                    <div class="itinerary-step-content">
+                        <strong>${escapeHtml(client.name)}</strong>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 3px;">
+                            <span><i class="bx bx-map"></i> ${escapeHtml(client.address)}</span><br>
+                            <span><i class="bx bx-phone"></i> ${escapeHtml(client.phone)}</span><br>
+                            <span style="color: var(--accent); font-weight: 600;"><i class="bx bx-right-arrow-alt"></i> A ${distStr} de la parada anterior</span>
+                            ${unlocWarning}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        itinHtml += `
+            <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-top: 15px; padding-left: 5px;">
+                Ruta Completa: ~${totalDistance.toFixed(1)} km totales estimados en línea recta.
+            </div>
+        `;
+
+        itineraryList.innerHTML = itinHtml;
+
+        // 4. Generar URL de Google Maps para navegación multitrayecto
+        // Google Maps URL format: https://www.google.com/maps/dir/Origin/Destination1/Destination2/...
+        let gmapsUrl = `https://www.google.com/maps/dir/?api=1`;
+        gmapsUrl += `&origin=${encodeURIComponent(startLat + "," + startLon)}`;
+        
+        if (orderedPath.length > 0) {
+            const dest = orderedPath[orderedPath.length - 1];
+            gmapsUrl += `&destination=${encodeURIComponent(dest.lat + "," + dest.lon)}`;
+            
+            if (orderedPath.length > 1) {
+                const waypoints = orderedPath.slice(0, orderedPath.length - 1).map(c => c.lat + "," + c.lon).join('|');
+                gmapsUrl += `&waypoints=${encodeURIComponent(waypoints)}`;
+            }
+        }
+        
+        document.getElementById("btn-routes-google-maps").setAttribute("href", gmapsUrl);
+
+        // 5. Dibujar en el mapa Leaflet
+        document.getElementById("routes-results-container").style.display = "flex";
+        setTimeout(() => {
+            drawRouteOnMap({ lat: startLat, lon: startLon, name: startName }, orderedPath);
+        }, 100);
+
+        showToast("Ruta optimizada correctamente");
+    } catch (e) {
+        console.error("Optimization failed:", e);
+        showToast("Error al optimizar la ruta");
+    } finally {
+        showLoading(false);
+    }
+}
+
+function drawRouteOnMap(origin, path) {
+    const mapDiv = document.getElementById("routes-map");
+    if (!mapDiv) return;
+
+    // Destruir mapa viejo si existía
+    if (state.routes.map) {
+        state.routes.map.remove();
+        state.routes.map = null;
+    }
+
+    // Inicializar mapa en el punto de origen
+    state.routes.map = L.map('routes-map').setView([origin.lat, origin.lon], 12);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+    }).addTo(state.routes.map);
+
+    // Guardar marcadores y polilínea para limpiarlos si es necesario
+    state.routes.markers = [];
+    
+    // Marcador de origen (Icono verde)
+    const greenIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    const originMarker = L.marker([origin.lat, origin.lon], { icon: greenIcon })
+        .addTo(state.routes.map)
+        .bindPopup(`<b>Salida:</b> ${escapeHtml(origin.name)}`);
+    state.routes.markers.push(originMarker);
+
+    // Coordenadas para la línea de ruta
+    let routeCoords = [[origin.lat, origin.lon]];
+
+    // Marcadores de paradas
+    path.forEach((client, idx) => {
+        const marker = L.marker([client.lat, client.lon])
+            .addTo(state.routes.map)
+            .bindPopup(`<b>Parada ${idx + 1}:</b> ${escapeHtml(client.name)}<br>${escapeHtml(client.address)}`);
+        state.routes.markers.push(marker);
+        routeCoords.push([client.lat, client.lon]);
+    });
+
+    // Dibujar línea conectora (polilínea)
+    state.routes.polyline = L.polyline(routeCoords, { color: '#8b5cf6', weight: 4, opacity: 0.8 }).addTo(state.routes.map);
+
+    // Ajustar vista del mapa para englobar todos los puntos
+    const bounds = L.latLngBounds(routeCoords);
+    state.routes.map.fitBounds(bounds, { padding: [30, 30] });
+}
+
+// ==========================================
+// EXPORTACIÓN/IMPORTACIÓN EXCEL DE CLIENTES v1.18.02
+// ==========================================
+
+function exportRoutesClientsTemplate() {
+    try {
+        // Datos de ejemplo para guiar al usuario
+        const data = [
+            { Nombre: "Cliente Ejemplo A", Direccion: "Gran Via 1, Madrid", Telefono: "600111222" },
+            { Nombre: "Cliente Ejemplo B", Direccion: "Paseo de la Castellana 50, Madrid", Telefono: "699333444" }
+        ];
+
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Clientes");
+
+        XLSX.writeFile(workbook, "Plantilla_Clientes.xlsx");
+        showToast("Plantilla de Excel descargada");
+    } catch (e) {
+        console.error("Excel export error", e);
+        showToast("Error al exportar la plantilla");
+    }
+}
+
+function importRoutesClientsExcel(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const statusDiv = document.getElementById("routes-import-status");
+    if (statusDiv) statusDiv.textContent = "Procesando archivo...";
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+        try {
+            const data = evt.target.result;
+            const workbook = XLSX.read(data, { type: 'binary' });
+            
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const rows = XLSX.utils.sheet_to_json(worksheet);
+            
+            if (rows.length === 0) {
+                showToast("El archivo está vacío o tiene formato incorrecto");
+                if (statusDiv) statusDiv.textContent = "Error: Archivo vacío";
+                return;
+            }
+
+            const importedClients = [];
+            rows.forEach((row) => {
+                let name = row["Nombre"] || row["nombre"] || row["Name"] || row["name"] || "";
+                let address = row["Direccion"] || row["dirección"] || row["Dirección"] || row["address"] || row["Address"] || "";
+                let phone = row["Telefono"] || row["teléfono"] || row["Teléfono"] || row["phone"] || row["Phone"] || "";
+
+                name = String(name).trim();
+                address = String(address).trim();
+                phone = String(phone).trim();
+
+                if (name && address) {
+                    importedClients.push({
+                        name: name,
+                        address: address,
+                        phone: phone
+                    });
+                }
+            });
+
+            if (importedClients.length === 0) {
+                showToast("No se encontraron filas válidas con Nombre y Dirección");
+                if (statusDiv) statusDiv.textContent = "Error: Sin datos válidos";
+                return;
+            }
+
+            state.vault.routes_clients = importedClients;
+            
+            // Activar botón de sincronización de la app
+            setSyncStatus(false);
+            
+            showToast(`¡Éxito! Se importaron ${importedClients.length} clientes`);
+            if (statusDiv) statusDiv.textContent = `Listo: ${importedClients.length} clientes. ¡Sincroniza para guardar!`;
+            
+            e.target.value = "";
+        } catch (err) {
+            console.error("Excel import error", err);
+            showToast("Error al parsear el archivo de Excel");
+            if (statusDiv) statusDiv.textContent = "Error de lectura";
+        }
+    };
+    reader.onerror = () => {
+        showToast("Error al leer el archivo");
+        if (statusDiv) statusDiv.textContent = "Error al abrir archivo";
+    };
+    reader.readAsBinaryString(file);
+}
+
+function populateDbClientsSelect() {
+    const select = document.getElementById("routes-db-client-select");
+    if (!select) return;
+
+    select.innerHTML = '<option value="">-- Selecciona un cliente registrado --</option>';
+
+    const dbClients = state.vault.routes_clients || [];
+    if (dbClients.length === 0) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "No hay clientes (Importar por Excel en Ajustes)";
+        option.disabled = true;
+        select.appendChild(option);
+        return;
+    }
+
+    const sorted = [...dbClients].sort((a, b) => a.name.localeCompare(b.name));
+
+    sorted.forEach((client, idx) => {
+        const option = document.createElement("option");
+        option.value = idx;
+        option.textContent = `${client.name} (${client.address.split(',')[0]})`;
+        option.setAttribute("data-name", client.name);
+        option.setAttribute("data-address", client.address);
+        option.setAttribute("data-phone", client.phone);
+        select.appendChild(option);
+    });
+}
+
+async function addSelectedRouteClient() {
+    const select = document.getElementById("routes-db-client-select");
+    if (!select) return;
+
+    const selectedIdx = select.value;
+    if (selectedIdx === "") {
+        showToast("Selecciona un cliente de la lista");
+        return;
+    }
+
+    const selectedOption = select.options[select.selectedIndex];
+    const name = selectedOption.getAttribute("data-name");
+    const address = selectedOption.getAttribute("data-address");
+    const phone = selectedOption.getAttribute("data-phone");
+
+    showLoading(true, "Buscando dirección del cliente...");
+
+    try {
+        const coords = await geocodeAddress(address);
+
+        state.routes.clients.push({
+            name: name,
+            address: address,
+            phone: phone,
+            lat: coords ? coords.lat : null,
+            lon: coords ? coords.lon : null
+        });
+
+        localStorage.setItem("ats_routes_clients", JSON.stringify(state.routes.clients));
+        
+        select.value = "";
+
+        renderRouteClients();
+        showToast(coords ? "Cliente añadido de base de datos" : "Cliente añadido (dirección no localizada)");
+    } catch (err) {
+        console.error("Error al añadir cliente de base de datos:", err);
+        showToast("Error al procesar la dirección");
+    } finally {
+        showLoading(false);
+    }
+}
+
 
 
 

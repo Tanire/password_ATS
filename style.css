@@ -1197,5 +1197,84 @@ select.input-control {
     box-shadow: none !important;
 }
 
+/* --- RUTAS OPTIMAS v1.18.01 --- */
+#routes-map {
+    width: 100%;
+    height: 300px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-glass);
+    margin-top: 10px;
+}
+
+.route-client-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: var(--transition-smooth);
+}
+
+.route-client-card:hover {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.route-client-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.route-client-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.route-client-meta {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.itinerary-step {
+    position: relative;
+    padding-bottom: 5px;
+}
+
+.itinerary-step-badge {
+    position: absolute;
+    left: -29px;
+    top: 0;
+    width: 20px;
+    height: 20px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    border: 2px solid var(--bg-primary);
+}
+
+.itinerary-step-badge.origin {
+    background: #10b981;
+}
+
+.itinerary-step-content {
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+}
+
 
 

@@ -12,6 +12,11 @@
     
     <!-- Boxicons for modern premium icons -->
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <!-- Leaflet.js for route mapping -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- SheetJS for Excel import/export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- Main Style Sheet -->
     <link rel="stylesheet" href="style.css">
     <!-- html2pdf.js library for clean client-side PDF generation -->
@@ -35,25 +40,17 @@
                 <div style="text-align: center;">
                     <div style="font-size: 2.2rem; margin-bottom: 8px;">🚀</div>
                     <h2 style="font-size: 1.3rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">¡Aplicación Actualizada!</h2>
-                    <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3);">Versión 1.16.05</span>
+                    <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3);">Versión 1.18.02</span>
                 </div>
                 
                 <div style="border-top: 1px solid var(--border-glass); border-bottom: 1px solid var(--border-glass); padding: 14px 0; max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; line-height: 1.4; color: var(--text-primary);">
                     <div>
-                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">🆕 v1.16.05 - Notificaciones al entrar</strong>
-                        <p style="margin: 0; color: var(--text-secondary);">Aviso en pantalla al iniciar sesión detallando las nuevas funciones implementadas.</p>
+                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">📊 v1.18.02 - Gestión de Clientes por Excel</strong>
+                        <p style="margin: 0; color: var(--text-secondary);">El administrador ahora puede importar y exportar la base de datos completa de clientes mediante plantillas Excel desde los Ajustes. Los técnicos pueden seleccionarlos de forma directa al planificar rutas.</p>
                     </div>
                     <div>
-                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">📊 v1.16.04 - Auditoría Avanzada</strong>
-                        <p style="margin: 0; color: var(--text-secondary);">Visualiza la antigüedad laboral detallada (años y meses) y balances de vacaciones en el panel de Auditoría.</p>
-                    </div>
-                    <div>
-                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">🔍 v1.16.03 - Precisión GPS y Auditoría</strong>
-                        <p style="margin: 0; color: var(--text-secondary);">Geolocalización mejorada a nivel de calle/número y nuevo panel de Auditoría General para administradores.</p>
-                    </div>
-                    <div>
-                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">🚗 v1.16.02 - Configuración de Vehículos</strong>
-                        <p style="margin: 0; color: var(--text-secondary);">Posibilidad de definir marca/modelo de vehículo y fecha de fin de contrato desde los ajustes del perfil.</p>
+                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">🚗 v1.18.01 - Módulo de Rutas Óptimas</strong>
+                        <p style="margin: 0; color: var(--text-secondary);">Nuevo panel de rutas para técnicos que permite geolocalizar y calcular la ruta de visitas diaria más óptima con mapa interactivo y enlace a Google Maps.</p>
                     </div>
                 </div>
                 
@@ -83,7 +80,7 @@
                     <i class="bx bx-key"></i> DESBLOQUEAR
                 </button>
                 <div style="margin-top: 20px; font-size: 0.8rem; color: var(--text-secondary); text-align: center;">
-                    Versión 1.17.01 - By JMSYSTEMAS
+                    Versión 1.18.02 - By JMSYSTEMAS
                 </div>
             </div>
         </div>
@@ -138,13 +135,17 @@
                             <span class="card-title">Vacaciones</span>
                             <span id="vacation-badge" class="badge-notification" style="display: none; position: absolute; top: -5px; right: -5px; background: var(--warning); color: #000; border-radius: 50%; width: 20px; height: 20px; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg-secondary);">0</span>
                         </div>
+                        <div class="menu-card" id="menu-routes">
+                            <span class="card-icon" style="color: #8b5cf6;">🚗</span>
+                            <span class="card-title">Rutas</span>
+                        </div>
                         <div class="menu-card" id="menu-audit" style="display: none;">
                             <span class="card-icon" style="color: #06b6d4;">📊</span>
                             <span class="card-title">Auditoría</span>
                         </div>
                     </div>
                     <div style="text-align: center; margin-top: 40px; font-size: 0.8rem; color: var(--text-secondary);" class="dashboard-footer">
-                        Versión 1.17.01 - JMSYSTEMAS
+                        Versión 1.18.01 - JMSYSTEMAS
                     </div>
                 </div>
 
@@ -620,6 +621,21 @@
                             <button id="btn-add-user" type="button" class="btn-premium btn-secondary" style="margin-bottom: 20px;">
                                 <i class="bx bx-user-plus"></i> NUEVO USUARIO
                             </button>
+
+                            <h3 style="font-size: 0.95rem; margin-top: 25px; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; border-top: 1px solid var(--border-glass); padding-top: 20px;">Base de Datos de Clientes</h3>
+                            <div style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px;">
+                                <div style="font-size: 0.8rem; color: var(--text-secondary);">Descarga la plantilla en Excel, rellena las columnas de clientes y sus direcciones/teléfonos, y vuelve a subirla para actualizar el sistema.</div>
+                                <div style="display: flex; gap: 10px;">
+                                    <button type="button" id="btn-routes-export-excel" class="btn-premium" style="flex: 1; padding: 10px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 5px; background: #1f7246;">
+                                        <i class="bx bx-download"></i> Plantilla Excel
+                                    </button>
+                                    <label for="input-routes-import-excel" class="btn-premium btn-secondary" style="flex: 1; padding: 10px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer; margin: 0; text-align: center;">
+                                        <i class="bx bx-upload"></i> Subir Excel
+                                    </label>
+                                    <input type="file" id="input-routes-import-excel" accept=".xlsx, .xls, .csv" style="display: none;">
+                                </div>
+                                <div id="routes-import-status" style="font-size: 0.75rem; color: var(--text-secondary); text-align: center; margin-top: 4px;"></div>
+                            </div>
                         </div>
                         
                         <button id="btn-logout" class="btn-premium btn-secondary" style="margin-top: 12px; margin-bottom: 20px;">
@@ -1746,6 +1762,104 @@
                     <h3 id="vac-summary-title" style="font-size: 1rem; font-weight: 600; margin-bottom: 12px; color: var(--text-primary);">Resumen de mis Solicitudes</h3>
                     <div id="vacations-summary-list" style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; max-height: 250px;">
                         <!-- Generado dinámicamente -->
+                </div>
+
+            </div>
+        </div>
+
+                <!-- F. PANTALLA DE RUTAS ÓPTIMAS -->
+                <div id="screen-routes" class="screen">
+                    <div class="list-header">
+                        <h2>Optimización de Rutas Diarias</h2>
+                        <button class="btn-icon" id="btn-back-routes"><i class="bx bx-arrow-back"></i></button>
+                    </div>
+                    
+                    <div class="glass-card anim-fade" style="padding: 16px; margin-bottom: 16px;">
+                        <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 10px; color: var(--text-primary);"><i class="bx bx-map-pin" style="color: var(--accent);"></i> Punto de Partida</h3>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" id="btn-routes-gps-origin" class="btn-premium" style="flex: 1; padding: 10px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                                    <i class="bx bx-current-location"></i> Usar GPS Actual
+                                </button>
+                                <button type="button" id="btn-routes-manual-origin" class="btn-premium btn-secondary" style="flex: 1; padding: 10px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                                    <i class="bx bx-edit"></i> Dirección Manual
+                                </button>
+                            </div>
+                            <input type="text" id="routes-origin-address" class="input-control" placeholder="Dirección de salida (ej. Oficina o domicilio)" value="Oficina" style="display: none;">
+                            <div id="routes-origin-status" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">Origen: Ubicación actual del dispositivo (GPS)</div>
+                        </div>
+                    </div>
+
+                    <!-- Seleccionar cliente de base de datos -->
+                    <div class="glass-card anim-fade" style="padding: 16px; margin-bottom: 16px;" id="routes-db-select-card">
+                        <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 10px; color: var(--text-primary);"><i class="bx bx-folder-open" style="color: var(--accent);"></i> Base de Datos de Clientes</h3>
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <div class="form-group" style="margin: 0;">
+                                <label style="font-size: 0.75rem;">Seleccionar Cliente Registrado</label>
+                                <select id="routes-db-client-select" class="input-control" style="font-size: 0.85rem; padding: 10px 14px;">
+                                    <option value="">-- Selecciona un cliente registrado --</option>
+                                </select>
+                            </div>
+                            <button type="button" id="btn-routes-add-selected-client" class="btn-premium" style="width: 100%; padding: 10px;">
+                                <i class="bx bx-plus-circle"></i> Añadir Seleccionado
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="glass-card anim-fade" style="padding: 16px; margin-bottom: 16px;">
+                        <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 12px; color: var(--text-primary);"><i class="bx bx-user-plus" style="color: var(--accent);"></i> Agregar Cliente Manualmente</h3>
+                        <form id="form-routes-add-client" style="display: flex; flex-direction: column; gap: 10px;">
+                            <div class="form-group" style="margin: 0;">
+                                <label style="font-size: 0.75rem;">Nombre de Cliente / Empresa</label>
+                                <input type="text" id="route-client-name" class="input-control" placeholder="Ej. Cliente de Mantenimiento X" required style="font-size: 0.85rem; padding: 8px 12px;">
+                            </div>
+                            <div class="form-group" style="margin: 0;">
+                                <label style="font-size: 0.75rem;">Dirección Completa (Calle, Nº, Ciudad)</label>
+                                <input type="text" id="route-client-address" class="input-control" placeholder="Ej. Calle Gran Via 12, Madrid" required style="font-size: 0.85rem; padding: 8px 12px;">
+                            </div>
+                            <div class="form-group" style="margin: 0;">
+                                <label style="font-size: 0.75rem;">Teléfono de Contacto</label>
+                                <input type="tel" id="route-client-phone" class="input-control" placeholder="Ej. 600123456" required style="font-size: 0.85rem; padding: 8px 12px;">
+                            </div>
+                            <button type="submit" class="btn-premium" style="margin-top: 5px; padding: 10px;">
+                                <i class="bx bx-plus"></i> Añadir a la Lista
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="glass-card anim-fade" style="padding: 16px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin: 0;"><i class="bx bx-list-ol" style="color: var(--accent);"></i> Clientes del Día</h3>
+                            <button type="button" id="btn-routes-clear" class="btn-icon" style="color: var(--danger); font-size: 0.8rem;" title="Limpiar lista"><i class="bx bx-trash"></i> Limpiar Todo</button>
+                        </div>
+                        <div id="routes-clients-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto;">
+                            <!-- Generado dinámicamente -->
+                            <div style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; padding: 15px 0;">No has añadido clientes todavía.</div>
+                        </div>
+                        <button type="button" id="btn-routes-optimize" class="btn-premium" style="width: 100%; padding: 12px; font-weight: 600; display: none;">
+                            <i class="bx bx-navigation"></i> CALCULAR RUTA ÓPTIMA
+                        </button>
+                    </div>
+
+                    <!-- Contenedor del Mapa e Itinerario (Se muestra tras optimizar) -->
+                    <div id="routes-results-container" class="anim-fade" style="display: none; flex-direction: column; gap: 16px; margin-bottom: 24px;">
+                        <div class="glass-card" style="padding: 10px; overflow: hidden; position: relative;">
+                            <h3 style="font-size: 0.95rem; font-weight: 600; margin: 6px 10px 10px 10px; color: var(--text-primary);"><i class="bx bx-map" style="color: var(--accent);"></i> Mapa del Recorrido</h3>
+                            <div id="routes-map" style="width: 100%; height: 300px; border-radius: var(--radius-md); z-index: 1;"></div>
+                        </div>
+
+                        <div class="glass-card" style="padding: 16px;">
+                            <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 12px; color: var(--text-primary);"><i class="bx bx-direction-right" style="color: var(--accent);"></i> Itinerario Optimizado</h3>
+                            <div id="routes-itinerary-list" style="display: flex; flex-direction: column; gap: 12px; border-left: 2px dashed var(--border-glass); margin-left: 12px; padding-left: 18px;">
+                                <!-- Itinerario en orden secuencial -->
+                            </div>
+                            
+                            <div style="margin-top: 20px;">
+                                <a id="btn-routes-google-maps" target="_blank" class="btn-premium" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; padding: 12px; font-weight: 600; background: #34a853;">
+                                    <i class="bx bx-map-alt"></i> NAVEGAR CON GOOGLE MAPS
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
