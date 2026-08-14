@@ -40,17 +40,17 @@
                 <div style="text-align: center;">
                     <div style="font-size: 2.2rem; margin-bottom: 8px;">🚀</div>
                     <h2 style="font-size: 1.3rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">¡Aplicación Actualizada!</h2>
-                    <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3);">Versión 1.18.06</span>
+                    <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3);">Versión 1.18.07</span>
                 </div>
                 
                 <div style="border-top: 1px solid var(--border-glass); border-bottom: 1px solid var(--border-glass); padding: 14px 0; max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; line-height: 1.4; color: var(--text-primary);">
                     <div>
-                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">📊 v1.18.06 - Mejoras de Búsqueda y Geolocalización</strong>
-                        <p style="margin: 0; color: var(--text-secondary);">Optimizado el motor de búsqueda de clientes (multi-palabra) y el geocodificador (fallbacks automáticos para direcciones complejas). Añadida opción de borrar base de datos desde Ajustes.</p>
+                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">📊 v1.18.07 - Permiso de Rutas y Sección de Clientes</strong>
+                        <p style="margin: 0; color: var(--text-secondary);">Añadido el permiso específico de 'rutas' a la gestión de usuarios, y creada una sección dedicada para que el admin pueda revisar la lista de clientes, buscar, importar/exportar Excel y eliminar clientes sueltos o completos.</p>
                     </div>
                     <div>
-                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">📊 v1.18.05 - Corrección del Menú y DOM</strong>
-                        <p style="margin: 0; color: var(--text-secondary);">Se corrigió la anidación del DOM para asegurar el posicionamiento correcto del menú principal, la barra de navegación de Abonados, Gastos, etc., y el panel de rutas.</p>
+                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">📊 v1.18.06 - Mejoras de Búsqueda y Geolocalización</strong>
+                        <p style="margin: 0; color: var(--text-secondary);">Optimizado el motor de búsqueda de clientes (multi-palabra) y el geocodificador (fallbacks automáticos para direcciones complejas). Sincronización automática a todos los dispositivos.</p>
                     </div>
                 </div>
                 
@@ -76,12 +76,12 @@
                 <div class="form-group">
                     <input type="password" id="login-password" class="input-control" placeholder="Contraseña" required>
                 </div>
+                <div style="margin-top: 20px; font-size: 0.8rem; color: var(--text-secondary); text-align: center;">
+                    Versión 1.18.07 - By JMSYSTEMAS
+                </div>
                 <button id="btn-login" class="btn-premium">
                     <i class="bx bx-key"></i> DESBLOQUEAR
                 </button>
-                <div style="margin-top: 20px; font-size: 0.8rem; color: var(--text-secondary); text-align: center;">
-                    Versión 1.18.06 - By JMSYSTEMAS
-                </div>
             </div>
         </div>
 
@@ -145,7 +145,7 @@
                         </div>
                     </div>
                     <div style="text-align: center; margin-top: 40px; font-size: 0.8rem; color: var(--text-secondary);" class="dashboard-footer">
-                        Versión 1.18.06 - JMSYSTEMAS
+                        Versión 1.18.07 - JMSYSTEMAS
                     </div>
                 </div>
 
@@ -622,23 +622,10 @@
                                 <i class="bx bx-user-plus"></i> NUEVO USUARIO
                             </button>
 
-                            <h3 style="font-size: 0.95rem; margin-top: 25px; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; border-top: 1px solid var(--border-glass); padding-top: 20px;">Base de Datos de Clientes</h3>
-                            <div style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px;">
-                                <div style="font-size: 0.8rem; color: var(--text-secondary);">Descarga la plantilla en Excel, rellena las columnas de clientes y sus direcciones/teléfonos, y vuelve a subirla para actualizar el sistema.</div>
-                                <div style="display: flex; gap: 10px;">
-                                    <button type="button" id="btn-routes-export-excel" class="btn-premium" style="flex: 1; padding: 10px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 5px; background: #1f7246;">
-                                        <i class="bx bx-download"></i> Plantilla Excel
-                                    </button>
-                                    <label for="input-routes-import-excel" class="btn-premium btn-secondary" style="flex: 1; padding: 10px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer; margin: 0; text-align: center;">
-                                        <i class="bx bx-upload"></i> Subir Excel
-                                    </label>
-                                    <input type="file" id="input-routes-import-excel" accept=".xlsx, .xls, .csv" style="display: none;">
-                                </div>
-                                <div id="routes-import-status" style="font-size: 0.75rem; color: var(--text-secondary); text-align: center; margin-top: 4px;"></div>
-                                <button type="button" id="btn-routes-clear-db" class="btn-premium btn-danger" style="padding: 10px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 5px; background: var(--danger); box-shadow: none;">
-                                    <i class="bx bx-trash"></i> BORRAR CLIENTES REGISTRADOS
-                                </button>
-                            </div>
+                            <h3 style="font-size: 0.95rem; margin-top: 25px; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; border-top: 1px solid var(--border-glass); padding-top: 20px;">Clientes de Rutas</h3>
+                            <button id="btn-go-to-clients-db" type="button" class="btn-premium btn-secondary" style="margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                <i class="bx bx-folder"></i> GESTIONAR BASE DE DATOS DE CLIENTES
+                            </button>
                         </div>
                         
                         <button id="btn-logout" class="btn-premium btn-secondary" style="margin-top: 12px; margin-bottom: 20px;">
@@ -694,6 +681,9 @@
                         </label>
                         <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 0; cursor: pointer; color: var(--text-primary); font-weight: normal;">
                             <input type="checkbox" id="user-scope-vacations" checked style="width: 18px; height: 18px; accent-color: var(--accent);"> Vacaciones
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 0; cursor: pointer; color: var(--text-primary); font-weight: normal;">
+                            <input type="checkbox" id="user-scope-routes" checked style="width: 18px; height: 18px; accent-color: var(--accent);"> Rutas Diarias
                         </label>
                     </div>
                 </div>
@@ -1877,6 +1867,49 @@
                                 </a>
                             </div>
                         </div>
+                <!-- Dedicated Admin Routes Clients DB Screen -->
+                <div id="screen-admin-routes-clients" class="screen">
+                    <div class="list-header" style="margin-bottom: 20px; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <button type="button" id="btn-back-from-clients-db" class="btn-premium btn-secondary" style="padding: 6px 12px; font-size: 0.75rem; border-radius: var(--radius-md); display: flex; align-items: center; gap: 4px; margin: 0;">
+                                <i class="bx bx-chevron-left" style="font-size: 1rem;"></i> Volver
+                            </button>
+                            <h2 style="margin: 0; font-size: 1.25rem;">Base de Datos de Clientes</h2>
+                        </div>
+                    </div>
+
+                    <!-- Panel de acciones Excel / Borrado -->
+                    <div class="glass-card" style="padding: 16px; margin-bottom: 20px; border: 1px solid var(--border-glass); border-radius: var(--radius-lg); display: flex; flex-direction: column; gap: 12px;">
+                        <h3 style="font-size: 0.9rem; margin: 0 0 4px 0; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Gestión e Importación</h3>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4;">Descarga la plantilla Excel para rellenarla con los datos de tus clientes y súbela aquí. El sistema la procesará y sincronizará con todos los dispositivos del equipo de forma automática.</div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button type="button" id="btn-routes-export-excel" class="btn-premium" style="flex: 1; min-width: 140px; padding: 10px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 5px; background: #1f7246; border-radius: var(--radius-md);">
+                                <i class="bx bx-download"></i> Descargar Plantilla
+                            </button>
+                            <label for="input-routes-import-excel" class="btn-premium btn-secondary" style="flex: 1; min-width: 140px; padding: 10px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer; margin: 0; text-align: center; border-radius: var(--radius-md);">
+                                <i class="bx bx-upload"></i> Subir Excel
+                            </label>
+                            <input type="file" id="input-routes-import-excel" accept=".xlsx, .xls, .csv" style="display: none;">
+                            <button type="button" id="btn-routes-clear-db" class="btn-premium btn-danger" style="flex: 1; min-width: 140px; padding: 10px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 5px; background: var(--danger); box-shadow: none; border-radius: var(--radius-md);">
+                                <i class="bx bx-trash"></i> Vaciar Base Datos
+                            </button>
+                        </div>
+                        <div id="routes-import-status" style="font-size: 0.75rem; color: var(--accent); text-align: center; font-weight: 600;"></div>
+                    </div>
+
+                    <!-- Buscador e Info de total -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px;">
+                        <div class="search-container" style="flex: 1; margin: 0;">
+                            <i class="bx bx-search search-icon"></i>
+                            <input type="text" id="admin-clients-search" class="search-input" placeholder="Buscar por abonado, nombre, dirección, sistema...">
+                        </div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600; white-space: nowrap;" id="admin-clients-count">Total: 0</div>
+                    </div>
+
+                    <!-- Contenedor Listado -->
+                    <div id="admin-clients-list-container" style="display: flex; flex-direction: column; gap: 10px; max-height: 480px; overflow-y: auto; padding-right: 4px;">
+                        <!-- Populate dynamically -->
+                    </div>
                 </div>
 
     </main>

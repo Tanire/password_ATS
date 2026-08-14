@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.18.06",
+        version: "1.18.07",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -777,6 +777,28 @@ function setupEventListeners() {
     if (btnClearDb) {
         btnClearDb.addEventListener("click", clearDbClients);
     }
+
+    // Admin clients DB page listeners
+    const btnGoToClientsDb = document.getElementById("btn-go-to-clients-db");
+    if (btnGoToClientsDb) {
+        btnGoToClientsDb.addEventListener("click", () => {
+            switchScreen("admin-routes-clients");
+        });
+    }
+
+    const btnBackFromClientsDb = document.getElementById("btn-back-from-clients-db");
+    if (btnBackFromClientsDb) {
+        btnBackFromClientsDb.addEventListener("click", () => {
+            switchScreen("settings");
+        });
+    }
+
+    const adminClientsSearch = document.getElementById("admin-clients-search");
+    if (adminClientsSearch) {
+        adminClientsSearch.addEventListener("input", debounce(() => {
+            renderAdminRoutesClients(adminClientsSearch.value.trim());
+        }, 150));
+    }
 }
 
 // --- CORE FUNCTIONALITY: UNLOCK / SYNC ---
@@ -797,7 +819,8 @@ function switchScreen(screenId) {
         if (["commercial-home", "commercial-client-details", "commercial-disciplines", "commercial-wizard", "commercial-migration", "commercial-summary", "commercial-rounds"].includes(screenId) && !scopes.includes("commercial")) return;
         if (["expenses-submenu", "hours", "diets", "materials", "form-hour", "form-diet", "form-material", "expenses", "form-expense"].includes(screenId) && !scopes.includes("expenses") && !isFuelAdmin) return;
         if (screenId === "vacations" && !scopes.includes("vacations")) return;
-        if (screenId === "audit") return; // Non-admin cannot access audit
+        if (screenId === "routes" && !scopes.includes("routes")) return;
+        if (screenId === "audit" || screenId === "admin-routes-clients") return; // Non-admin cannot access audit or client DB admin
     }
 
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -832,6 +855,9 @@ function switchScreen(screenId) {
         initRoutesScreen();
         renderDbClientsSelectorList();
         refreshVaultFromCloud(); // Descarga en segundo plano los últimos clientes
+    }
+    if (screenId === "admin-routes-clients") {
+        renderAdminRoutesClients();
     }
 }
 
@@ -3157,6 +3183,7 @@ function openUserForm(u = null) {
     document.getElementById("user-scope-expenses").disabled = !canManageRoles;
     document.getElementById("user-scope-commercial").disabled = !canManageRoles;
     document.getElementById("user-scope-vacations").disabled = !canManageRoles;
+    document.getElementById("user-scope-routes").disabled = !canManageRoles;
     
     if (u) {
         title.textContent = "Editar Usuario";
@@ -3173,6 +3200,7 @@ function openUserForm(u = null) {
         document.getElementById("user-scope-expenses").checked = u.scope ? u.scope.includes("expenses") : true;
         document.getElementById("user-scope-commercial").checked = u.scope ? u.scope.includes("commercial") : true;
         document.getElementById("user-scope-vacations").checked = u.scope ? u.scope.includes("vacations") : true;
+        document.getElementById("user-scope-routes").checked = u.scope ? u.scope.includes("routes") : true;
         
         // Profile fields
         document.getElementById("user-profile-fullname").value = u.fullName || "";
@@ -3198,6 +3226,7 @@ function openUserForm(u = null) {
         document.getElementById("user-scope-expenses").checked = true;
         document.getElementById("user-scope-commercial").checked = true;
         document.getElementById("user-scope-vacations").checked = true;
+        document.getElementById("user-scope-routes").checked = true;
         
         // Clear profile fields
         document.getElementById("user-profile-fullname").value = "";
@@ -3239,6 +3268,7 @@ async function saveUserAction(evt) {
     if (document.getElementById("user-scope-expenses").checked) scope.push("expenses");
     if (document.getElementById("user-scope-commercial").checked) scope.push("commercial");
     if (document.getElementById("user-scope-vacations").checked) scope.push("vacations");
+    if (document.getElementById("user-scope-routes").checked) scope.push("routes");
     
     // Profile fields
     const fullName = document.getElementById("user-profile-fullname").value.trim();
@@ -7921,6 +7951,9 @@ function importRoutesClientsExcel(e) {
             
             // Sincronizar automáticamente con la nube para que se propague a todos los dispositivos
             await syncWithCloud();
+
+            // Actualizar la pantalla de administración
+            renderAdminRoutesClients();
             
             if (statusDiv) statusDiv.textContent = `Listo: ${importedClients.length} clientes. Sincronizado correctamente.`;
             e.target.value = "";
@@ -8084,6 +8117,9 @@ async function clearDbClients() {
     if (searchInput) searchInput.value = "";
     renderDbClientsSelectorList();
 
+    // Actualizar la pantalla de administración
+    renderAdminRoutesClients();
+
     showToast("Base de datos de clientes vaciada en la nube.");
 }
 
@@ -8130,6 +8166,118 @@ async function refreshVaultFromCloud() {
     } catch (e) {
         console.warn("Fallo al sincronizar base de datos desde la nube en segundo plano:", e);
     }
+}
+
+function renderAdminRoutesClients(query = "") {
+    const listContainer = document.getElementById("admin-clients-list-container");
+    const countEl = document.getElementById("admin-clients-count");
+    if (!listContainer) return;
+
+    listContainer.innerHTML = "";
+
+    const dbClients = state.vault.routes_clients || [];
+    if (countEl) {
+        countEl.textContent = `Total: ${dbClients.length}`;
+    }
+
+    if (dbClients.length === 0) {
+        listContainer.innerHTML = `<div style="text-align: center; color: var(--text-secondary); font-size: 0.85rem; padding: 30px;">No hay clientes registrados en la base de datos. Sube un archivo Excel.</div>`;
+        return;
+    }
+
+    const cleanQuery = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const queryWords = cleanQuery.split(/\s+/).filter(Boolean);
+
+    // Mapear con su índice original para poder borrar de forma correcta
+    const mapped = dbClients.map((client, originalIdx) => ({ client, originalIdx }));
+
+    // Filtrar por query multi-palabra
+    const filtered = mapped.filter(item => {
+        if (queryWords.length === 0) return true;
+        const nameClean = item.client.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const addressClean = item.client.address.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const abonadoClean = (item.client.abonado || "").toLowerCase();
+        const provinciaClean = (item.client.provincia || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const sistemaClean = (item.client.sistema || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+        return queryWords.every(word => {
+            return nameClean.includes(word) || 
+                   addressClean.includes(word) || 
+                   abonadoClean.includes(word) || 
+                   provinciaClean.includes(word) ||
+                   sistemaClean.includes(word);
+        });
+    });
+
+    if (filtered.length === 0) {
+        listContainer.innerHTML = `<div style="text-align: center; color: var(--text-secondary); font-size: 0.85rem; padding: 30px;">No se encontraron clientes para la búsqueda "${escapeHtml(query)}".</div>`;
+        return;
+    }
+
+    // Ordenar alfabéticamente por nombre de cliente
+    filtered.sort((a, b) => a.client.name.localeCompare(b.client.name));
+
+    filtered.forEach(item => {
+        const client = item.client;
+        const origIdx = item.originalIdx;
+
+        const card = document.createElement("div");
+        card.className = "admin-client-db-item";
+
+        const abonadoText = client.abonado ? `<span style="color: var(--accent); font-weight: bold; font-size: 0.85rem;">[${escapeHtml(client.abonado)}]</span> ` : "";
+        const sistemaText = client.sistema ? `<div style="font-size: 0.75rem; color: var(--text-secondary);"><i class="bx bx-cog" style="vertical-align: middle;"></i> Sistema: <b>${escapeHtml(client.sistema)}</b></div>` : "";
+        const phoneText = client.phone ? `<div style="font-size: 0.75rem; color: var(--text-secondary);"><i class="bx bx-phone" style="vertical-align: middle;"></i> Teléfono: <b>${escapeHtml(client.phone)}</b></div>` : "";
+        const provText = client.provincia ? ` (${escapeHtml(client.provincia)})` : "";
+
+        card.innerHTML = `
+            <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; padding-right: 10px;">
+                <div style="font-weight: 600; color: var(--text-primary); font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    ${abonadoText}${escapeHtml(client.name)}
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    <i class="bx bx-map" style="vertical-align: middle;"></i> Dirección: ${escapeHtml(client.address)}${provText}
+                </div>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 2px;">
+                    ${sistemaText}
+                    ${phoneText}
+                </div>
+            </div>
+            <button type="button" class="btn-icon" style="color: var(--danger); background: none; border: none; font-size: 1.15rem; cursor: pointer; padding: 4px;" title="Eliminar cliente de la base de datos">
+                <i class="bx bx-trash"></i>
+            </button>
+        `;
+
+        card.querySelector("button").addEventListener("click", () => {
+            deleteDbClientByIndex(origIdx);
+        });
+
+        listContainer.appendChild(card);
+    });
+}
+
+async function deleteDbClientByIndex(idx) {
+    const dbClients = state.vault.routes_clients || [];
+    const client = dbClients[idx];
+    if (!client) return;
+
+    if (!confirm(`¿Estás seguro de que deseas eliminar al cliente "${client.name}" de la base de datos de rutas?`)) {
+        return;
+    }
+
+    dbClients.splice(idx, 1);
+    state.vault.routes_clients = dbClients;
+
+    // Actualizar la pantalla de administración
+    const searchInput = document.getElementById("admin-clients-search");
+    renderAdminRoutesClients(searchInput ? searchInput.value.trim() : "");
+
+    // Refrescar selector en la pantalla de rutas técnica
+    renderDbClientsSelectorList();
+
+    showToast("Cliente eliminado de la base de datos.");
+
+    // Sincronizar automáticamente en la nube
+    await syncWithCloud();
 }
 
 

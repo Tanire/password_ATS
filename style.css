@@ -1293,5 +1293,22 @@ select.input-control {
     border-color: rgba(255, 255, 255, 0.08);
 }
 
+/* Gestión de clientes DB admin v1.18.07 */
+.admin-client-db-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+}
+.admin-client-db-item:hover {
+    background: rgba(30, 41, 59, 0.7);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
 
 
