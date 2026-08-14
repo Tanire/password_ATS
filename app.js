@@ -8853,13 +8853,19 @@ function showRouteSearchSuggestions(query) {
             };
 
             state.routes.clients.push(newClient);
-            renderRoutesSelectedClients();
+            localStorage.setItem("ats_routes_clients", JSON.stringify(state.routes.clients));
+            renderRouteClients();
             
             // Limpiar buscador y cerrar sugerencias
             const searchInput = document.getElementById("routes-db-client-search");
-            if (searchInput) searchInput.value = "";
+            if (searchInput) {
+                searchInput.value = "";
+            }
             suggestionsBox.style.display = "none";
             suggestionsBox.innerHTML = "";
+
+            // Refrescar selector principal
+            renderDbClientsSelectorList("");
 
             showToast(`Cliente ${c.name} añadido a la ruta.`);
         });
