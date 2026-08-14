@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.18.07",
+        version: "1.19.01",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -112,6 +112,35 @@ const state = {
     },
     tempRoundPhotoBase64: ''
 };
+
+// Personalización de Interfaz v1.19.01
+const DEFAULT_LAYOUTS = {
+    dashboard_order: ["passwords", "subscribers", "manuals", "expenses", "commercial", "vacations", "routes", "audit"],
+    dashboard_visible: {
+        passwords: true,
+        subscribers: true,
+        manuals: true,
+        expenses: true,
+        commercial: true,
+        vacations: true,
+        routes: true,
+        audit: true
+    },
+    nav_order: ["dashboard", "subscribers", "expenses-submenu", "vacations", "settings"]
+};
+
+const NAV_ITEMS_METADATA = {
+    dashboard: { icon: "bx-grid-alt", title: "Inicio", screen: "dashboard" },
+    subscribers: { icon: "bx-bell", title: "Abonados", screen: "subscribers" },
+    "expenses-submenu": { icon: "bx-wallet", title: "Gastos", screen: "expenses-submenu" },
+    vacations: { icon: "bx-calendar", title: "Vacaciones", screen: "vacations" },
+    passwords: { icon: "bx-key", title: "Claves", screen: "passwords" },
+    manuals: { icon: "bx-book", title: "Manuales", screen: "manuals" },
+    commercial: { icon: "bx-briefcase", title: "Comercial", screen: "commercial-home" },
+    routes: { icon: "bx-navigation", title: "Rutas", screen: "routes" },
+    settings: { icon: "bx-cog", title: "Ajustes", screen: "settings" }
+};
+
 
 // LocalStorage Keys
 const STORAGE_KEYS = {
@@ -858,6 +887,9 @@ function switchScreen(screenId) {
     }
     if (screenId === "admin-routes-clients") {
         renderAdminRoutesClients();
+    }
+    if (screenId === "settings") {
+        renderInterfaceCustomizer();
     }
 }
 
@@ -2740,37 +2772,98 @@ function applyUserPrivileges(user) {
         }
     }
     
-    // Filter Dashboard categories and bottom navigation based on scopes
+    // Filter Dashboard categories and bottom navigation based on user preferences and scopes v1.19.01
     const scopes = user.scope || [];
-    const hasPass = scopes.includes("passwords") || user.role === "admin";
-    const hasSubs = scopes.includes("subscribers") || user.role === "admin";
-    const hasManuals = scopes.includes("manuals") || user.role === "admin";
-    const hasExpenses = scopes.includes("expenses") || user.role === "admin" || user.role === "encargado_combustible";
-    const hasComm = scopes.includes("commercial") || user.role === "admin";
-    const hasVacations = scopes.includes("vacations") || user.role === "admin";
-    
-    document.getElementById("menu-passwords").style.display = hasPass ? "flex" : "none";
-    
-    document.getElementById("menu-subscribers").style.display = hasSubs ? "flex" : "none";
-    document.querySelector('nav [data-screen="subscribers"]').style.display = hasSubs ? "flex" : "none";
-    
-    document.getElementById("menu-manuals").style.display = hasManuals ? "flex" : "none";
-    
-    document.getElementById("menu-expenses").style.display = hasExpenses ? "flex" : "none";
-    document.querySelector('nav [data-screen="expenses-submenu"]').style.display = hasExpenses ? "flex" : "none";
-    
-    const menuComm = document.getElementById("menu-commercial");
-    if (menuComm) {
-        menuComm.style.display = hasComm ? "flex" : "none";
+    const menuGrid = document.querySelector(".menu-grid");
+    if (menuGrid) {
+        // Inicializar preferencias si no existen
+        const pref = user.preferences || {};
+        const dashLayout = pref.dashboard_layout || {};
+        const dashOrder = dashLayout.order || DEFAULT_LAYOUTS.dashboard_order;
+        const dashVisible = dashLayout.visible || DEFAULT_LAYOUTS.dashboard_visible;
+
+        const cards = {
+            passwords: document.getElementById("menu-passwords"),
+            subscribers: document.getElementById("menu-subscribers"),
+            manuals: document.getElementById("menu-manuals"),
+            expenses: document.getElementById("menu-expenses"),
+            commercial: document.getElementById("menu-commercial"),
+            vacations: document.getElementById("menu-vacations"),
+            routes: document.getElementById("menu-routes"),
+            audit: document.getElementById("menu-audit")
+        };
+
+        // Reordenar y establecer visibilidad
+        dashOrder.forEach(key => {
+            const card = cards[key];
+            if (card) {
+                menuGrid.appendChild(card); // Reinserta en el nuevo orden
+
+                const isAllowed = (
+                    (key === "passwords" && (scopes.includes("passwords") || user.role === "admin")) ||
+                    (key === "subscribers" && (scopes.includes("subscribers") || user.role === "admin")) ||
+                    (key === "manuals" && (scopes.includes("manuals") || user.role === "admin")) ||
+                    (key === "expenses" && (scopes.includes("expenses") || user.role === "admin" || user.role === "encargado_combustible")) ||
+                    (key === "commercial" && (scopes.includes("commercial") || user.role === "admin")) ||
+                    (key === "vacations" && (scopes.includes("vacations") || user.role === "admin")) ||
+                    (key === "routes" && (scopes.includes("routes") || user.role === "admin")) ||
+                    (key === "audit" && (user.role === "admin" || user.role === "responsable_tecnico"))
+                );
+
+                const isUserVisible = dashVisible[key] !== false;
+                card.style.display = (isAllowed && isUserVisible) ? "flex" : "none";
+            }
+        });
     }
-    
-    document.getElementById("menu-vacations").style.display = hasVacations ? "flex" : "none";
-    document.querySelector('nav [data-screen="vacations"]').style.display = hasVacations ? "flex" : "none";
-    
-    const isAuditUser = user.role === "admin" || user.role === "responsable_tecnico";
-    const elAudit = document.getElementById("menu-audit");
-    if (elAudit) {
-        elAudit.style.display = isAuditUser ? "flex" : "none";
+
+    // Dynamic Navigation Bar Rendering based on user preferences and scopes v1.19.01
+    const navBar = document.querySelector("nav");
+    if (navBar) {
+        navBar.innerHTML = "";
+        const pref = user.preferences || {};
+        const navLayout = pref.nav_layout || {};
+        const navOrder = navLayout.order || DEFAULT_LAYOUTS.nav_order;
+
+        navOrder.forEach(key => {
+            const meta = NAV_ITEMS_METADATA[key];
+            if (!meta) return;
+
+            const isAllowed = (
+                key === "dashboard" ||
+                key === "settings" ||
+                (key === "passwords" && (scopes.includes("passwords") || user.role === "admin")) ||
+                (key === "subscribers" && (scopes.includes("subscribers") || user.role === "admin")) ||
+                (key === "manuals" && (scopes.includes("manuals") || user.role === "admin")) ||
+                (key === "expenses-submenu" && (scopes.includes("expenses") || user.role === "admin" || user.role === "encargado_combustible")) ||
+                (key === "commercial" && (scopes.includes("commercial") || user.role === "admin")) ||
+                (key === "vacations" && (scopes.includes("vacations") || user.role === "admin")) ||
+                (key === "routes" && (scopes.includes("routes") || user.role === "admin"))
+            );
+
+            if (isAllowed) {
+                const div = document.createElement("div");
+                div.className = "nav-item";
+                if (state.currentScreen === meta.screen || 
+                    (key === "expenses-submenu" && ["hours", "diets", "materials", "form-hour", "form-diet", "form-material", "expenses", "form-expense"].includes(state.currentScreen)) ||
+                    (key === "settings" && state.currentScreen === "admin-routes-clients") ||
+                    (key === "commercial" && ["commercial-home", "commercial-client-details", "commercial-disciplines", "commercial-wizard", "commercial-migration", "commercial-summary", "commercial-rounds", "commercial-history"].includes(state.currentScreen))) {
+                    div.className = "nav-item active";
+                }
+                div.setAttribute("data-screen", key);
+                div.innerHTML = `
+                    <i class="bx ${meta.icon}"></i>
+                    <span>${meta.title}</span>
+                `;
+                
+                div.addEventListener("click", () => {
+                    switchScreen(meta.screen);
+                });
+                
+                navBar.appendChild(div);
+            }
+        });
+        
+        els.navItems = navBar.querySelectorAll(".nav-item");
     }
 
     // Update vacation badge
@@ -8294,6 +8387,326 @@ async function deleteDbClientByIndex(idx) {
 
     // Sincronizar automáticamente en la nube
     await syncWithCloud();
+}
+
+// Variables locales temporales para el Customizer de Interfaz
+let localDashboardOrder = [];
+let localDashboardVisible = {};
+let localNavOrder = [];
+
+function renderInterfaceCustomizer() {
+    const dbContainer = document.getElementById("customize-dashboard-list");
+    const navContainer = document.getElementById("customize-nav-list");
+    if (!dbContainer || !navContainer || !state.currentUser) return;
+
+    // Inicializar preferencias locales
+    const user = state.currentUser;
+    const pref = user.preferences || {};
+    
+    const dashLayout = pref.dashboard_layout || {};
+    localDashboardOrder = [...(dashLayout.order || DEFAULT_LAYOUTS.dashboard_order)];
+    localDashboardVisible = { ...DEFAULT_LAYOUTS.dashboard_visible, ...(dashLayout.visible || {}) };
+
+    const navLayout = pref.nav_layout || {};
+    localNavOrder = [...(navLayout.order || DEFAULT_LAYOUTS.nav_order)];
+
+    // Dibujar Dashboard Customizer
+    renderLocalDashboardList();
+
+    // Dibujar Nav Customizer
+    renderLocalNavList();
+
+    // Enlazar botón de guardar una sola vez
+    const btnSaveLayout = document.getElementById("btn-save-layout");
+    if (btnSaveLayout) {
+        btnSaveLayout.onclick = saveCustomLayout;
+    }
+}
+
+function renderLocalDashboardList() {
+    const container = document.getElementById("customize-dashboard-list");
+    if (!container) return;
+    container.innerHTML = "";
+
+    const scopes = state.currentUser.scope || [];
+    const titles = {
+        passwords: "🌐 Contraseñas",
+        subscribers: "🔔 Abonados",
+        manuals: "📚 Manuales",
+        expenses: "💰 Gastos",
+        commercial: "📝 Comercial",
+        vacations: "📅 Vacaciones",
+        routes: "🚗 Rutas",
+        audit: "📊 Auditoría"
+    };
+
+    localDashboardOrder.forEach((key, index) => {
+        const isAllowed = (
+            (key === "passwords" && (scopes.includes("passwords") || state.currentUser.role === "admin")) ||
+            (key === "subscribers" && (scopes.includes("subscribers") || state.currentUser.role === "admin")) ||
+            (key === "manuals" && (scopes.includes("manuals") || state.currentUser.role === "admin")) ||
+            (key === "expenses" && (scopes.includes("expenses") || state.currentUser.role === "admin" || state.currentUser.role === "encargado_combustible")) ||
+            (key === "commercial" && (scopes.includes("commercial") || state.currentUser.role === "admin")) ||
+            (key === "vacations" && (scopes.includes("vacations") || state.currentUser.role === "admin")) ||
+            (key === "routes" && (scopes.includes("routes") || state.currentUser.role === "admin")) ||
+            (key === "audit" && (state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico"))
+        );
+
+        if (!isAllowed) return; // No mostrar lo que no tiene permitido
+
+        const row = document.createElement("div");
+        row.className = "layout-item-row";
+
+        const titleDiv = document.createElement("div");
+        titleDiv.className = "layout-item-title";
+        titleDiv.textContent = titles[key] || key;
+
+        const actionsDiv = document.createElement("div");
+        actionsDiv.className = "layout-item-actions";
+
+        // Ordenador: subir y bajar
+        const orderDiv = document.createElement("div");
+        orderDiv.className = "layout-item-nav-actions";
+
+        const btnUp = document.createElement("button");
+        btnUp.type = "button";
+        btnUp.className = "btn-layout-order";
+        btnUp.innerHTML = '<i class="bx bx-chevron-up"></i>';
+        btnUp.disabled = index === 0;
+        btnUp.addEventListener("click", () => {
+            const temp = localDashboardOrder[index - 1];
+            localDashboardOrder[index - 1] = localDashboardOrder[index];
+            localDashboardOrder[index] = temp;
+            renderLocalDashboardList();
+        });
+
+        const btnDown = document.createElement("button");
+        btnDown.type = "button";
+        btnDown.className = "btn-layout-order";
+        btnDown.innerHTML = '<i class="bx bx-chevron-down"></i>';
+        btnDown.disabled = index === localDashboardOrder.length - 1;
+        btnDown.addEventListener("click", () => {
+            const temp = localDashboardOrder[index + 1];
+            localDashboardOrder[index + 1] = localDashboardOrder[index];
+            localDashboardOrder[index] = temp;
+            renderLocalDashboardList();
+        });
+
+        orderDiv.appendChild(btnUp);
+        orderDiv.appendChild(btnDown);
+
+        // Switch de visibilidad
+        const labelSwitch = document.createElement("label");
+        labelSwitch.className = "switch-control";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = localDashboardVisible[key] !== false;
+        checkbox.addEventListener("change", (e) => {
+            localDashboardVisible[key] = e.target.checked;
+        });
+
+        const slider = document.createElement("span");
+        slider.className = "switch-slider";
+
+        labelSwitch.appendChild(checkbox);
+        labelSwitch.appendChild(slider);
+
+        actionsDiv.appendChild(orderDiv);
+        actionsDiv.appendChild(labelSwitch);
+
+        row.appendChild(titleDiv);
+        row.appendChild(actionsDiv);
+        container.appendChild(row);
+    });
+}
+
+function renderLocalNavList() {
+    const container = document.getElementById("customize-nav-list");
+    if (!container) return;
+    container.innerHTML = "";
+
+    const scopes = state.currentUser.scope || [];
+    const titles = {
+        dashboard: "🏠 Inicio",
+        subscribers: "🔔 Abonados",
+        "expenses-submenu": "💰 Gastos",
+        vacations: "📅 Vacaciones",
+        passwords: "🔑 Claves",
+        manuals: "📚 Manuales",
+        commercial: "💼 Comercial",
+        routes: "🚗 Rutas",
+        settings: "⚙️ Ajustes"
+    };
+
+    localNavOrder.forEach((key, index) => {
+        const isAllowed = (
+            key === "dashboard" ||
+            key === "settings" ||
+            (key === "passwords" && (scopes.includes("passwords") || state.currentUser.role === "admin")) ||
+            (key === "subscribers" && (scopes.includes("subscribers") || state.currentUser.role === "admin")) ||
+            (key === "manuals" && (scopes.includes("manuals") || state.currentUser.role === "admin")) ||
+            (key === "expenses-submenu" && (scopes.includes("expenses") || state.currentUser.role === "admin" || state.currentUser.role === "encargado_combustible")) ||
+            (key === "commercial" && (scopes.includes("commercial") || state.currentUser.role === "admin")) ||
+            (key === "vacations" && (scopes.includes("vacations") || state.currentUser.role === "admin")) ||
+            (key === "routes" && (scopes.includes("routes") || state.currentUser.role === "admin"))
+        );
+
+        if (!isAllowed) return;
+
+        const row = document.createElement("div");
+        row.className = "layout-item-row";
+
+        const titleDiv = document.createElement("div");
+        titleDiv.className = "layout-item-title";
+        titleDiv.textContent = titles[key] || key;
+
+        const actionsDiv = document.createElement("div");
+        actionsDiv.className = "layout-item-nav-actions";
+
+        const btnUp = document.createElement("button");
+        btnUp.type = "button";
+        btnUp.className = "btn-layout-order";
+        btnUp.innerHTML = '<i class="bx bx-chevron-up"></i>';
+        btnUp.disabled = index === 0;
+        btnUp.addEventListener("click", () => {
+            const temp = localNavOrder[index - 1];
+            localNavOrder[index - 1] = localNavOrder[index];
+            localNavOrder[index] = temp;
+            renderLocalNavList();
+        });
+
+        const btnDown = document.createElement("button");
+        btnDown.type = "button";
+        btnDown.className = "btn-layout-order";
+        btnDown.innerHTML = '<i class="bx bx-chevron-down"></i>';
+        btnDown.disabled = index === localNavOrder.length - 1;
+        btnDown.addEventListener("click", () => {
+            const temp = localNavOrder[index + 1];
+            localNavOrder[index + 1] = localNavOrder[index];
+            localNavOrder[index] = temp;
+            renderLocalNavList();
+        });
+
+        // Opción de excluir del menú rápido (excepto Inicio y Ajustes)
+        const isCore = key === "dashboard" || key === "settings";
+        if (!isCore) {
+            const btnRemove = document.createElement("button");
+            btnRemove.type = "button";
+            btnRemove.className = "btn-layout-order";
+            btnRemove.innerHTML = '<i class="bx bx-trash" style="color: var(--danger);"></i>';
+            btnRemove.title = "Excluir del menú rápido";
+            btnRemove.addEventListener("click", () => {
+                localNavOrder.splice(index, 1);
+                renderLocalNavList();
+            });
+            actionsDiv.appendChild(btnRemove);
+        }
+
+        actionsDiv.appendChild(btnUp);
+        actionsDiv.appendChild(btnDown);
+
+        row.appendChild(titleDiv);
+        row.appendChild(actionsDiv);
+        container.appendChild(row);
+    });
+
+    // Agregar botón para añadir módulos excluidos al menú rápido
+    const allPossible = [
+        "dashboard", "subscribers", "expenses-submenu", "vacations",
+        "passwords", "manuals", "commercial", "routes", "settings"
+    ];
+
+    const allowedExcluded = allPossible.filter(key => {
+        if (localNavOrder.includes(key)) return false;
+        return (
+            (key === "passwords" && (scopes.includes("passwords") || state.currentUser.role === "admin")) ||
+            (key === "subscribers" && (scopes.includes("subscribers") || state.currentUser.role === "admin")) ||
+            (key === "manuals" && (scopes.includes("manuals") || state.currentUser.role === "admin")) ||
+            (key === "expenses-submenu" && (scopes.includes("expenses") || state.currentUser.role === "admin" || state.currentUser.role === "encargado_combustible")) ||
+            (key === "commercial" && (scopes.includes("commercial") || state.currentUser.role === "admin")) ||
+            (key === "vacations" && (scopes.includes("vacations") || state.currentUser.role === "admin")) ||
+            (key === "routes" && (scopes.includes("routes") || state.currentUser.role === "admin"))
+        );
+    });
+
+    if (allowedExcluded.length > 0) {
+        const addRow = document.createElement("div");
+        addRow.style.cssText = "display: flex; gap: 8px; margin-top: 12px; align-items: center;";
+
+        const select = document.createElement("select");
+        select.className = "input-control";
+        select.style.cssText = "flex: 1; padding: 8px 12px; font-size: 0.8rem; height: auto;";
+
+        allowedExcluded.forEach(key => {
+            const opt = document.createElement("option");
+            opt.value = key;
+            opt.textContent = titles[key] || key;
+            select.appendChild(opt);
+        });
+
+        const btnAdd = document.createElement("button");
+        btnAdd.type = "button";
+        btnAdd.className = "btn-premium btn-secondary";
+        btnAdd.style.cssText = "padding: 8px 16px; font-size: 0.8rem; margin: 0; border-radius: var(--radius-md);";
+        btnAdd.innerHTML = '<i class="bx bx-plus"></i> Añadir';
+        btnAdd.addEventListener("click", () => {
+            const toAdd = select.value;
+            if (toAdd) {
+                // Insertar justo antes de 'settings' si está presente, o al final
+                const settingsIdx = localNavOrder.indexOf("settings");
+                if (settingsIdx !== -1) {
+                    localNavOrder.splice(settingsIdx, 0, toAdd);
+                } else {
+                    localNavOrder.push(toAdd);
+                }
+                renderLocalNavList();
+            }
+        });
+
+        addRow.appendChild(select);
+        addRow.appendChild(btnAdd);
+        container.appendChild(addRow);
+    }
+}
+
+async function saveCustomLayout() {
+    if (!state.currentUser) return;
+    
+    showLoading(true, "Guardando diseño personalizado...");
+
+    try {
+        const user = state.currentUser;
+        user.preferences = user.preferences || {};
+        
+        user.preferences.dashboard_layout = {
+            order: localDashboardOrder,
+            visible: localDashboardVisible
+        };
+        
+        user.preferences.nav_layout = {
+            order: localNavOrder
+        };
+
+        // Guardar en la bóveda
+        const idx = state.vault.users.findIndex(u => u.username.toLowerCase() === user.username.toLowerCase());
+        if (idx !== -1) {
+            state.vault.users[idx].preferences = user.preferences;
+        }
+
+        // Aplicar inmediatamente
+        applyUserPrivileges(user);
+
+        showToast("¡Diseño de interfaz personalizado con éxito!");
+        
+        // Sincronizar en la nube
+        await syncWithCloud();
+    } catch (e) {
+        console.error("Save layout error:", e);
+        showToast("Error al guardar diseño de interfaz");
+    } finally {
+        showLoading(false);
+    }
 }
 
 

@@ -1310,5 +1310,121 @@ select.input-control {
     border-color: rgba(255, 255, 255, 0.1);
 }
 
+/* Personalización de Interfaz v1.19.01 */
+.layout-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+    margin-bottom: 20px;
+}
+
+.layout-item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.layout-item-row:hover {
+    background: rgba(30, 41, 59, 0.7);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.layout-item-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.layout-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.layout-item-nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-layout-order {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.btn-layout-order:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--accent);
+}
+
+.btn-layout-order:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+/* Switch moderno */
+.switch-control {
+    position: relative;
+    display: inline-block;
+    width: 38px;
+    height: 20px;
+}
+
+.switch-control input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.switch-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.15);
+    transition: .3s;
+    border-radius: 20px;
+}
+
+.switch-slider:before {
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+
+input:checked + .switch-slider {
+    background-color: var(--accent);
+}
+
+input:checked + .switch-slider:before {
+    transform: translateX(18px);
+}
+
 
 

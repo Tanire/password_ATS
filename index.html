@@ -40,17 +40,17 @@
                 <div style="text-align: center;">
                     <div style="font-size: 2.2rem; margin-bottom: 8px;">🚀</div>
                     <h2 style="font-size: 1.3rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">¡Aplicación Actualizada!</h2>
-                    <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3);">Versión 1.18.07</span>
+                    <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3);">Versión 1.19.01</span>
                 </div>
                 
                 <div style="border-top: 1px solid var(--border-glass); border-bottom: 1px solid var(--border-glass); padding: 14px 0; max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; line-height: 1.4; color: var(--text-primary);">
                     <div>
-                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">📊 v1.18.07 - Permiso de Rutas y Sección de Clientes</strong>
-                        <p style="margin: 0; color: var(--text-secondary);">Añadido el permiso específico de 'rutas' a la gestión de usuarios, y creada una sección dedicada para que el admin pueda revisar la lista de clientes, buscar, importar/exportar Excel y eliminar clientes sueltos o completos.</p>
+                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">⚙️ v1.19.01 - Personalización de Interfaz</strong>
+                        <p style="margin: 0; color: var(--text-secondary);">Cada usuario puede ordenar y configurar la visibilidad de los botones del Dashboard (pantalla principal) y del menú rápido inferior a su gusto desde Ajustes.</p>
                     </div>
                     <div>
-                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">📊 v1.18.06 - Mejoras de Búsqueda y Geolocalización</strong>
-                        <p style="margin: 0; color: var(--text-secondary);">Optimizado el motor de búsqueda de clientes (multi-palabra) y el geocodificador (fallbacks automáticos para direcciones complejas). Sincronización automática a todos los dispositivos.</p>
+                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">📊 v1.18.07 - Permiso de Rutas y Sección de Clientes</strong>
+                        <p style="margin: 0; color: var(--text-secondary);">Añadido el permiso específico de 'rutas' a la gestión de usuarios, y creada una sección dedicada para que el admin pueda revisar la lista de clientes, buscar, importar/exportar Excel y eliminar clientes sueltos o completos.</p>
                     </div>
                 </div>
                 
@@ -77,7 +77,7 @@
                     <input type="password" id="login-password" class="input-control" placeholder="Contraseña" required>
                 </div>
                 <div style="margin-top: 20px; font-size: 0.8rem; color: var(--text-secondary); text-align: center;">
-                    Versión 1.18.07 - By JMSYSTEMAS
+                    Versión 1.19.01 - By JMSYSTEMAS
                 </div>
                 <button id="btn-login" class="btn-premium">
                     <i class="bx bx-key"></i> DESBLOQUEAR
@@ -580,6 +580,28 @@
                             </div>
                         </div>
                         <input type="hidden" id="set-company-name" value="ALTA TECNOLOGIA PARA LA SEGURIDAD">
+
+                        <!-- Personalizar Interfaz v1.19.01 -->
+                        <h3 style="font-size: 0.95rem; margin-top: 25px; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Personalizar Interfaz</h3>
+                        <div class="glass-card" style="padding: 16px; margin-bottom: 16px; border: 1px solid var(--border-glass); border-radius: var(--radius-lg);">
+                            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
+                                Personaliza el orden y la visibilidad de los accesos rápidos en la pantalla principal (Dashboard) y en la barra inferior (Menú Rápido).
+                            </div>
+                            
+                            <h4 style="font-size: 0.85rem; color: var(--accent); margin-bottom: 8px;">1. Pantalla Principal (Dashboard)</h4>
+                            <div id="customize-dashboard-list" class="layout-list">
+                                <!-- Populated dynamically in app.js -->
+                            </div>
+                            
+                            <h4 style="font-size: 0.85rem; color: var(--accent); margin-bottom: 8px; margin-top: 15px;">2. Barra de Navegación Inferior (Menú Rápido)</h4>
+                            <div id="customize-nav-list" class="layout-list">
+                                <!-- Populated dynamically in app.js -->
+                            </div>
+                            
+                            <button id="btn-save-layout" type="button" class="btn-premium" style="width: 100%; margin-top: 5px; background: var(--accent-gradient);">
+                                <i class="bx bx-check-double"></i> APLICAR DISEÑO PERSONALIZADO
+                            </button>
+                        </div>
 
                         <!-- Profile summary card (read-only, populated from user object) -->
                         <div id="profile-summary-card" style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 6px;">
