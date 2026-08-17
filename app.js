@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.19.04",
+        version: "1.20.01",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -115,7 +115,7 @@ const state = {
 
 // Personalización de Interfaz v1.19.01
 const DEFAULT_LAYOUTS = {
-    dashboard_order: ["passwords", "subscribers", "manuals", "expenses", "commercial", "vacations", "routes", "audit"],
+    dashboard_order: ["passwords", "subscribers", "manuals", "expenses", "commercial", "vacations", "routes", "sims", "audit"],
     dashboard_visible: {
         passwords: true,
         subscribers: true,
@@ -124,6 +124,7 @@ const DEFAULT_LAYOUTS = {
         commercial: true,
         vacations: true,
         routes: true,
+        sims: true,
         audit: true
     },
     nav_order: ["dashboard", "subscribers", "expenses-submenu", "vacations", "settings"]
@@ -138,6 +139,7 @@ const NAV_ITEMS_METADATA = {
     manuals: { icon: "bx-book", title: "Manuales", screen: "manuals" },
     commercial: { icon: "bx-briefcase", title: "Comercial", screen: "commercial-home" },
     routes: { icon: "bx-navigation", title: "Rutas", screen: "routes" },
+    sims: { icon: "bx-card", title: "SIMs", screen: "sims" },
     settings: { icon: "bx-cog", title: "Ajustes", screen: "settings" }
 };
 
@@ -271,6 +273,13 @@ function setupEventListeners() {
     document.getElementById("menu-expenses").addEventListener("click", () => switchScreen("expenses-submenu"));
     document.getElementById("menu-routes").addEventListener("click", () => switchScreen("routes"));
     document.getElementById("btn-back-routes").addEventListener("click", () => switchScreen("dashboard"));
+    document.getElementById("menu-sims").addEventListener("click", () => switchScreen("sims"));
+    document.getElementById("btn-back-sims").addEventListener("click", () => switchScreen("dashboard"));
+    document.getElementById("btn-new-sim").addEventListener("click", () => openSimCardForm(null));
+    document.getElementById("form-sim").addEventListener("submit", saveSimCardEntry);
+    document.getElementById("input-sim-ocr").addEventListener("change", handleSimOcrCapture);
+    document.getElementById("sim-photo-file").addEventListener("change", (e) => handleFilePreview(e, "sim-photo-preview"));
+    document.getElementById("search-sims").addEventListener("input", debounce(renderSimCards));
     document.getElementById("menu-audit").addEventListener("click", () => switchScreen("audit"));
     document.getElementById("btn-back-audit").addEventListener("click", () => switchScreen("dashboard"));
 
@@ -889,6 +898,7 @@ function switchScreen(screenId) {
         if (["expenses-submenu", "hours", "diets", "materials", "form-hour", "form-diet", "form-material", "expenses", "form-expense"].includes(screenId) && !scopes.includes("expenses") && !isFuelAdmin) return;
         if (screenId === "vacations" && !scopes.includes("vacations")) return;
         if (screenId === "routes" && !scopes.includes("routes")) return;
+        if (["sims", "form-sim"].includes(screenId) && !scopes.includes("subscribers")) return;
         if (screenId === "audit" || screenId === "admin-routes-clients") return; // Non-admin cannot access audit or client DB admin
     }
 
@@ -924,6 +934,9 @@ function switchScreen(screenId) {
         initRoutesScreen();
         renderDbClientsSelectorList();
         refreshVaultFromCloud(); // Descarga en segundo plano los últimos clientes
+    }
+    if (screenId === "sims") {
+        renderSimCards();
     }
     if (screenId === "admin-routes-clients") {
         renderAdminRoutesClients();
@@ -1048,6 +1061,7 @@ async function handleUnlock() {
         if (!state.vault.vacations) state.vault.vacations = [];
         if (!state.vault.routes_clients) state.vault.routes_clients = [];
         if (!state.vault.notifications) state.vault.notifications = [];
+        if (!state.vault.sim_cards) state.vault.sim_cards = [];
         if (!state.vault.manual_categories) {
             state.vault.manual_categories = ["Ademco", "DSC", "Paradox", "Risco", "Galaxy", "Ajax", "Texecom", "General"];
         }
@@ -1230,7 +1244,7 @@ async function syncWithCloud(isRetry = false) {
 // Lock application and wipe password from memory
 function lockVault() {
     state.masterPassword = "";
-    state.vault = { version: "1.14.01", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [] };
+    state.vault = { version: "1.20.02", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [], sim_cards: [] };
     state.gitSha = null;
     state.currentUser = null;
     
@@ -7499,7 +7513,7 @@ function debounce(func, delay = 250) {
 // MÓDULO DE RUTAS ÓPTIMAS v1.18.01
 // ==========================================
 
-function initRoutesScreen() {
+async function initRoutesScreen() {
     // Restaurar clientes de la caché
     try {
         const cached = localStorage.getItem("ats_routes_clients");
@@ -7522,28 +7536,59 @@ function initRoutesScreen() {
     }
 
     renderRouteClients();
+
+    // Auto-geolocalizar ubicación actual directamente al entrar
+    const originStatusText = document.getElementById("routes-origin-status");
+    const btnGpsOrigin = document.getElementById("btn-routes-gps-origin");
+    const btnManualOrigin = document.getElementById("btn-routes-manual-origin");
+    const inputOriginAddress = document.getElementById("routes-origin-address");
+
+    if (originStatusText) originStatusText.textContent = "Obteniendo ubicación GPS actual...";
+    
+    const gps = await getGPSLocation();
+    if (gps) {
+        state.routes.origin.type = 'gps';
+        state.routes.origin.lat = gps.lat;
+        state.routes.origin.lon = gps.lon;
+        if (btnGpsOrigin) btnGpsOrigin.classList.remove("btn-secondary");
+        if (btnManualOrigin) btnManualOrigin.classList.add("btn-secondary");
+        if (inputOriginAddress) inputOriginAddress.style.display = "none";
+        if (originStatusText) originStatusText.textContent = `Origen: Ubicación GPS obtenida automáticamente (${gps.lat.toFixed(5)}, ${gps.lon.toFixed(5)})`;
+        showToast("Ubicación GPS actual obtenida automáticamente");
+    } else {
+        if (originStatusText) originStatusText.textContent = "No se pudo obtener el GPS. Usando Oficina como origen alternativo.";
+        showToast("No se pudo obtener la ubicación actual. Usando Oficina.");
+    }
 }
 
 async function addRouteClient(e) {
     e.preventDefault();
     const abonadoInput = document.getElementById("route-client-abonado");
     const nameInput = document.getElementById("route-client-name");
-    const addressInput = document.getElementById("route-client-address");
+    const streetInput = document.getElementById("route-client-street");
+    const numberInput = document.getElementById("route-client-number");
+    const zipInput = document.getElementById("route-client-zip");
+    const cityInput = document.getElementById("route-client-city");
     const provinciaInput = document.getElementById("route-client-provincia");
     const sistemaInput = document.getElementById("route-client-sistema");
     const phoneInput = document.getElementById("route-client-phone");
 
     const abonado = abonadoInput.value.trim();
     const name = nameInput.value.trim();
-    const address = addressInput.value.trim();
+    const street = streetInput.value.trim();
+    const number = numberInput.value.trim();
+    const zip = zipInput.value.trim();
+    const city = cityInput.value.trim();
     const provincia = provinciaInput.value.trim();
     const sistema = sistemaInput.value.trim();
     const phone = phoneInput.value.trim();
 
-    if (!abonado || !name || !address || !provincia || !sistema || !phone) {
+    if (!abonado || !name || !street || !number || !zip || !city || !provincia || !sistema || !phone) {
         showToast("Por favor, rellena todos los campos");
         return;
     }
+
+    const address = `${street} ${number}, ${zip} ${city}`.trim().replace(/\s+/g, ' ');
 
     showLoading(true, "Buscando dirección...");
     
@@ -7553,6 +7598,10 @@ async function addRouteClient(e) {
         state.routes.clients.push({
             abonado: abonado,
             name: name,
+            calle: street,
+            numero: number,
+            codigo_postal: zip,
+            ciudad: city,
             address: address,
             provincia: provincia,
             sistema: sistema,
@@ -7566,7 +7615,10 @@ async function addRouteClient(e) {
         // Limpiar formulario
         abonadoInput.value = "";
         nameInput.value = "";
-        addressInput.value = "";
+        streetInput.value = "";
+        numberInput.value = "";
+        zipInput.value = "";
+        cityInput.value = "";
         provinciaInput.value = "";
         sistemaInput.value = "";
         phoneInput.value = "";
@@ -7995,10 +8047,30 @@ function drawRouteOnMap(origin, path) {
 
 function exportRoutesClientsTemplate() {
     try {
-        // Datos de ejemplo para guiar al usuario con las nuevas columnas
+        // Datos de ejemplo para guiar al usuario con las nuevas columnas segmentadas
         const data = [
-            { Abonado: "A101", "Nombre Cliente": "Cliente Ejemplo A", Direccion: "Gran Via 1, Madrid", Provincia: "Madrid", Sistema: "Alarma Grado 2", Telefono: "600111222" },
-            { Abonado: "A102", "Nombre Cliente": "Cliente Ejemplo B", Direccion: "Paseo de la Castellana 50, Madrid", Provincia: "Madrid", Sistema: "Grabador IP", Telefono: "699333444" }
+            { 
+                Abonado: "A101", 
+                "Nombre Cliente": "Cliente Ejemplo A", 
+                Calle: "Gran Via", 
+                Numero: "1", 
+                "Codigo Postal": "28013", 
+                Ciudad: "Madrid", 
+                Provincia: "Madrid", 
+                Sistema: "Alarma Grado 2", 
+                Telefono: "600111222" 
+            },
+            { 
+                Abonado: "A102", 
+                "Nombre Cliente": "Cliente Ejemplo B", 
+                Calle: "Paseo de la Castellana", 
+                Numero: "50", 
+                "Codigo Postal": "28046", 
+                Ciudad: "Madrid", 
+                Provincia: "Madrid", 
+                Sistema: "Grabador IP", 
+                Telefono: "699333444" 
+            }
         ];
 
         const worksheet = XLSX.utils.json_to_sheet(data);
@@ -8040,7 +8112,19 @@ function importRoutesClientsExcel(e) {
             rows.forEach((row) => {
                 let abonado = row["Abonado"] || row["abonado"] || row["Nº Abonado"] || row["Código"] || "";
                 let name = row["Nombre Cliente"] || row["Nombre"] || row["nombre"] || row["Client"] || "";
-                let address = row["Direccion"] || row["dirección"] || row["Dirección"] || row["address"] || "";
+                
+                let calle = row["Calle"] || row["calle"] || row["Street"] || "";
+                let numero = row["Numero"] || row["número"] || row["Número"] || row["Number"] || "";
+                let zip = row["Codigo Postal"] || row["C.P."] || row["Código Postal"] || row["ZIP"] || row["Zip"] || "";
+                let ciudad = row["Ciudad"] || row["ciudad"] || row["City"] || row["Localidad"] || "";
+                
+                let address = "";
+                if (calle) {
+                    address = `${calle} ${numero}, ${zip} ${ciudad}`.trim().replace(/\s+/g, ' ');
+                } else {
+                    address = row["Direccion"] || row["dirección"] || row["Dirección"] || row["address"] || "";
+                }
+
                 let provincia = row["Provincia"] || row["provincia"] || row["State"] || "";
                 let sistema = row["Sistema"] || row["sistema"] || row["System"] || "";
                 let phone = row["Telefono"] || row["teléfono"] || row["Teléfono"] || row["phone"] || "";
@@ -8056,6 +8140,10 @@ function importRoutesClientsExcel(e) {
                     importedClients.push({
                         abonado: abonado,
                         name: name,
+                        calle: String(calle).trim(),
+                        numero: String(numero).trim(),
+                        codigo_postal: String(zip).trim(),
+                        ciudad: String(ciudad).trim(),
                         address: address,
                         provincia: provincia,
                         sistema: sistema,
@@ -8741,7 +8829,10 @@ function openEditDbClientModal(idx) {
 
     document.getElementById("edit-client-index").value = idx;
     document.getElementById("edit-client-name").value = client.name || "";
-    document.getElementById("edit-client-address").value = client.address || "";
+    document.getElementById("edit-client-street").value = client.calle || client.address || "";
+    document.getElementById("edit-client-number").value = client.numero || "";
+    document.getElementById("edit-client-zip").value = client.codigo_postal || "";
+    document.getElementById("edit-client-city").value = client.ciudad || "";
     document.getElementById("edit-client-phone").value = client.phone || "";
     document.getElementById("edit-client-lat").value = client.lat || "";
     document.getElementById("edit-client-lon").value = client.lon || "";
@@ -8757,12 +8848,40 @@ async function saveEditDbClient(e) {
 
     const modal = document.getElementById("modal-edit-db-client");
 
+    const street = document.getElementById("edit-client-street").value.trim();
+    const number = document.getElementById("edit-client-number").value.trim();
+    const zip = document.getElementById("edit-client-zip").value.trim();
+    const city = document.getElementById("edit-client-city").value.trim();
+    const phone = document.getElementById("edit-client-phone").value.trim();
+
+    const address = `${street} ${number}, ${zip} ${city}`.trim().replace(/\s+/g, ' ');
+
+    let latVal = parseFloat(document.getElementById("edit-client-lat").value);
+    let lonVal = parseFloat(document.getElementById("edit-client-lon").value);
+
+    // Auto geocode if coordinates are left blank
+    if (isNaN(latVal) || isNaN(lonVal)) {
+        showLoading(true, "Geocodificando nueva dirección...");
+        try {
+            const coords = await geocodeAddress(address);
+            if (coords) {
+                latVal = coords.lat;
+                lonVal = coords.lon;
+            }
+        } catch (err) {
+            console.error("Geocoding on edit failed:", err);
+        } finally {
+            showLoading(false);
+        }
+    }
+
     dbClients[idx].name = document.getElementById("edit-client-name").value.trim();
-    dbClients[idx].address = document.getElementById("edit-client-address").value.trim();
-    dbClients[idx].phone = document.getElementById("edit-client-phone").value.trim();
-    
-    const latVal = parseFloat(document.getElementById("edit-client-lat").value);
-    const lonVal = parseFloat(document.getElementById("edit-client-lon").value);
+    dbClients[idx].calle = street;
+    dbClients[idx].numero = number;
+    dbClients[idx].codigo_postal = zip;
+    dbClients[idx].ciudad = city;
+    dbClients[idx].address = address;
+    dbClients[idx].phone = phone;
     dbClients[idx].lat = isNaN(latVal) ? null : latVal;
     dbClients[idx].lon = isNaN(lonVal) ? null : lonVal;
 
@@ -8869,6 +8988,243 @@ function showRouteSearchSuggestions(query) {
         item.appendChild(addBtn);
         suggestionsBox.appendChild(item);
     });
+}
+
+// ==========================================
+// MÓDULO DE TARJETAS SIM v1.20.02 (CON OCR)
+// ==========================================
+
+async function handleSimOcrCapture(evt) {
+    const file = evt.target.files[0];
+    const statusDiv = document.getElementById("sim-ocr-status");
+    if (!file) return;
+
+    if (statusDiv) {
+        statusDiv.style.display = "block";
+        statusDiv.textContent = "Procesando imagen (OCR)...";
+    }
+    showLoading(true, "Procesando imagen con OCR...");
+
+    try {
+        const compressedBase64 = await processAndCompressImage(file);
+        
+        // Run Tesseract OCR on the compressed image
+        const result = await Tesseract.recognize(
+            compressedBase64,
+            'deu+eng+spa',
+            { 
+                logger: m => {
+                    if (m.status === 'recognizing' && statusDiv) {
+                        statusDiv.textContent = `Reconociendo: ${Math.round(m.progress * 100)}%`;
+                    }
+                } 
+            }
+        );
+
+        const text = result.data.text;
+        console.log("OCR Detected Text:", text);
+
+        // 1. Extract ICCID (usually a 19-digit number starting with 89)
+        const cleanText = text.replace(/[\s\-\.]/g, ''); // remove spaces/dashes/dots for tight matching
+        const iccidMatch = cleanText.match(/\b(89\d{17,18})\b/) || text.match(/\b(89\d{17,18})\b/);
+        if (iccidMatch) {
+            document.getElementById("sim-iccid").value = iccidMatch[1];
+        } else {
+            const anyLongNum = cleanText.match(/\b(\d{19,20})\b/) || text.match(/\b(\d{19,20})\b/);
+            if (anyLongNum) {
+                document.getElementById("sim-iccid").value = anyLongNum[1];
+            }
+        }
+
+        // 2. Extract PIN and PUK
+        const pinMatch = text.match(/PIN:?\s*(\d{4})\b/i);
+        if (pinMatch) document.getElementById("sim-pin").value = pinMatch[1];
+
+        const pukMatch = text.match(/PUK:?\s*(\d{8})\b/i);
+        if (pukMatch) document.getElementById("sim-puk").value = pukMatch[1];
+
+        const pin2Match = text.match(/PIN2:?\s*(\d{4})\b/i);
+        if (pin2Match) document.getElementById("sim-pin2").value = pin2Match[1];
+
+        const puk2Match = text.match(/PUK2:?\s*(\d{8})\b/i);
+        if (puk2Match) document.getElementById("sim-puk2").value = puk2Match[1];
+
+        showToast("Escaneo completado. Revisa los campos rellenados.");
+        if (statusDiv) statusDiv.textContent = "¡Escaneo completado con éxito!";
+    } catch (err) {
+        console.error("OCR Error:", err);
+        showToast("Error al escanear la tarjeta SIM");
+        if (statusDiv) statusDiv.textContent = "Error al escanear la tarjeta.";
+    } finally {
+        showLoading(false);
+        evt.target.value = "";
+    }
+}
+
+function renderSimCards() {
+    const list = document.getElementById("list-sims");
+    if (!list) return;
+    list.innerHTML = "";
+
+    const q = document.getElementById("search-sims").value.trim().toLowerCase();
+    const sims = state.vault.sim_cards || [];
+
+    const filtered = sims.filter(s => {
+        return (s.name || "").toLowerCase().includes(q) ||
+               (s.abonado || "").toLowerCase().includes(q) ||
+               (s.phone || "").toLowerCase().includes(q) ||
+               (s.iccid || "").toLowerCase().includes(q);
+    });
+
+    if (filtered.length === 0) {
+        list.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-secondary); font-size:0.9rem;">No hay tarjetas SIM registradas</div>`;
+        return;
+    }
+
+    filtered.forEach(s => {
+        const card = document.createElement("div");
+        card.className = "item-card anim-fade";
+
+        const titleText = `[${s.abonado || "?"}] ${s.name || "Sin Cliente"}`;
+        const subtext = `📞 Tel: ${s.phone} • ICCID: ${s.iccid} • PIN: ${s.pin || "-"} • PUK: ${s.puk || "-"}`;
+
+        let imgHtml = "";
+        if (s.photo) {
+            imgHtml = `<div class="item-logo-container" style="cursor:pointer;" id="img-preview-trigger-${s.id}"><i class="bx bx-image" style="font-size:1.5rem; color:var(--accent);"></i></div>`;
+        } else {
+            imgHtml = `<div class="item-logo-container" style="font-size:1.2rem;">💳</div>`;
+        }
+
+        card.innerHTML = `
+            <div class="item-card-left">
+                ${imgHtml}
+                <div class="item-details" style="margin-left: 10px;">
+                    <span class="item-title">${titleText}</span>
+                    <span class="item-sub">${subtext}</span>
+                    <span class="item-sub" style="font-size: 0.75rem; color: var(--accent); margin-top: 3px;">Instalada: ${s.install_date || "-"}</span>
+                </div>
+            </div>
+            <div class="item-actions">
+                <button class="btn-icon btn-copy-iccid" title="Copiar ICCID"><i class="bx bx-copy"></i></button>
+                <button class="btn-icon btn-edit" title="Editar"><i class="bx bx-edit-alt"></i></button>
+                <button class="btn-icon btn-delete" style="color:var(--danger);" title="Eliminar"><i class="bx bx-trash"></i></button>
+            </div>
+        `;
+
+        if (s.photo) {
+            card.querySelector(`#img-preview-trigger-${s.id}`).addEventListener("click", () => {
+                openImageViewer(s.photo);
+            });
+        }
+
+        card.querySelector(".btn-copy-iccid").addEventListener("click", (evt) => {
+            evt.stopPropagation();
+            copyToClipboard(s.iccid);
+        });
+
+        card.querySelector(".btn-edit").addEventListener("click", (evt) => {
+            evt.stopPropagation();
+            openSimCardForm(s.id);
+        });
+
+        card.querySelector(".btn-delete").addEventListener("click", (evt) => {
+            evt.stopPropagation();
+            deleteSimCardEntry(s.id);
+        });
+
+        list.appendChild(card);
+    });
+}
+
+function openSimCardForm(id = null) {
+    const title = document.getElementById("sim-form-title");
+    const form = document.getElementById("form-sim");
+    if (!form) return;
+
+    form.reset();
+    document.getElementById("sim-id").value = id || "";
+    document.getElementById("sim-ocr-status").style.display = "none";
+    document.getElementById("sim-photo-preview").style.display = "none";
+    document.getElementById("sim-photo-file").removeAttribute("data-base64");
+
+    if (id) {
+        title.textContent = "Editar Tarjeta SIM";
+        const sim = (state.vault.sim_cards || []).find(s => s.id === id);
+        if (sim) {
+            document.getElementById("sim-abonado").value = sim.abonado || "";
+            document.getElementById("sim-name").value = sim.name || "";
+            document.getElementById("sim-phone").value = sim.phone || "";
+            document.getElementById("sim-install-date").value = sim.install_date || "";
+            document.getElementById("sim-iccid").value = sim.iccid || "";
+            document.getElementById("sim-pin").value = sim.pin || "";
+            document.getElementById("sim-puk").value = sim.puk || "";
+            document.getElementById("sim-pin2").value = sim.pin2 || "";
+            document.getElementById("sim-puk2").value = sim.puk2 || "";
+
+            if (sim.photo) {
+                const preview = document.getElementById("sim-photo-preview");
+                const img = preview.querySelector("img");
+                img.src = sim.photo;
+                preview.style.display = "block";
+                document.getElementById("sim-photo-file").dataset.base64 = sim.photo;
+            }
+        }
+    } else {
+        title.textContent = "Nueva Tarjeta SIM";
+        document.getElementById("sim-install-date").value = new Date().toISOString().split('T')[0];
+    }
+
+    switchScreen("form-sim");
+}
+
+async function saveSimCardEntry(e) {
+    e.preventDefault();
+    const id = document.getElementById("sim-id").value;
+    const abonado = document.getElementById("sim-abonado").value.trim();
+    const name = document.getElementById("sim-name").value.trim();
+    const phone = document.getElementById("sim-phone").value.trim();
+    const install_date = document.getElementById("sim-install-date").value;
+    const iccid = document.getElementById("sim-iccid").value.trim();
+    const pin = document.getElementById("sim-pin").value.trim();
+    const puk = document.getElementById("sim-puk").value.trim();
+    const pin2 = document.getElementById("sim-pin2").value.trim();
+    const puk2 = document.getElementById("sim-puk2").value.trim();
+    const photo = document.getElementById("sim-photo-file").dataset.base64 || "";
+
+    if (!name || !phone || !install_date || !iccid) {
+        showToast("Por favor, rellena los campos obligatorios");
+        return;
+    }
+
+    if (!state.vault.sim_cards) state.vault.sim_cards = [];
+
+    if (id) {
+        const idx = state.vault.sim_cards.findIndex(s => s.id === id);
+        if (idx !== -1) {
+            state.vault.sim_cards[idx] = {
+                ...state.vault.sim_cards[idx],
+                abonado, name, phone, install_date, iccid, pin, puk, pin2, puk2, photo
+            };
+        }
+    } else {
+        state.vault.sim_cards.push({
+            id: Date.now() + "_" + Math.random().toString(36).substr(2, 9),
+            abonado, name, phone, install_date, iccid, pin, puk, pin2, puk2, photo
+        });
+    }
+
+    showToast("Tarjeta SIM guardada correctamente");
+    switchScreen("sims");
+    await syncWithCloud();
+}
+
+async function deleteSimCardEntry(id) {
+    if (!confirm("¿Seguro que deseas eliminar esta tarjeta SIM?")) return;
+
+    state.vault.sim_cards = (state.vault.sim_cards || []).filter(s => s.id !== id);
+    showToast("Tarjeta SIM eliminada");
+    renderSimCards();
+    await syncWithCloud();
 }
 
 
