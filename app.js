@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.20.05",
+        version: "1.20.06",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -436,6 +436,22 @@ function setupEventListeners() {
             } else {
                 accContent.style.maxHeight = accContent.scrollHeight + "px";
                 accContent.style.margin = "0px 0px 16px 0px";
+            }
+        });
+    }
+
+    // Acordeón Agregar Cliente Manualmente v1.20.06
+    const accManualHeader = document.getElementById("accordion-add-client-manual");
+    const accManualContent = document.getElementById("add-client-manual-content");
+    if (accManualHeader && accManualContent) {
+        accManualHeader.addEventListener("click", () => {
+            accManualHeader.classList.toggle("active");
+            if (accManualContent.style.maxHeight && accManualContent.style.maxHeight !== "0px") {
+                accManualContent.style.maxHeight = "0px";
+                accManualContent.style.margin = "0px";
+            } else {
+                accManualContent.style.maxHeight = accManualContent.scrollHeight + "px";
+                accManualContent.style.margin = "0px 0px 16px 0px";
             }
         });
     }
@@ -1244,7 +1260,7 @@ async function syncWithCloud(isRetry = false) {
 // Lock application and wipe password from memory
 function lockVault() {
     state.masterPassword = "";
-    state.vault = { version: "1.20.05", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [], sim_cards: [] };
+    state.vault = { version: "1.20.06", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [], sim_cards: [] };
     state.gitSha = null;
     state.currentUser = null;
     
@@ -7526,6 +7542,16 @@ async function initRoutesScreen() {
         state.routes.clients = [];
     }
 
+    // Borrar búsquedas y sugerencias antiguas al entrar
+    const clientSearchInput = document.getElementById("routes-db-client-search");
+    if (clientSearchInput) {
+        clientSearchInput.value = "";
+    }
+    const suggestionsBox = document.getElementById("routes-search-suggestions");
+    if (suggestionsBox) {
+        suggestionsBox.style.display = "none";
+    }
+
     // Ocultar resultados por defecto
     document.getElementById("routes-results-container").style.display = "none";
     
@@ -7628,6 +7654,16 @@ async function addRouteClient(e) {
         phoneInput.value = "";
 
         renderRouteClients();
+        
+        // Cerrar acordeón tras añadir manualmente
+        const accManualHeader = document.getElementById("accordion-add-client-manual");
+        const accManualContent = document.getElementById("add-client-manual-content");
+        if (accManualHeader && accManualContent) {
+            accManualHeader.classList.remove("active");
+            accManualContent.style.maxHeight = "0px";
+            accManualContent.style.margin = "0px";
+        }
+        
         showToast(coords ? "Cliente añadido y localizado en el mapa" : "Cliente añadido (dirección no geolocalizada)");
     } catch (err) {
         console.error("Error al añadir cliente:", err);
@@ -7714,7 +7750,15 @@ function cleanAddressForGeocoding(addr) {
     let clean = addr;
     // 1. Eliminar aclaraciones dentro de paréntesis
     clean = clean.replace(/\([^)]*\)/g, ' ');
-    // 2. Normalizar espacios
+    // 2. Reemplazar abreviaciones de calles comunes en España para mejorar coincidencia en Nominatim
+    clean = clean.replace(/^\s*[Cc]\/\s*/gi, 'Calle ')
+                 .replace(/^\s*[Cc]\b/gi, 'Calle ')
+                 .replace(/^\s*[Aa]vda\.?\s*/gi, 'Avenida ')
+                 .replace(/^\s*[Aa]v\.?\s*/gi, 'Avenida ')
+                 .replace(/^\s*[Cc]alle\s*[Cc]\/\s*/gi, 'Calle ')
+                 .replace(/\s+s\/n\b/gi, '')
+                 .replace(/\s+S\/N\b/gi, '');
+    // 3. Normalizar espacios
     clean = clean.replace(/\s+/g, ' ');
     return clean.trim();
 }
