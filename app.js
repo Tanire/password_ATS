@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.20.03",
+        version: "1.20.04",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -1244,7 +1244,7 @@ async function syncWithCloud(isRetry = false) {
 // Lock application and wipe password from memory
 function lockVault() {
     state.masterPassword = "";
-    state.vault = { version: "1.20.03", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [], sim_cards: [] };
+    state.vault = { version: "1.20.04", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [], sim_cards: [] };
     state.gitSha = null;
     state.currentUser = null;
     
@@ -8991,7 +8991,7 @@ function showRouteSearchSuggestions(query) {
 }
 
 // ==========================================
-// MÓDULO DE TARJETAS SIM v1.20.03 (CON OCR MEJORADO)
+// MÓDULO DE TARJETAS SIM v1.20.04 (CON OCR MEJORADO)
 // ==========================================
 
 function processOcrImage(file) {
@@ -9163,7 +9163,7 @@ function renderSimCards() {
         card.className = "item-card anim-fade";
 
         const titleText = `[${s.abonado || "?"}] ${s.name || "Sin Cliente"}`;
-        const subtext = `📞 Tel: ${s.phone} • Compañía: ${s.company || "-"} • ICCID: ${s.iccid} • PIN: ${s.pin || "-"} • PUK: ${s.puk || "-"}`;
+        const subtext = `📞 Tel: ${s.phone || "-"} • Compañía: ${s.company || "-"} • ICCID: ${s.iccid} • PIN: ${s.pin || "-"} • PUK: ${s.puk || "-"}`;
 
         let imgHtml = "";
         if (s.photo) {
@@ -9270,8 +9270,8 @@ async function saveSimCardEntry(e) {
     const puk2 = document.getElementById("sim-puk2").value.trim();
     const photo = document.getElementById("sim-photo-file").dataset.base64 || "";
 
-    if (!name || !phone || !install_date || !iccid) {
-        showToast("Por favor, rellena los campos obligatorios");
+    if (!name || !company || !iccid) {
+        showToast("Por favor, rellena los campos obligatorios (Cliente, Compañía e IMEI)");
         return;
     }
 
