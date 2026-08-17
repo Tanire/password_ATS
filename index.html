@@ -47,8 +47,8 @@
                 
                 <div style="border-top: 1px solid var(--border-glass); border-bottom: 1px solid var(--border-glass); padding: 14px 0; max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; line-height: 1.4; color: var(--text-primary);">
                     <div>
-                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">💳 v1.20.04 - Campos Obligatorios SIM</strong>
-                        <p style="margin: 0; color: var(--text-secondary);">Actualizados los campos obligatorios en las tarjetas SIM, dejando únicamente como requeridos el IMEI/SIM, el Cliente y la Compañía.</p>
+                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">🚗 v1.20.04 - Rutas con Ubicaciones y Campos SIM</strong>
+                        <p style="margin: 0; color: var(--text-secondary);">Añadido el campo 'sistema' (ubicación/instalación) en rutas para permitir que un mismo cliente tenga distintas ubicaciones físicas. Actualizados los campos obligatorios en las tarjetas SIM.</p>
                     </div>
                     <div>
                         <strong style="color: var(--accent); display: block; margin-bottom: 3px;">💳 v1.20.03 - Precisión OCR y Campo Compañía</strong>
@@ -175,7 +175,7 @@
                         </div>
                     </div>
                     <div style="text-align: center; margin-top: 40px; font-size: 0.8rem; color: var(--text-secondary);" class="dashboard-footer">
-                        Versión 1.18.07 - JMSYSTEMAS
+                        Versión 1.20.04 - JMSYSTEMAS
                     </div>
                 </div>
 
@@ -1881,6 +1881,10 @@
                                     <input type="text" id="route-client-name" class="input-control" placeholder="Ej. Cliente Ejemplo X" required style="font-size: 0.85rem; padding: 8px 12px;">
                                 </div>
                             </div>
+                            <div class="form-group" style="margin: 0;">
+                                <label style="font-size: 0.75rem;">Ubicación / Sistema (Nombre del sitio)</label>
+                                <input type="text" id="route-client-nombre-sistema" class="input-control" placeholder="Ej. EDIF. 55 VIVIENDAS ALFAFAR" required style="font-size: 0.85rem; padding: 8px 12px;">
+                            </div>
                             <div class="form-row" style="display: flex; gap: 10px;">
                                 <div class="form-group" style="flex: 3; margin: 0;">
                                     <label style="font-size: 0.75rem;">Calle / Avda / Vía</label>
@@ -1907,8 +1911,8 @@
                                     <input type="text" id="route-client-provincia" class="input-control" placeholder="Ej. Madrid" required style="font-size: 0.85rem; padding: 8px 12px;">
                                 </div>
                                 <div class="form-group" style="flex: 1; margin: 0;">
-                                    <label style="font-size: 0.75rem;">Sistema</label>
-                                    <input type="text" id="route-client-sistema" class="input-control" placeholder="Ej. Alarma Paradox" required style="font-size: 0.85rem; padding: 8px 12px;">
+                                    <label style="font-size: 0.75rem;">Tipo de Sistema</label>
+                                    <input type="text" id="route-client-sistema" class="input-control" placeholder="Ej. P.C.I. o Alarma" required style="font-size: 0.85rem; padding: 8px 12px;">
                                 </div>
                             </div>
                             <div class="form-group" style="margin: 0;">
@@ -2137,9 +2141,25 @@
             
             <form id="form-edit-db-client" style="display: flex; flex-direction: column; gap: 12px;">
                 <input type="hidden" id="edit-client-index">
-                <div class="form-group">
-                    <label>Nombre del Cliente</label>
-                    <input type="text" id="edit-client-name" class="input-control" required placeholder="Nombre completo o comercial">
+                <div class="form-row" style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1; margin: 0;">
+                        <label>Nº Abonado</label>
+                        <input type="text" id="edit-client-abonado" class="input-control" placeholder="Ej. A105">
+                    </div>
+                    <div class="form-group" style="flex: 2; margin: 0;">
+                        <label>Nombre del Cliente</label>
+                        <input type="text" id="edit-client-name" class="input-control" required placeholder="Nombre completo o comercial">
+                    </div>
+                </div>
+                <div class="form-row" style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1; margin: 0;">
+                        <label>Ubicación / Sistema (sitio)</label>
+                        <input type="text" id="edit-client-nombre-sistema" class="input-control" placeholder="Ej. EDIF. 55 VIVIENDAS ALFAFAR">
+                    </div>
+                    <div class="form-group" style="flex: 1; margin: 0;">
+                        <label>Tipo de Sistema</label>
+                        <input type="text" id="edit-client-sistema" class="input-control" placeholder="Ej. P.C.I.">
+                    </div>
                 </div>
                 <div class="form-row" style="display: flex; gap: 15px;">
                     <div class="form-group" style="flex: 3; margin: 0;">
@@ -2161,9 +2181,15 @@
                         <input type="text" id="edit-client-city" class="input-control" required placeholder="Localidad">
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>Teléfono</label>
-                    <input type="text" id="edit-client-phone" class="input-control" placeholder="Teléfono de contacto">
+                <div class="form-row" style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1; margin: 0;">
+                        <label>Provincia</label>
+                        <input type="text" id="edit-client-provincia" class="input-control" placeholder="Provincia">
+                    </div>
+                    <div class="form-group" style="flex: 1; margin: 0;">
+                        <label>Teléfono</label>
+                        <input type="text" id="edit-client-phone" class="input-control" placeholder="Teléfono de contacto">
+                    </div>
                 </div>
                 <div class="form-row" style="display: flex; gap: 15px;">
                     <div class="form-group" style="flex: 1;">

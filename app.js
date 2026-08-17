@@ -7565,6 +7565,7 @@ async function addRouteClient(e) {
     e.preventDefault();
     const abonadoInput = document.getElementById("route-client-abonado");
     const nameInput = document.getElementById("route-client-name");
+    const nombreSistemaInput = document.getElementById("route-client-nombre-sistema");
     const streetInput = document.getElementById("route-client-street");
     const numberInput = document.getElementById("route-client-number");
     const zipInput = document.getElementById("route-client-zip");
@@ -7575,6 +7576,7 @@ async function addRouteClient(e) {
 
     const abonado = abonadoInput.value.trim();
     const name = nameInput.value.trim();
+    const nombre_sistema = nombreSistemaInput ? nombreSistemaInput.value.trim() : "";
     const street = streetInput.value.trim();
     const number = numberInput.value.trim();
     const zip = zipInput.value.trim();
@@ -7598,6 +7600,7 @@ async function addRouteClient(e) {
         state.routes.clients.push({
             abonado: abonado,
             name: name,
+            nombre_sistema: nombre_sistema,
             calle: street,
             numero: number,
             codigo_postal: zip,
@@ -7615,6 +7618,7 @@ async function addRouteClient(e) {
         // Limpiar formulario
         abonadoInput.value = "";
         nameInput.value = "";
+        if (nombreSistemaInput) nombreSistemaInput.value = "";
         streetInput.value = "";
         numberInput.value = "";
         zipInput.value = "";
@@ -7653,14 +7657,15 @@ function renderRouteClients() {
 
         const abonadoLabel = client.abonado ? `[${client.abonado}] ` : '';
         const provinciaLabel = client.provincia ? ` (${client.provincia})` : '';
-        const sistemaLabel = client.sistema ? ` - ${client.sistema}` : '';
+        const nombreSistemaLabel = client.nombre_sistema ? ` - ${client.nombre_sistema}` : '';
 
         html += `
             <div class="route-client-card">
                 <div class="route-client-info">
-                    <span class="route-client-title">${abonadoLabel}${escapeHtml(client.name)}${provinciaLabel}</span>
+                    <span class="route-client-title">${abonadoLabel}${escapeHtml(client.name)}${nombreSistemaLabel}${provinciaLabel}</span>
                     <span class="route-client-meta">
-                        <span><i class="bx bx-cog"></i> Sistema: <strong>${escapeHtml(client.sistema || 'General')}</strong></span>
+                        <span><i class="bx bx-building"></i> Ubicación/Sistema: <strong>${escapeHtml(client.nombre_sistema || 'Sin ubicación')}</strong></span>
+                        <span><i class="bx bx-cog"></i> Tipo de Sistema: <strong>${escapeHtml(client.sistema || 'General')}</strong></span>
                         <span><i class="bx bx-map"></i> ${escapeHtml(client.address)}</span>
                         <span><i class="bx bx-phone"></i> ${escapeHtml(client.phone)}</span>
                         ${mapBadge}
@@ -7928,14 +7933,16 @@ async function optimizeRoute() {
             const unlocWarning = client.unlocalized ? `<span style="color: var(--warning); display: block; font-size: 0.7rem; margin-top: 3px;"><i class="bx bx-error"></i> Dirección aproximada (no localizada exacta)</span>` : '';
             const abonadoText = client.abonado ? `[${client.abonado}] ` : '';
             const provinciaText = client.provincia ? ` (${client.provincia})` : '';
+            const nombreSistemaLabel = client.nombre_sistema ? ` - ${client.nombre_sistema}` : '';
 
             itinHtml += `
                 <div class="itinerary-step">
                     <div class="itinerary-step-badge">${idx + 1}</div>
                     <div class="itinerary-step-content">
-                        <strong>${abonadoText}${escapeHtml(client.name)}${provinciaText}</strong>
+                        <strong>${abonadoText}${escapeHtml(client.name)}${nombreSistemaLabel}${provinciaText}</strong>
                         <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 3px;">
-                            <span><i class="bx bx-cog"></i> Sistema: <strong>${escapeHtml(client.sistema || 'General')}</strong></span><br>
+                            <span><i class="bx bx-building"></i> Ubicación/Sistema: <strong>${escapeHtml(client.nombre_sistema || 'Sin ubicación')}</strong></span><br>
+                            <span><i class="bx bx-cog"></i> Tipo de Sistema: <strong>${escapeHtml(client.sistema || 'General')}</strong></span><br>
                             <span><i class="bx bx-map"></i> ${escapeHtml(client.address)}</span><br>
                             <span><i class="bx bx-phone"></i> ${escapeHtml(client.phone)}</span><br>
                             <span style="color: var(--accent); font-weight: 600;"><i class="bx bx-right-arrow-alt"></i> A ${distStr} de la parada anterior</span>
@@ -8051,24 +8058,26 @@ function exportRoutesClientsTemplate() {
         const data = [
             { 
                 Abonado: "A101", 
-                "Nombre Cliente": "Cliente Ejemplo A", 
-                Calle: "Gran Via", 
-                Numero: "1", 
-                "Codigo Postal": "28013", 
-                Ciudad: "Madrid", 
-                Provincia: "Madrid", 
-                Sistema: "Alarma Grado 2", 
+                "Nombre Clier": "A CASA REAL ESTATE", 
+                sistema: "EDIF. 55 VIVIENDAS ALFAFAR", 
+                Calle: "C/ AVENIDA CORTES VALENCIANAS", 
+                Numero: "23", 
+                "Codigo Posta": "46016", 
+                Ciudad: "Tavernes Blanques", 
+                Provincia: "Valencia", 
+                Sistema: "P.C.I.", 
                 Telefono: "600111222" 
             },
             { 
                 Abonado: "A102", 
-                "Nombre Cliente": "Cliente Ejemplo B", 
-                Calle: "Paseo de la Castellana", 
-                Numero: "50", 
-                "Codigo Postal": "28046", 
-                Ciudad: "Madrid", 
-                Provincia: "Madrid", 
-                Sistema: "Grabador IP", 
+                "Nombre Clier": "Cliente Ejemplo B", 
+                sistema: "LOCAL COMERCIAL CHURRIANA", 
+                Calle: "Calle Real", 
+                Numero: "15", 
+                "Codigo Posta": "29140", 
+                Ciudad: "Churriana", 
+                Provincia: "Málaga", 
+                Sistema: "Alarma Paradox", 
                 Telefono: "699333444" 
             }
         ];
@@ -8111,11 +8120,12 @@ function importRoutesClientsExcel(e) {
             const importedClients = [];
             rows.forEach((row) => {
                 let abonado = row["Abonado"] || row["abonado"] || row["Nº Abonado"] || row["Código"] || "";
-                let name = row["Nombre Cliente"] || row["Nombre"] || row["nombre"] || row["Client"] || "";
+                let name = row["Nombre Clier"] || row["Nombre Cliente"] || row["Nombre"] || row["nombre"] || row["Client"] || "";
+                let nombre_sistema = row["sistema"] || row["Ubicacion"] || row["Ubicación"] || row["Nombre Sistema"] || "";
                 
                 let calle = row["Calle"] || row["calle"] || row["Street"] || "";
                 let numero = row["Numero"] || row["número"] || row["Número"] || row["Number"] || "";
-                let zip = row["Codigo Postal"] || row["C.P."] || row["Código Postal"] || row["ZIP"] || row["Zip"] || "";
+                let zip = row["Codigo Posta"] || row["Codigo Postal"] || row["C.P."] || row["Código Postal"] || row["ZIP"] || row["Zip"] || "";
                 let ciudad = row["Ciudad"] || row["ciudad"] || row["City"] || row["Localidad"] || "";
                 
                 let address = "";
@@ -8126,11 +8136,12 @@ function importRoutesClientsExcel(e) {
                 }
 
                 let provincia = row["Provincia"] || row["provincia"] || row["State"] || "";
-                let sistema = row["Sistema"] || row["sistema"] || row["System"] || "";
+                let sistema = row["Sistema"] || row["System"] || "";
                 let phone = row["Telefono"] || row["teléfono"] || row["Teléfono"] || row["phone"] || "";
 
                 abonado = String(abonado).trim();
                 name = String(name).trim();
+                nombre_sistema = String(nombre_sistema).trim();
                 address = String(address).trim();
                 provincia = String(provincia).trim();
                 sistema = String(sistema).trim();
@@ -8140,6 +8151,7 @@ function importRoutesClientsExcel(e) {
                     importedClients.push({
                         abonado: abonado,
                         name: name,
+                        nombre_sistema: nombre_sistema,
                         calle: String(calle).trim(),
                         numero: String(numero).trim(),
                         codigo_postal: String(zip).trim(),
@@ -8213,13 +8225,15 @@ function renderDbClientsSelectorList(query = "") {
         const abonadoClean = String(item.client.abonado || "").toLowerCase();
         const provinciaClean = (item.client.provincia || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const sistemaClean = (item.client.sistema || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const nombreSistemaClean = (item.client.nombre_sistema || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         
         return queryWords.every(word => {
             return nameClean.includes(word) || 
                    addressClean.includes(word) || 
                    abonadoClean.includes(word) || 
                    provinciaClean.includes(word) ||
-                   sistemaClean.includes(word);
+                   sistemaClean.includes(word) ||
+                   nombreSistemaClean.includes(word);
         });
     });
 
@@ -8248,12 +8262,13 @@ function renderDbClientsSelectorList(query = "") {
         
         const abonadoBadge = client.abonado ? `<span style="color: var(--accent); font-weight: bold;">[${escapeHtml(client.abonado)}]</span> ` : "";
         const provinciaText = client.provincia ? ` • ${escapeHtml(client.provincia)}` : "";
-        const sistemaText = client.sistema ? ` • ${escapeHtml(client.sistema)}` : "";
+        const nombreSistemaText = client.nombre_sistema ? ` • ${escapeHtml(client.nombre_sistema)}` : "";
+        const sistemaText = client.sistema ? ` • Tipo: ${escapeHtml(client.sistema)}` : "";
 
         card.innerHTML = `
             <div style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0;">
                 <span style="font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${abonadoBadge}${escapeHtml(client.name)}</span>
-                <span style="font-size: 0.7rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(client.address.split(',')[0])}${provinciaText}${sistemaText}</span>
+                <span style="font-size: 0.7rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(client.address.split(',')[0])}${provinciaText}${nombreSistemaText}${sistemaText}</span>
             </div>
         `;
 
@@ -8289,6 +8304,7 @@ async function addDbClientToRouteByIndex(idx) {
         state.routes.clients.push({
             abonado: client.abonado || "",
             name: client.name,
+            nombre_sistema: client.nombre_sistema || "",
             address: client.address,
             provincia: client.provincia || "",
             sistema: client.sistema || "",
@@ -8423,13 +8439,15 @@ function renderAdminRoutesClients(query = "") {
         const abonadoClean = String(item.client.abonado || "").toLowerCase();
         const provinciaClean = (item.client.provincia || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const sistemaClean = (item.client.sistema || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const nombreSistemaClean = (item.client.nombre_sistema || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
         return queryWords.every(word => {
             return nameClean.includes(word) || 
                    addressClean.includes(word) || 
                    abonadoClean.includes(word) || 
                    provinciaClean.includes(word) ||
-                   sistemaClean.includes(word);
+                   sistemaClean.includes(word) ||
+                   nombreSistemaClean.includes(word);
         });
     });
 
@@ -8454,7 +8472,8 @@ function renderAdminRoutesClients(query = "") {
         card.className = "admin-client-db-item";
 
         const abonadoText = client.abonado ? `<span style="color: var(--accent); font-weight: bold; font-size: 0.85rem;">[${escapeHtml(client.abonado)}]</span> ` : "";
-        const sistemaText = client.sistema ? `<div style="font-size: 0.75rem; color: var(--text-secondary);"><i class="bx bx-cog" style="vertical-align: middle;"></i> Sistema: <b>${escapeHtml(client.sistema)}</b></div>` : "";
+        const nombreSistemaText = client.nombre_sistema ? `<div style="font-size: 0.75rem; color: var(--text-secondary);"><i class="bx bx-building" style="vertical-align: middle;"></i> Ubic./Sistema: <b>${escapeHtml(client.nombre_sistema)}</b></div>` : "";
+        const sistemaText = client.sistema ? `<div style="font-size: 0.75rem; color: var(--text-secondary);"><i class="bx bx-cog" style="vertical-align: middle;"></i> Tipo Sistema: <b>${escapeHtml(client.sistema)}</b></div>` : "";
         const phoneText = client.phone ? `<div style="font-size: 0.75rem; color: var(--text-secondary);"><i class="bx bx-phone" style="vertical-align: middle;"></i> Teléfono: <b>${escapeHtml(client.phone)}</b></div>` : "";
         const provText = client.provincia ? ` (${escapeHtml(client.provincia)})` : "";
         const streetPart = client.address ? String(client.address).split(',')[0] : "Sin dirección";
@@ -8468,6 +8487,7 @@ function renderAdminRoutesClients(query = "") {
                     <i class="bx bx-map" style="vertical-align: middle;"></i> Dirección: ${escapeHtml(streetPart)}${provText}
                 </div>
                 <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 2px;">
+                    ${nombreSistemaText}
                     ${sistemaText}
                     ${phoneText}
                 </div>
@@ -8828,11 +8848,15 @@ function openEditDbClientModal(idx) {
     if (!modal) return;
 
     document.getElementById("edit-client-index").value = idx;
+    document.getElementById("edit-client-abonado").value = client.abonado || "";
     document.getElementById("edit-client-name").value = client.name || "";
+    document.getElementById("edit-client-nombre-sistema").value = client.nombre_sistema || "";
+    document.getElementById("edit-client-sistema").value = client.sistema || "";
     document.getElementById("edit-client-street").value = client.calle || client.address || "";
     document.getElementById("edit-client-number").value = client.numero || "";
     document.getElementById("edit-client-zip").value = client.codigo_postal || "";
     document.getElementById("edit-client-city").value = client.ciudad || "";
+    document.getElementById("edit-client-provincia").value = client.provincia || "";
     document.getElementById("edit-client-phone").value = client.phone || "";
     document.getElementById("edit-client-lat").value = client.lat || "";
     document.getElementById("edit-client-lon").value = client.lon || "";
@@ -8848,10 +8872,15 @@ async function saveEditDbClient(e) {
 
     const modal = document.getElementById("modal-edit-db-client");
 
+    const abonado = document.getElementById("edit-client-abonado").value.trim();
+    const name = document.getElementById("edit-client-name").value.trim();
+    const nombre_sistema = document.getElementById("edit-client-nombre-sistema").value.trim();
+    const sistema = document.getElementById("edit-client-sistema").value.trim();
     const street = document.getElementById("edit-client-street").value.trim();
     const number = document.getElementById("edit-client-number").value.trim();
     const zip = document.getElementById("edit-client-zip").value.trim();
     const city = document.getElementById("edit-client-city").value.trim();
+    const provincia = document.getElementById("edit-client-provincia").value.trim();
     const phone = document.getElementById("edit-client-phone").value.trim();
 
     const address = `${street} ${number}, ${zip} ${city}`.trim().replace(/\s+/g, ' ');
@@ -8875,12 +8904,16 @@ async function saveEditDbClient(e) {
         }
     }
 
-    dbClients[idx].name = document.getElementById("edit-client-name").value.trim();
+    dbClients[idx].abonado = abonado;
+    dbClients[idx].name = name;
+    dbClients[idx].nombre_sistema = nombre_sistema;
+    dbClients[idx].sistema = sistema;
     dbClients[idx].calle = street;
     dbClients[idx].numero = number;
     dbClients[idx].codigo_postal = zip;
     dbClients[idx].ciudad = city;
     dbClients[idx].address = address;
+    dbClients[idx].provincia = provincia;
     dbClients[idx].phone = phone;
     dbClients[idx].lat = isNaN(latVal) ? null : latVal;
     dbClients[idx].lon = isNaN(lonVal) ? null : lonVal;
@@ -8893,6 +8926,7 @@ async function saveEditDbClient(e) {
     // Refrescar paneles
     const searchInput = document.getElementById("admin-clients-search");
     renderAdminRoutesClients(searchInput ? searchInput.value.trim() : "");
+
     renderDbClientsSelectorList();
 
     // Sincronizar cambios en la nube
