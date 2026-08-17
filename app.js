@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.20.01",
+        version: "1.20.03",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -1244,7 +1244,7 @@ async function syncWithCloud(isRetry = false) {
 // Lock application and wipe password from memory
 function lockVault() {
     state.masterPassword = "";
-    state.vault = { version: "1.20.02", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [], sim_cards: [] };
+    state.vault = { version: "1.20.03", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [], sim_cards: [] };
     state.gitSha = null;
     state.currentUser = null;
     
@@ -8991,8 +8991,55 @@ function showRouteSearchSuggestions(query) {
 }
 
 // ==========================================
-// MÓDULO DE TARJETAS SIM v1.20.02 (CON OCR)
+// MÓDULO DE TARJETAS SIM v1.20.03 (CON OCR MEJORADO)
 // ==========================================
+
+function processOcrImage(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const maxW = 1200; // Mayor resolución para lectura precisa
+                let w = img.width;
+                let h = img.height;
+                if (w > maxW) {
+                    h = Math.round((maxW * h) / w);
+                    w = maxW;
+                }
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                
+                // Conversión a escala de grises y aumento de contraste para mejorar OCR
+                const imgData = ctx.getImageData(0, 0, w, h);
+                const data = imgData.data;
+                for (let i = 0; i < data.length; i += 4) {
+                    const brightness = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                    let val = brightness;
+                    // Ampliar el contraste
+                    if (val > 128) {
+                        val = Math.min(255, val + (val - 128) * 0.5);
+                    } else {
+                        val = Math.max(0, val - (128 - val) * 0.5);
+                    }
+                    data[i] = val;
+                    data[i + 1] = val;
+                    data[i + 2] = val;
+                }
+                ctx.putImageData(imgData, 0, 0);
+                
+                resolve(canvas.toDataURL('image/jpeg', 0.9));
+            };
+            img.onerror = reject;
+            img.src = event.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
 
 async function handleSimOcrCapture(evt) {
     const file = evt.target.files[0];
@@ -9006,9 +9053,9 @@ async function handleSimOcrCapture(evt) {
     showLoading(true, "Procesando imagen con OCR...");
 
     try {
-        const compressedBase64 = await processAndCompressImage(file);
+        const compressedBase64 = await processOcrImage(file);
         
-        // Run Tesseract OCR on the compressed image
+        // Ejecutar Tesseract OCR en la imagen pre-procesada de alta calidad
         const result = await Tesseract.recognize(
             compressedBase64,
             'deu+eng+spa',
@@ -9024,19 +9071,48 @@ async function handleSimOcrCapture(evt) {
         const text = result.data.text;
         console.log("OCR Detected Text:", text);
 
-        // 1. Extract ICCID (usually a 19-digit number starting with 89)
-        const cleanText = text.replace(/[\s\-\.]/g, ''); // remove spaces/dashes/dots for tight matching
-        const iccidMatch = cleanText.match(/\b(89\d{17,18})\b/) || text.match(/\b(89\d{17,18})\b/);
+        // Limpiar errores comunes de OCR en secuencias de dígitos
+        const normalizeNumbers = (str) => {
+            return str
+                .replace(/O/gi, '0')
+                .replace(/[Il]/g, '1')
+                .replace(/B/g, '8')
+                .replace(/S/gi, '5')
+                .replace(/G/g, '6');
+        };
+
+        const cleanText = text.replace(/[^a-zA-Z0-9]/g, '');
+        const normalizedText = normalizeNumbers(cleanText);
+        
+        console.log("OCR Normalized text:", normalizedText);
+
+        // 1. Extraer ICCID (SIM que empieza por 89)
+        const iccidMatch = normalizedText.match(/(89\d{15,18})/);
         if (iccidMatch) {
             document.getElementById("sim-iccid").value = iccidMatch[1];
         } else {
-            const anyLongNum = cleanText.match(/\b(\d{19,20})\b/) || text.match(/\b(\d{19,20})\b/);
-            if (anyLongNum) {
-                document.getElementById("sim-iccid").value = anyLongNum[1];
+            // Intentar buscar línea por línea con limpieza
+            const lines = text.split('\n');
+            let found = false;
+            for (let line of lines) {
+                const normalizedLine = normalizeNumbers(line.replace(/[^a-zA-Z0-9]/g, ''));
+                const m = normalizedLine.match(/(89\d{15,18})/);
+                if (m) {
+                    document.getElementById("sim-iccid").value = m[1];
+                    found = true;
+                    break;
+                }
+            }
+            // Fallback absoluto: cualquier número largo de 19 dígitos
+            if (!found) {
+                const fallbackMatch = normalizedText.match(/(\d{19,20})/);
+                if (fallbackMatch) {
+                    document.getElementById("sim-iccid").value = fallbackMatch[1];
+                }
             }
         }
 
-        // 2. Extract PIN and PUK
+        // 2. Extraer PIN y PUK
         const pinMatch = text.match(/PIN:?\s*(\d{4})\b/i);
         if (pinMatch) document.getElementById("sim-pin").value = pinMatch[1];
 
@@ -9073,6 +9149,7 @@ function renderSimCards() {
         return (s.name || "").toLowerCase().includes(q) ||
                (s.abonado || "").toLowerCase().includes(q) ||
                (s.phone || "").toLowerCase().includes(q) ||
+               (s.company || "").toLowerCase().includes(q) ||
                (s.iccid || "").toLowerCase().includes(q);
     });
 
@@ -9086,7 +9163,7 @@ function renderSimCards() {
         card.className = "item-card anim-fade";
 
         const titleText = `[${s.abonado || "?"}] ${s.name || "Sin Cliente"}`;
-        const subtext = `📞 Tel: ${s.phone} • ICCID: ${s.iccid} • PIN: ${s.pin || "-"} • PUK: ${s.puk || "-"}`;
+        const subtext = `📞 Tel: ${s.phone} • Compañía: ${s.company || "-"} • ICCID: ${s.iccid} • PIN: ${s.pin || "-"} • PUK: ${s.puk || "-"}`;
 
         let imgHtml = "";
         if (s.photo) {
@@ -9154,6 +9231,7 @@ function openSimCardForm(id = null) {
             document.getElementById("sim-abonado").value = sim.abonado || "";
             document.getElementById("sim-name").value = sim.name || "";
             document.getElementById("sim-phone").value = sim.phone || "";
+            document.getElementById("sim-company").value = sim.company || "";
             document.getElementById("sim-install-date").value = sim.install_date || "";
             document.getElementById("sim-iccid").value = sim.iccid || "";
             document.getElementById("sim-pin").value = sim.pin || "";
@@ -9183,6 +9261,7 @@ async function saveSimCardEntry(e) {
     const abonado = document.getElementById("sim-abonado").value.trim();
     const name = document.getElementById("sim-name").value.trim();
     const phone = document.getElementById("sim-phone").value.trim();
+    const company = document.getElementById("sim-company").value.trim();
     const install_date = document.getElementById("sim-install-date").value;
     const iccid = document.getElementById("sim-iccid").value.trim();
     const pin = document.getElementById("sim-pin").value.trim();
@@ -9203,13 +9282,13 @@ async function saveSimCardEntry(e) {
         if (idx !== -1) {
             state.vault.sim_cards[idx] = {
                 ...state.vault.sim_cards[idx],
-                abonado, name, phone, install_date, iccid, pin, puk, pin2, puk2, photo
+                abonado, name, phone, company, install_date, iccid, pin, puk, pin2, puk2, photo
             };
         }
     } else {
         state.vault.sim_cards.push({
             id: Date.now() + "_" + Math.random().toString(36).substr(2, 9),
-            abonado, name, phone, install_date, iccid, pin, puk, pin2, puk2, photo
+            abonado, name, phone, company, install_date, iccid, pin, puk, pin2, puk2, photo
         });
     }
 
