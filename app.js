@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.20.04",
+        version: "1.20.05",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -1244,7 +1244,7 @@ async function syncWithCloud(isRetry = false) {
 // Lock application and wipe password from memory
 function lockVault() {
     state.masterPassword = "";
-    state.vault = { version: "1.20.04", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [], sim_cards: [] };
+    state.vault = { version: "1.20.05", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [], sim_cards: [] };
     state.gitSha = null;
     state.currentUser = null;
     
@@ -8065,7 +8065,7 @@ function exportRoutesClientsTemplate() {
                 "Codigo Posta": "46016", 
                 Ciudad: "Tavernes Blanques", 
                 Provincia: "Valencia", 
-                Sistema: "P.C.I.", 
+                Sistemas: "P.C.I.", 
                 Telefono: "600111222" 
             },
             { 
@@ -8077,7 +8077,7 @@ function exportRoutesClientsTemplate() {
                 "Codigo Posta": "29140", 
                 Ciudad: "Churriana", 
                 Provincia: "Málaga", 
-                Sistema: "Alarma Paradox", 
+                Sistemas: "Alarma Paradox", 
                 Telefono: "699333444" 
             }
         ];
@@ -8118,7 +8118,9 @@ function importRoutesClientsExcel(e) {
             }
 
             const importedClients = [];
-            rows.forEach((row) => {
+            // Usar bucle async secuencial para geocodificar las direcciones una por una respetando el límite de Nominatim
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
                 let abonado = row["Abonado"] || row["abonado"] || row["Nº Abonado"] || row["Código"] || "";
                 let name = row["Nombre Clier"] || row["Nombre Cliente"] || row["Nombre"] || row["nombre"] || row["Client"] || "";
                 let nombre_sistema = row["sistema"] || row["Ubicacion"] || row["Ubicación"] || row["Nombre Sistema"] || "";
@@ -8136,7 +8138,7 @@ function importRoutesClientsExcel(e) {
                 }
 
                 let provincia = row["Provincia"] || row["provincia"] || row["State"] || "";
-                let sistema = row["Sistema"] || row["System"] || "";
+                let sistema = row["Sistemas"] || row["Sistema"] || row["System"] || "";
                 let phone = row["Telefono"] || row["teléfono"] || row["Teléfono"] || row["phone"] || "";
 
                 abonado = String(abonado).trim();
@@ -8148,6 +8150,19 @@ function importRoutesClientsExcel(e) {
                 phone = String(phone).trim();
 
                 if (name && address) {
+                    if (statusDiv) {
+                        statusDiv.textContent = `Analizando dirección ${i + 1} de ${rows.length}: ${name}...`;
+                    }
+                    
+                    let coords = null;
+                    try {
+                        coords = await geocodeAddress(address);
+                        // Breve espera de 1s para no ser bloqueados por Nominatim (límite de 1 pet/s)
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    } catch (geocodingErr) {
+                        console.error("Error geocodificando durante la importación:", geocodingErr);
+                    }
+
                     importedClients.push({
                         abonado: abonado,
                         name: name,
@@ -8159,10 +8174,12 @@ function importRoutesClientsExcel(e) {
                         address: address,
                         provincia: provincia,
                         sistema: sistema,
-                        phone: phone
+                        phone: phone,
+                        lat: coords ? coords.lat : null,
+                        lon: coords ? coords.lon : null
                     });
                 }
-            });
+            }
 
             if (importedClients.length === 0) {
                 showToast("No se encontraron filas válidas con Nombre y Dirección");
@@ -8296,38 +8313,41 @@ async function addDbClientToRouteByIndex(idx) {
     const client = dbClients[idx];
     if (!client) return;
 
-    showLoading(true, `Buscando ubicación de ${client.name}...`);
-
-    try {
-        const coords = await geocodeAddress(client.address);
-
-        state.routes.clients.push({
-            abonado: client.abonado || "",
-            name: client.name,
-            nombre_sistema: client.nombre_sistema || "",
-            address: client.address,
-            provincia: client.provincia || "",
-            sistema: client.sistema || "",
-            phone: client.phone || "",
-            lat: coords ? coords.lat : null,
-            lon: coords ? coords.lon : null
-        });
-
-        localStorage.setItem("ats_routes_clients", JSON.stringify(state.routes.clients));
-        
-        renderRouteClients();
-        
-        // Refrescar selector para mostrar que se añadió
-        const searchInput = document.getElementById("routes-db-client-search");
-        renderDbClientsSelectorList(searchInput ? searchInput.value.trim() : "");
-        
-        showToast(coords ? `${client.name} añadido` : `${client.name} añadido (sin coordenadas exactas)`);
-    } catch (err) {
-        console.error("Error al añadir cliente:", err);
-        showToast("Error al procesar dirección del cliente");
-    } finally {
-        showLoading(false);
+    let coords = null;
+    if (client.lat && client.lon) {
+        coords = { lat: client.lat, lon: client.lon };
+    } else {
+        showLoading(true, `Buscando ubicación de ${client.name}...`);
+        try {
+            coords = await geocodeAddress(client.address);
+        } catch (err) {
+            console.error("Error al añadir cliente:", err);
+        } finally {
+            showLoading(false);
+        }
     }
+
+    state.routes.clients.push({
+        abonado: client.abonado || "",
+        name: client.name,
+        nombre_sistema: client.nombre_sistema || "",
+        address: client.address,
+        provincia: client.provincia || "",
+        sistema: client.sistema || "",
+        phone: client.phone || "",
+        lat: coords ? coords.lat : null,
+        lon: coords ? coords.lon : null
+    });
+
+    localStorage.setItem("ats_routes_clients", JSON.stringify(state.routes.clients));
+    
+    renderRouteClients();
+    
+    // Refrescar selector para mostrar que se añadió
+    const searchInput = document.getElementById("routes-db-client-search");
+    renderDbClientsSelectorList(searchInput ? searchInput.value.trim() : "");
+    
+    showToast(coords ? `${client.name} añadido` : `${client.name} añadido (sin coordenadas exactas)`);
 }
 
 async function clearDbClients() {
