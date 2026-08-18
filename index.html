@@ -42,10 +42,14 @@
                 <div style="text-align: center;">
                     <div style="font-size: 2.2rem; margin-bottom: 8px;">🚀</div>
                     <h2 style="font-size: 1.3rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">¡Aplicación Actualizada!</h2>
-                    <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3);">Versión 1.20.06</span>
+                    <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3);">Versión 1.20.07</span>
                 </div>
                 
                 <div style="border-top: 1px solid var(--border-glass); border-bottom: 1px solid var(--border-glass); padding: 14px 0; max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; line-height: 1.4; color: var(--text-primary);">
+                    <div>
+                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">🚗 v1.20.07 - Borrado de Historial, Geocodificación Exacta y Filtro de Duplicados</strong>
+                        <p style="margin: 0; color: var(--text-secondary);">El historial de rutas se limpia automáticamente al entrar. La optimización de rutas ahora realiza geocodificación exacta en caliente de todos los clientes sin coordenadas. En la lista de rutas se resalta la información de cliente y sistema. En los ajustes de clientes se evita la duplicación de sistemas.</p>
+                    </div>
                     <div>
                         <strong style="color: var(--accent); display: block; margin-bottom: 3px;">🚗 v1.20.06 - Geocodificación y Carga Manual Desplegable</strong>
                         <p style="margin: 0; color: var(--text-secondary);">Corregido un problema en el formateador de direcciones que dificultaba la geolocalización de calles (C/). Añadida limpieza automática de búsquedas al entrar en la pantalla de rutas. La sección de agregar cliente manual ahora es un desplegable opcional.</p>
@@ -111,7 +115,7 @@
                     <input type="password" id="login-password" class="input-control" placeholder="Contraseña" required>
                 </div>
                 <div style="margin-top: 20px; font-size: 0.8rem; color: var(--text-secondary); text-align: center;">
-                    Versión 1.20.06 - By JMSYSTEMAS
+                    Versión 1.20.07 - By JMSYSTEMAS
                 </div>
                 <button id="btn-login" class="btn-premium">
                     <i class="bx bx-key"></i> DESBLOQUEAR
@@ -183,7 +187,7 @@
                         </div>
                     </div>
                     <div style="text-align: center; margin-top: 40px; font-size: 0.8rem; color: var(--text-secondary);" class="dashboard-footer">
-                        Versión 1.20.06 - JMSYSTEMAS
+                        Versión 1.20.07 - JMSYSTEMAS
                     </div>
                 </div>
 
@@ -1876,7 +1880,7 @@
                         </div>
                     </div>
 
-                    <!-- Seccion Desplegable: Agregar Cliente Manualmente v1.20.06 -->
+                    <!-- Seccion Desplegable: Agregar Cliente Manualmente v1.20.07 -->
                     <div class="accordion-header" id="accordion-add-client-manual" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 12px 16px; background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); margin-bottom: 12px; transition: var(--transition-smooth); user-select: none;">
                         <h3 style="font-size: 0.95rem; margin: 0; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
                             <i class="bx bx-user-plus" style="color: var(--accent);"></i> Agregar Cliente Manualmente

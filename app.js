@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.20.06",
+        version: "1.20.07",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -440,7 +440,7 @@ function setupEventListeners() {
         });
     }
 
-    // Acordeón Agregar Cliente Manualmente v1.20.06
+    // Acordeón Agregar Cliente Manualmente v1.20.07
     const accManualHeader = document.getElementById("accordion-add-client-manual");
     const accManualContent = document.getElementById("add-client-manual-content");
     if (accManualHeader && accManualContent) {
@@ -1260,7 +1260,7 @@ async function syncWithCloud(isRetry = false) {
 // Lock application and wipe password from memory
 function lockVault() {
     state.masterPassword = "";
-    state.vault = { version: "1.20.06", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [], sim_cards: [] };
+    state.vault = { version: "1.20.07", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [], sim_cards: [] };
     state.gitSha = null;
     state.currentUser = null;
     
@@ -7530,17 +7530,21 @@ function debounce(func, delay = 250) {
 // ==========================================
 
 async function initRoutesScreen() {
-    // Restaurar clientes de la caché
-    try {
-        const cached = localStorage.getItem("ats_routes_clients");
-        if (cached) {
-            state.routes.clients = JSON.parse(cached);
-        } else {
-            state.routes.clients = [];
+    // Borrar histórico de rutas al entrar
+    state.routes.clients = [];
+    state.routes.optimizedPath = [];
+    localStorage.removeItem("ats_routes_clients");
+
+    if (state.routes.map) {
+        try {
+            state.routes.map.remove();
+        } catch (e) {
+            console.warn("Error removing map:", e);
         }
-    } catch (e) {
-        state.routes.clients = [];
+        state.routes.map = null;
     }
+    state.routes.markers = [];
+    state.routes.polyline = null;
 
     // Borrar búsquedas y sugerencias antiguas al entrar
     const clientSearchInput = document.getElementById("routes-db-client-search");
@@ -7692,16 +7696,15 @@ function renderRouteClients() {
             : `<span style="color: #ef4444; font-size: 0.75rem;"><i class="bx bx-x-circle"></i> No geolocalizado</span>`;
 
         const abonadoLabel = client.abonado ? `[${client.abonado}] ` : '';
-        const provinciaLabel = client.provincia ? ` (${client.provincia})` : '';
-        const nombreSistemaLabel = client.nombre_sistema ? ` - ${client.nombre_sistema}` : '';
 
         html += `
             <div class="route-client-card">
                 <div class="route-client-info">
-                    <span class="route-client-title">${abonadoLabel}${escapeHtml(client.name)}${nombreSistemaLabel}${provinciaLabel}</span>
-                    <span class="route-client-meta">
-                        <span><i class="bx bx-building"></i> Ubicación/Sistema: <strong>${escapeHtml(client.nombre_sistema || 'Sin ubicación')}</strong></span>
-                        <span><i class="bx bx-cog"></i> Tipo de Sistema: <strong>${escapeHtml(client.sistema || 'General')}</strong></span>
+                    <span class="route-client-title" style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); display: block;">${abonadoLabel}${escapeHtml(client.name)}</span>
+                    <span style="font-size: 0.8rem; color: var(--accent); font-weight: 600; margin-top: 3px; display: block;">
+                        <i class="bx bx-cog"></i> Sistema: <strong>${escapeHtml(client.nombre_sistema || 'Sin ubicación')}</strong>${client.sistema ? ` (${escapeHtml(client.sistema)})` : ''}
+                    </span>
+                    <span class="route-client-meta" style="margin-top: 5px; display: flex; flex-direction: column; gap: 2px;">
                         <span><i class="bx bx-map"></i> ${escapeHtml(client.address)}</span>
                         <span><i class="bx bx-phone"></i> ${escapeHtml(client.phone)}</span>
                         ${mapBadge}
@@ -7919,11 +7922,40 @@ async function optimizeRoute() {
 
         // 2. Ejecutar algoritmo TSP del vecino más cercano
         let unvisited = [...state.routes.clients];
-        let orderedPath = [];
-        let currentLat = startLat;
-        let currentLon = startLon;
 
-        // Si hay clientes sin geolocalización, los ubicamos ficticiamente al lado del origen para que no rompa el algoritmo
+        // Geocodificar en caliente cualquier cliente que no tenga coordenadas
+        const unlocalizedClients = unvisited.filter(c => !c.lat || !c.lon);
+        if (unlocalizedClients.length > 0) {
+            for (let i = 0; i < unlocalizedClients.length; i++) {
+                const c = unlocalizedClients[i];
+                showLoading(true, `Localizando dirección exacta de ${c.name} (${i + 1}/${unlocalizedClients.length})...`);
+                try {
+                    const addrToGeocode = c.address || `${c.calle || ''} ${c.numero || ''}, ${c.codigo_postal || ''} ${c.ciudad || ''}`;
+                    const coords = await geocodeAddress(addrToGeocode);
+                    if (coords) {
+                        c.lat = coords.lat;
+                        c.lon = coords.lon;
+                        c.unlocalized = false;
+
+                        // Actualizar en el estado global de rutas
+                        const stateClient = state.routes.clients.find(sc => sc.name === c.name && sc.address === c.address);
+                        if (stateClient) {
+                            stateClient.lat = coords.lat;
+                            stateClient.lon = coords.lon;
+                        }
+                    }
+                } catch (geocodeErr) {
+                    console.error("Error geocodificando en caliente:", geocodeErr);
+                }
+                // Esperar 1 segundo para no ser bloqueados por Nominatim (límite de 1 pet/s)
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            // Guardar cambios en el almacenamiento local
+            localStorage.setItem("ats_routes_clients", JSON.stringify(state.routes.clients));
+            renderRouteClients();
+        }
+
+        // Si después de intentar geocodificar siguen sin coordenadas, los ubicamos ficticiamente al lado del origen
         unvisited.forEach(c => {
             if (!c.lat || !c.lon) {
                 c.lat = startLat + (Math.random() - 0.5) * 0.01;
@@ -7931,6 +7963,10 @@ async function optimizeRoute() {
                 c.unlocalized = true;
             }
         });
+
+        let orderedPath = [];
+        let currentLat = startLat;
+        let currentLon = startLon;
 
         let totalDistance = 0;
 
@@ -7976,17 +8012,14 @@ async function optimizeRoute() {
             const distStr = client.distanceFromPrev.toFixed(1) + " km";
             const unlocWarning = client.unlocalized ? `<span style="color: var(--warning); display: block; font-size: 0.7rem; margin-top: 3px;"><i class="bx bx-error"></i> Dirección aproximada (no localizada exacta)</span>` : '';
             const abonadoText = client.abonado ? `[${client.abonado}] ` : '';
-            const provinciaText = client.provincia ? ` (${client.provincia})` : '';
-            const nombreSistemaLabel = client.nombre_sistema ? ` - ${client.nombre_sistema}` : '';
 
             itinHtml += `
                 <div class="itinerary-step">
                     <div class="itinerary-step-badge">${idx + 1}</div>
                     <div class="itinerary-step-content">
-                        <strong>${abonadoText}${escapeHtml(client.name)}${nombreSistemaLabel}${provinciaText}</strong>
+                        <strong style="font-size: 0.9rem; color: var(--text-primary);">${abonadoText}${escapeHtml(client.name)}</strong>
                         <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 3px;">
-                            <span><i class="bx bx-building"></i> Ubicación/Sistema: <strong>${escapeHtml(client.nombre_sistema || 'Sin ubicación')}</strong></span><br>
-                            <span><i class="bx bx-cog"></i> Tipo de Sistema: <strong>${escapeHtml(client.sistema || 'General')}</strong></span><br>
+                            <span style="color: var(--accent); font-weight: 600; font-size: 0.78rem; display: block; margin-bottom: 2px;"><i class="bx bx-cog"></i> Sistema: <strong>${escapeHtml(client.nombre_sistema || 'Sin ubicación')}</strong>${client.sistema ? ` (${escapeHtml(client.sistema)})` : ''}</span>
                             <span><i class="bx bx-map"></i> ${escapeHtml(client.address)}</span><br>
                             <span><i class="bx bx-phone"></i> ${escapeHtml(client.phone)}</span><br>
                             <span style="color: var(--accent); font-weight: 600;"><i class="bx bx-right-arrow-alt"></i> A ${distStr} de la parada anterior</span>
@@ -8162,6 +8195,7 @@ function importRoutesClientsExcel(e) {
             }
 
             const importedClients = [];
+            const seenSystems = new Set();
             // Usar bucle async secuencial para geocodificar las direcciones una por una respetando el límite de Nominatim
             for (let i = 0; i < rows.length; i++) {
                 const row = rows[i];
@@ -8194,6 +8228,14 @@ function importRoutesClientsExcel(e) {
                 phone = String(phone).trim();
 
                 if (name && address) {
+                    if (nombre_sistema) {
+                        const systemKey = nombre_sistema.toLowerCase();
+                        if (seenSystems.has(systemKey)) {
+                            console.log(`Saltando fila con sistema duplicado: ${nombre_sistema}`);
+                            continue;
+                        }
+                        seenSystems.add(systemKey);
+                    }
                     if (statusDiv) {
                         statusDiv.textContent = `Analizando dirección ${i + 1} de ${rows.length}: ${name}...`;
                     }
@@ -8328,8 +8370,11 @@ function renderDbClientsSelectorList(query = "") {
 
         card.innerHTML = `
             <div style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0;">
-                <span style="font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${abonadoBadge}${escapeHtml(client.name)}</span>
-                <span style="font-size: 0.7rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(client.address.split(',')[0])}${provinciaText}${nombreSistemaText}${sistemaText}</span>
+                <span style="font-weight: 700; color: var(--text-primary); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${abonadoBadge}${escapeHtml(client.name)}</span>
+                <span style="font-size: 0.78rem; color: var(--accent); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    <i class="bx bx-cog"></i> Sistema: <strong>${escapeHtml(client.nombre_sistema || 'Sin ubicación')}</strong>${client.sistema ? ` (${escapeHtml(client.sistema)})` : ''}
+                </span>
+                <span style="font-size: 0.7rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(client.address.split(',')[0])}${provinciaText}</span>
             </div>
         `;
 
@@ -8946,6 +8991,15 @@ async function saveEditDbClient(e) {
     const city = document.getElementById("edit-client-city").value.trim();
     const provincia = document.getElementById("edit-client-provincia").value.trim();
     const phone = document.getElementById("edit-client-phone").value.trim();
+
+    // Evitar duplicar sistema: el cliente se puede repetir, pero sistema solo uno
+    if (nombre_sistema) {
+        const isDuplicateSystem = dbClients.some((c, i) => i !== idx && c && String(c.nombre_sistema).trim().toLowerCase() === nombre_sistema.toLowerCase());
+        if (isDuplicateSystem) {
+            showToast("Error: Ya existe un cliente con ese mismo Sistema/Ubicación");
+            return;
+        }
+    }
 
     const address = `${street} ${number}, ${zip} ${city}`.trim().replace(/\s+/g, ' ');
 
