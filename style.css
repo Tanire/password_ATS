@@ -1923,3 +1923,142 @@ input:checked + .switch-slider:before {
 .incident-photo-remove:hover {
     background: var(--danger);
 }
+
+/* ========================================================================= */
+/* ADAPTIVE SYSTEM: MOBILE vs PC LAYOUT ENGINE (v1.21.03)                   */
+/* ========================================================================= */
+
+/* --- Desktop / PC Mode Adjustments --- */
+body.device-pc #app-container,
+[data-device="pc"] #app-container,
+@media (min-width: 820px) {
+    body:not(.device-mobile) #app-container {
+        max-width: 1400px;
+        height: 100%;
+        margin: 0 auto;
+        border-left: 1px solid var(--border-glass);
+        border-right: 1px solid var(--border-glass);
+        box-shadow: 0 0 50px rgba(0, 0, 0, 0.6);
+    }
+
+    body:not(.device-mobile) header {
+        padding: 0 28px;
+        height: 68px;
+    }
+
+    body:not(.device-mobile) main {
+        max-width: 1320px;
+        padding: 24px 30px 90px;
+    }
+
+    body:not(.device-mobile) .menu-grid {
+        grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+        gap: 16px;
+    }
+
+    body:not(.device-mobile) .menu-card {
+        aspect-ratio: auto;
+        min-height: 125px;
+        padding: 20px 16px;
+        border-radius: var(--radius-lg);
+    }
+
+    body:not(.device-mobile) .menu-card .card-icon {
+        font-size: 2.2rem;
+    }
+
+    body:not(.device-mobile) .menu-card .card-title {
+        font-size: 0.92rem;
+    }
+
+    body:not(.device-mobile) #list-passwords,
+    body:not(.device-mobile) #list-subscribers,
+    body:not(.device-mobile) #list-expenses,
+    body:not(.device-mobile) #vehicles-list-container,
+    body:not(.device-mobile) #sim-cards-list-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        gap: 14px;
+    }
+
+    body:not(.device-mobile) nav {
+        max-width: 620px;
+        margin: 0 auto 12px;
+        border-radius: 24px;
+        border: 1px solid var(--border-glass);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+        height: 62px;
+        background: rgba(18, 20, 30, 0.88);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+    }
+
+    body:not(.device-mobile) .modal-overlay .glass-card {
+        max-width: 650px;
+    }
+}
+
+/* Explicit force PC layout */
+body.device-pc #app-container {
+    max-width: 1400px !important;
+    margin: 0 auto !important;
+    border-left: 1px solid var(--border-glass) !important;
+    border-right: 1px solid var(--border-glass) !important;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.6) !important;
+}
+
+body.device-pc .menu-grid {
+    grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)) !important;
+    gap: 16px !important;
+}
+
+body.device-pc #list-passwords,
+body.device-pc #list-subscribers,
+body.device-pc #list-expenses,
+body.device-pc #vehicles-list-container,
+body.device-pc #sim-cards-list-container {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)) !important;
+    gap: 14px !important;
+}
+
+body.device-pc nav {
+    max-width: 620px !important;
+    margin: 0 auto 12px !important;
+    border-radius: 24px !important;
+    border: 1px solid var(--border-glass) !important;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* --- Mobile Mode Explicit Rules --- */
+body.device-mobile #app-container {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+body.device-mobile .menu-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+}
+
+body.device-mobile #list-passwords,
+body.device-mobile #list-subscribers,
+body.device-mobile #list-expenses,
+body.device-mobile #vehicles-list-container,
+body.device-mobile #sim-cards-list-container {
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+body.device-mobile nav {
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    height: 70px !important;
+}
+

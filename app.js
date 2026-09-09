@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.21.02",
+        version: "1.21.03",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -165,6 +165,7 @@ const NAV_ITEMS_METADATA = {
 // LocalStorage Keys
 const STORAGE_KEYS = {
     THEME: "ats_theme",
+    DEVICE_MODE: "ats_device_mode",
     COMPANY_NAME: "ats_company_name",
     VAULT_CACHE: "ats_vault_encrypted_cache", // Local encrypted copy for offline use
     OFFLINE_QUEUE: "ats_offline_queue"
@@ -231,6 +232,7 @@ const els = {
     
     // Settings fields (UI only)
     setTheme: document.getElementById("set-theme"),
+    setDeviceMode: document.getElementById("set-device-mode"),
     setUiStyle: document.getElementById("set-ui-style"),
     setSounds: document.getElementById("set-sounds"),
     setCompanyName: document.getElementById("set-company-name"),
@@ -250,12 +252,16 @@ document.addEventListener("DOMContentLoaded", () => {
 // Load settings into UI fields
 function loadSettingsFromStorage() {
     els.setTheme.value = localStorage.getItem(STORAGE_KEYS.THEME) || "default";
+    if (els.setDeviceMode) {
+        els.setDeviceMode.value = localStorage.getItem(STORAGE_KEYS.DEVICE_MODE) || "auto";
+    }
     els.setUiStyle.value = localStorage.getItem("ats_ui_style") || "glass";
     els.setSounds.value = localStorage.getItem("ats_sounds") || "on";
     els.setCompanyName.value = localStorage.getItem(STORAGE_KEYS.COMPANY_NAME) || "JMSystems";
     
     applyTheme(els.setTheme.value);
     applyUiStyle(els.setUiStyle.value);
+    applyDeviceMode(localStorage.getItem(STORAGE_KEYS.DEVICE_MODE) || "auto");
     els.lblCompanyName.textContent = els.setCompanyName.value;
 }
 
@@ -446,6 +452,52 @@ function setupEventListeners() {
     if (btnIncidentModalClose) btnIncidentModalClose.addEventListener("click", () => {
         document.getElementById("modal-incident-sent-success").style.display = "none";
         switchScreen(state.fleet.activeVehicleId ? "vehicle-detail" : "vehicles");
+    });
+
+    // Historical Refuels Import / Export Excel (v1.21.03)
+    const btnDownloadRefuelsTemplate = document.getElementById("btn-download-refuels-template");
+    if (btnDownloadRefuelsTemplate) {
+        btnDownloadRefuelsTemplate.addEventListener("click", exportRefuelsExcelTemplate);
+    }
+    const inputImportRefuelsExcel = document.getElementById("input-import-refuels-excel");
+    if (inputImportRefuelsExcel) {
+        inputImportRefuelsExcel.addEventListener("change", importRefuelsExcel);
+    }
+    const btnCloseImportRefuelsModal = document.getElementById("btn-close-import-refuels-modal");
+    if (btnCloseImportRefuelsModal) {
+        btnCloseImportRefuelsModal.addEventListener("click", () => {
+            document.getElementById("modal-import-refuels-confirm").style.display = "none";
+        });
+    }
+    const btnCancelImportRefuels = document.getElementById("btn-cancel-import-refuels");
+    if (btnCancelImportRefuels) {
+        btnCancelImportRefuels.addEventListener("click", () => {
+            document.getElementById("modal-import-refuels-confirm").style.display = "none";
+        });
+    }
+    const btnConfirmImportRefuels = document.getElementById("btn-confirm-import-refuels");
+    if (btnConfirmImportRefuels) {
+        btnConfirmImportRefuels.addEventListener("click", confirmImportRefuels);
+    }
+
+    // Device mode selector change listener (v1.21.03)
+    const setDeviceMode = document.getElementById("set-device-mode");
+    if (setDeviceMode) {
+        setDeviceMode.addEventListener("change", (e) => {
+            applyDeviceMode(e.target.value);
+        });
+    }
+
+    // Window resize handler for dynamic device detection
+    let resizeDeviceTimer = null;
+    window.addEventListener("resize", () => {
+        clearTimeout(resizeDeviceTimer);
+        resizeDeviceTimer = setTimeout(() => {
+            const currentMode = localStorage.getItem(STORAGE_KEYS.DEVICE_MODE) || (state.currentUser?.preferences?.device_mode) || "auto";
+            if (currentMode === "auto") {
+                applyDeviceMode("auto");
+            }
+        }, 150);
     });
 
     // V1.05 Expenses Submenu Navigation
@@ -1129,6 +1181,9 @@ function switchScreen(screenId) {
         renderAdminRoutesClients();
     }
     if (screenId === "settings") {
+        if (els.setDeviceMode) {
+            els.setDeviceMode.value = state.currentUser?.preferences?.device_mode || localStorage.getItem(STORAGE_KEYS.DEVICE_MODE) || "auto";
+        }
         renderInterfaceCustomizer();
     }
 }
@@ -1274,7 +1329,7 @@ async function handleUnlock() {
             ];
             const adminWrapped = await encryptData(vaultKey, vaultKey);
             state.usersMetadata["admin"] = adminWrapped;
-            state.vault.version = "1.21.02";
+            state.vault.version = "1.21.03";
             state.vault.company_name = "ALTA TECNOLOGIA PARA LA SEGURIDAD";
         }
         
@@ -1300,6 +1355,7 @@ async function handleUnlock() {
         const userTheme = activeUser.theme || state.vault.theme || "default";
         const userUiStyle = activeUser.ui_style || state.vault.ui_style || "glass";
         const userSounds = activeUser.sounds || state.vault.sounds || "on";
+        const userDeviceMode = activeUser.preferences?.device_mode || localStorage.getItem(STORAGE_KEYS.DEVICE_MODE) || "auto";
 
         applyTheme(userTheme);
         els.setTheme.value = userTheme;
@@ -1311,6 +1367,10 @@ async function handleUnlock() {
 
         els.setSounds.value = userSounds;
         localStorage.setItem("ats_sounds", userSounds);
+
+        if (els.setDeviceMode) els.setDeviceMode.value = userDeviceMode;
+        localStorage.setItem(STORAGE_KEYS.DEVICE_MODE, userDeviceMode);
+        applyDeviceMode(userDeviceMode);
         if (state.vault.company_name) {
             els.lblCompanyName.textContent = state.vault.company_name;
             els.setCompanyName.value = state.vault.company_name;
@@ -1446,7 +1506,7 @@ async function syncWithCloud(isRetry = false) {
 // Lock application and wipe password from memory
 function lockVault() {
     state.masterPassword = "";
-    state.vault = { version: "1.21.02", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [], sim_cards: [], vehicles: [], vehicle_incidents: [], vehicle_maintenances: [], vehicle_mileages: [] };
+    state.vault = { version: "1.21.03", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [], sim_cards: [], vehicles: [], vehicle_incidents: [], vehicle_maintenances: [], vehicle_mileages: [] };
     state.gitSha = null;
     state.currentUser = null;
     
@@ -2301,17 +2361,20 @@ async function deleteExpenseEntry(id) {
 // Settings form save
 function saveSettingsAction() {
     const theme = els.setTheme.value;
+    const deviceMode = els.setDeviceMode ? els.setDeviceMode.value : "auto";
     const uiStyle = els.setUiStyle.value;
     const sounds = els.setSounds.value;
     const company = els.setCompanyName.value.trim();
 
     localStorage.setItem(STORAGE_KEYS.THEME, theme);
+    localStorage.setItem(STORAGE_KEYS.DEVICE_MODE, deviceMode);
     localStorage.setItem("ats_ui_style", uiStyle);
     localStorage.setItem("ats_sounds", sounds);
     localStorage.setItem(STORAGE_KEYS.COMPANY_NAME, company);
 
     // Apply immediate settings locally
     applyTheme(theme);
+    applyDeviceMode(deviceMode);
     applyUiStyle(uiStyle);
     els.lblCompanyName.textContent = company;
 
@@ -2320,12 +2383,16 @@ function saveSettingsAction() {
         state.currentUser.theme = theme;
         state.currentUser.ui_style = uiStyle;
         state.currentUser.sounds = sounds;
+        if (!state.currentUser.preferences) state.currentUser.preferences = {};
+        state.currentUser.preferences.device_mode = deviceMode;
         
         const idx = state.vault.users.findIndex(u => u.username.toLowerCase() === state.currentUser.username.toLowerCase());
         if (idx !== -1) {
             state.vault.users[idx].theme = theme;
             state.vault.users[idx].ui_style = uiStyle;
             state.vault.users[idx].sounds = sounds;
+            if (!state.vault.users[idx].preferences) state.vault.users[idx].preferences = {};
+            state.vault.users[idx].preferences.device_mode = deviceMode;
         }
     }
     
@@ -2781,6 +2848,35 @@ function applyTheme(theme) {
 
 function applyUiStyle(style) {
     document.getElementById("app-container").setAttribute("data-ui-style", style);
+}
+
+// Adaptive device mode switcher (v1.21.03)
+function applyDeviceMode(mode) {
+    const selectedMode = mode || (els.setDeviceMode ? els.setDeviceMode.value : null) || localStorage.getItem(STORAGE_KEYS.DEVICE_MODE) || (state.currentUser?.preferences?.device_mode) || "auto";
+    
+    let isMobile = false;
+    if (selectedMode === "mobile") {
+        isMobile = true;
+    } else if (selectedMode === "pc") {
+        isMobile = false;
+    } else { // "auto"
+        const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        const isMobileUA = /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isNarrow = window.innerWidth < 820;
+        isMobile = isMobileUA || (isNarrow && isTouch) || isNarrow;
+    }
+
+    const deviceType = isMobile ? "mobile" : "pc";
+    
+    document.documentElement.setAttribute("data-device", deviceType);
+    document.body.classList.remove("device-mobile", "device-pc", "is-mobile", "is-desktop");
+    document.body.classList.add(isMobile ? "device-mobile" : "device-pc");
+    document.body.classList.add(isMobile ? "is-mobile" : "is-desktop");
+    
+    const container = document.getElementById("app-container");
+    if (container) {
+        container.setAttribute("data-device", deviceType);
+    }
 }
 
 // Web Audio API Sound Effects Synthesizer
@@ -8569,6 +8665,430 @@ function importRoutesClientsExcel(e) {
         if (statusDiv) statusDiv.textContent = "Error al abrir archivo";
     };
     reader.readAsBinaryString(file);
+}
+
+// ============================================================================
+// HISTÓRICO DE REPOSTAJES - IMPORTACIÓN Y EXPORTACIÓN EXCEL (v1.21.03)
+// ============================================================================
+
+let pendingRefuelsImport = [];
+
+// Descargar Plantilla Excel Oficial de Repostajes
+function exportRefuelsExcelTemplate() {
+    try {
+        if (typeof XLSX === "undefined") {
+            showToast("Librería Excel (SheetJS) no disponible");
+            return;
+        }
+
+        const data = [
+            {
+                "FECHA": "2023-01-15",
+                "UBICACION": "Repsol Madrid Sur",
+                "VEHICULO / MATRICULA": "1234ABC",
+                "KILOMETROS": 120500,
+                "TIPO DE GASTO": "Combustible",
+                "COSTE": 55.20,
+                "concepto": "Diesel Óptima 38L"
+            },
+            {
+                "FECHA": "2023-02-02",
+                "UBICACION": "Cepsa Getafe",
+                "VEHICULO / MATRICULA": "5678XYZ",
+                "KILOMETROS": 89400,
+                "TIPO DE GASTO": "Combustible",
+                "COSTE": 62.10,
+                "concepto": "Gasolina 95 42L"
+            },
+            {
+                "FECHA": "2023-02-20",
+                "UBICACION": "BP Leganés",
+                "VEHICULO / MATRICULA": "1234ABC",
+                "KILOMETROS": 121150,
+                "TIPO DE GASTO": "Combustible",
+                "COSTE": 48.75,
+                "concepto": "Diesel A 34L"
+            }
+        ];
+
+        const worksheet = XLSX.utils.json_to_sheet(data, {
+            header: ["FECHA", "UBICACION", "VEHICULO / MATRICULA", "KILOMETROS", "TIPO DE GASTO", "COSTE", "concepto"]
+        });
+
+        worksheet["!cols"] = [
+            { wch: 14 },
+            { wch: 22 },
+            { wch: 24 },
+            { wch: 14 },
+            { wch: 16 },
+            { wch: 12 },
+            { wch: 30 }
+        ];
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Repostajes");
+        XLSX.writeFile(workbook, "Plantilla_Historico_Repostajes.xlsx");
+        showToast("📥 Plantilla de Excel de Repostajes descargada");
+    } catch (e) {
+        console.error("Error al exportar plantilla de repostajes", e);
+        showToast("Error al exportar la plantilla");
+    }
+}
+
+// Helper: Parsear fecha desde cualquier formato habitual de Excel o texto
+function parseRefuelExcelDate(val) {
+    if (!val) return "";
+    if (val instanceof Date && !isNaN(val.getTime())) {
+        const year = val.getFullYear();
+        const month = String(val.getMonth() + 1).padStart(2, "0");
+        const day = String(val.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    }
+    
+    // Serial number de Excel (ej: 44927)
+    if (typeof val === "number" || (!isNaN(val) && String(val).trim().length >= 4 && !String(val).includes("-") && !String(val).includes("/"))) {
+        const num = parseFloat(val);
+        if (num > 10000 && num < 90000) {
+            const utc_days = Math.floor(num - 25569);
+            const utc_value = utc_days * 86400;
+            const date_info = new Date(utc_value * 1000);
+            if (!isNaN(date_info.getTime())) {
+                const year = date_info.getUTCFullYear();
+                const month = String(date_info.getUTCMonth() + 1).padStart(2, "0");
+                const day = String(date_info.getUTCDate()).padStart(2, "0");
+                return `${year}-${month}-${day}`;
+            }
+        }
+    }
+    
+    const str = String(val).trim();
+    // DD/MM/YYYY o DD-MM-YYYY o DD.MM.YYYY
+    const dmyMatch = str.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
+    if (dmyMatch) {
+        const day = dmyMatch[1].padStart(2, "0");
+        const month = dmyMatch[2].padStart(2, "0");
+        let year = dmyMatch[3];
+        if (year.length === 2) year = (parseInt(year) > 70 ? "19" : "20") + year;
+        return `${year}-${month}-${day}`;
+    }
+    
+    // YYYY-MM-DD o YYYY/MM/DD
+    const ymdMatch = str.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
+    if (ymdMatch) {
+        const year = ymdMatch[1];
+        const month = ymdMatch[2].padStart(2, "0");
+        const day = ymdMatch[3].padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    }
+    
+    return str.split("T")[0] || "";
+}
+
+// Helper: Parsear coste monetario
+function parseRefuelExcelCost(val) {
+    if (val === null || val === undefined || val === "") return 0.0;
+    if (typeof val === "number") return isNaN(val) ? 0.0 : Math.round(val * 100) / 100;
+    const cleanStr = String(val)
+        .replace(/€/g, "")
+        .replace(/\s+/g, "")
+        .replace(/\$/g, "")
+        .replace(/EUR/gi, "")
+        .replace(/\.(?=\d{3}(?:[,\.]\d{2})?$)/g, "")
+        .replace(",", ".");
+    const num = parseFloat(cleanStr);
+    return isNaN(num) ? 0.0 : Math.round(num * 100) / 100;
+}
+
+// Helper: Parsear kilometraje
+function parseRefuelExcelKm(val) {
+    if (val === null || val === undefined || val === "") return 0.0;
+    if (typeof val === "number") return isNaN(val) ? 0.0 : Math.round(val);
+    const cleanStr = String(val)
+        .replace(/km/gi, "")
+        .replace(/\s+/g, "")
+        .replace(/\.(?=\d{3}(?:[,\.]\d{2})?$)/g, "")
+        .replace(",", ".");
+    const num = parseFloat(cleanStr);
+    return isNaN(num) ? 0.0 : Math.round(num);
+}
+
+// Importar Archivo Excel / CSV de Repostajes
+function importRefuelsExcel(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const statusDiv = document.getElementById("refuels-import-status");
+    if (statusDiv) {
+        statusDiv.style.display = "block";
+        statusDiv.textContent = "⏳ Analizando archivo Excel/CSV...";
+    }
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+        try {
+            const data = evt.target.result;
+            const workbook = XLSX.read(data, { type: 'binary', cellDates: true });
+            
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            // Convert to 2D Array to handle flexible/custom header rows
+            const aoa = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+            
+            if (!aoa || aoa.length === 0) {
+                showToast("El archivo está vacío o no tiene formato válido");
+                if (statusDiv) statusDiv.textContent = "❌ Error: Archivo vacío";
+                return;
+            }
+
+            // Identify Header Row index and column positions
+            let headerRowIndex = -1;
+            let colMap = {
+                date: 0,
+                location: 1,
+                vehicle: 2,
+                km: 3,
+                type: 4,
+                cost: 5,
+                concept: 6
+            };
+
+            for (let r = 0; r < Math.min(5, aoa.length); r++) {
+                const row = aoa[r] || [];
+                const rowStr = row.map(c => String(c).trim().toLowerCase()).join(" ");
+                if (rowStr.includes("fecha") || rowStr.includes("ubicacion") || rowStr.includes("matricula") || rowStr.includes("vehiculo") || rowStr.includes("kilometro") || rowStr.includes("coste")) {
+                    headerRowIndex = r;
+                    row.forEach((cell, cIdx) => {
+                        const cellStr = String(cell).trim().toLowerCase().replace(/[\r\n"']/g, "");
+                        if (cellStr.includes("fecha") || cellStr.includes("date")) colMap.date = cIdx;
+                        else if (cellStr.includes("ubicaci") || cellStr.includes("gasolinera") || cellStr.includes("estacion") || cellStr.includes("lugar") || cellStr.includes("location")) colMap.location = cIdx;
+                        else if (cellStr.includes("vehiculo") || cellStr.includes("vehículo") || cellStr.includes("matricula") || cellStr.includes("matrícula") || cellStr.includes("plate") || cellStr.includes("coche")) colMap.vehicle = cIdx;
+                        else if (cellStr.includes("kilometro") || cellStr.includes("kilómetro") || cellStr.includes("km") || cellStr.includes("odometro") || cellStr.includes("odómetro") || cellStr.includes("kilometraje")) colMap.km = cIdx;
+                        else if (cellStr.includes("tipo") || cellStr.includes("categoria") || cellStr.includes("categoría")) colMap.type = cIdx;
+                        else if (cellStr.includes("coste") || cellStr.includes("importe") || cellStr.includes("precio") || cellStr.includes("total") || cellStr.includes("monto") || cellStr.includes("amount") || cellStr.includes("€")) colMap.cost = cIdx;
+                        else if (cellStr.includes("concepto") || cellStr.includes("descripci") || cellStr.includes("notas") || cellStr.includes("observaci")) colMap.concept = cIdx;
+                    });
+                    break;
+                }
+            }
+
+            const startRow = headerRowIndex >= 0 ? headerRowIndex + 1 : 0;
+            const candidateExpenses = [];
+            let duplicatesCount = 0;
+            const detectedPlates = new Set();
+            let totalAmountSum = 0.0;
+            let minDate = "";
+            let maxDate = "";
+
+            const existingExpenses = state.vault.expenses || [];
+
+            for (let i = startRow; i < aoa.length; i++) {
+                const row = aoa[i];
+                if (!row || row.length === 0) continue;
+
+                const rawDate = row[colMap.date];
+                const rawLocation = String(row[colMap.location] || "").trim();
+                const rawVehicle = String(row[colMap.vehicle] || "").trim();
+                const rawKm = row[colMap.km];
+                const rawType = String(row[colMap.type] || "").trim();
+                const rawCost = row[colMap.cost];
+                const rawConcept = String(row[colMap.concept] || "").trim();
+
+                if (!rawDate && !rawLocation && !rawVehicle && !rawKm && !rawCost && !rawConcept) {
+                    continue;
+                }
+
+                const parsedDate = parseRefuelExcelDate(rawDate) || new Date().toISOString().split("T")[0];
+                const parsedKm = parseRefuelExcelKm(rawKm);
+                const parsedCost = parseRefuelExcelCost(rawCost);
+                const cleanPlate = normalizePlate(rawVehicle);
+                
+                let brandModel = "";
+                if (rawVehicle) {
+                    if (rawVehicle.includes(" ")) {
+                        const parts = rawVehicle.split(" ");
+                        if (normalizePlate(parts[0]) === cleanPlate) {
+                            brandModel = parts.slice(1).join(" ").trim();
+                        } else if (normalizePlate(parts[parts.length - 1]) === cleanPlate) {
+                            brandModel = parts.slice(0, parts.length - 1).join(" ").trim();
+                        }
+                    }
+                }
+
+                let category = "Combustible";
+                const typeLower = rawType.toLowerCase();
+                if (rawType) {
+                    if (typeLower.includes("combustible") || typeLower.includes("gasolina") || typeLower.includes("diesel") || typeLower.includes("gasoil") || typeLower.includes("repostaje") || typeLower.includes("carburante")) {
+                        category = "Combustible";
+                    } else {
+                        category = rawType.charAt(0).toUpperCase() + rawType.slice(1);
+                    }
+                }
+
+                let liters = 0.0;
+                if (rawConcept) {
+                    const litMatch = rawConcept.match(/(?:•|\s|^)(\d+(?:[\.,]\d+)?)\s*(?:l|litros|litro)\b/i);
+                    if (litMatch) {
+                        liters = parseFloat(litMatch[1].replace(',', '.')) || 0.0;
+                    }
+                }
+
+                let finalConcept = rawConcept;
+                if (!finalConcept) {
+                    finalConcept = `[${cleanPlate || rawVehicle || "VEHÍCULO"}] Repostaje combustible • ${parsedKm > 0 ? parsedKm + " km" : parsedCost + "€"}`;
+                }
+
+                const expenseData = {
+                    id: Date.now() + i + Math.floor(Math.random() * 1000),
+                    date: parsedDate,
+                    category: category,
+                    concept: finalConcept,
+                    amount: parsedCost,
+                    owner: state.currentUser ? state.currentUser.username : "admin",
+                    user_name: state.currentUser ? (state.currentUser.fullName || state.currentUser.username.toUpperCase()) : "ADMINISTRADOR",
+                    image_path: "",
+                    vehicle: cleanPlate || rawVehicle,
+                    kilometers: parsedKm,
+                    brand_model: brandModel,
+                    liters: liters,
+                    location: rawLocation
+                };
+
+                const isDuplicate = existingExpenses.some(ex => {
+                    const exPlate = normalizePlate(ex.vehicle || "");
+                    const samePlate = (!cleanPlate && !exPlate) || (exPlate === cleanPlate);
+                    const sameDate = (ex.date || "") === parsedDate;
+                    const sameCost = Math.abs((ex.amount || 0) - parsedCost) < 0.05;
+                    const sameKm = parsedKm > 0 && Math.abs((parseFloat(ex.kilometers) || 0) - parsedKm) < 1;
+                    return sameDate && samePlate && (sameCost || sameKm);
+                });
+
+                if (isDuplicate) {
+                    duplicatesCount++;
+                } else {
+                    candidateExpenses.push(expenseData);
+                    if (cleanPlate) detectedPlates.add(cleanPlate);
+                    totalAmountSum += parsedCost;
+                    if (!minDate || parsedDate < minDate) minDate = parsedDate;
+                    if (!maxDate || parsedDate > maxDate) maxDate = parsedDate;
+                }
+            }
+
+            if (candidateExpenses.length === 0 && duplicatesCount === 0) {
+                showToast("No se encontraron registros válidos en el archivo");
+                if (statusDiv) statusDiv.textContent = "❌ No se encontraron registros";
+                return;
+            }
+
+            pendingRefuelsImport = candidateExpenses;
+
+            const elCount = document.getElementById("refuels-preview-count");
+            const elDupes = document.getElementById("refuels-preview-dupes");
+            const elTotal = document.getElementById("refuels-preview-total");
+            const elDates = document.getElementById("refuels-preview-dates");
+            const elVehicles = document.getElementById("refuels-preview-vehicles");
+            const elTbody = document.getElementById("refuels-preview-table-body");
+
+            if (elCount) elCount.textContent = candidateExpenses.length;
+            if (elDupes) elDupes.textContent = duplicatesCount;
+            if (elTotal) elTotal.textContent = `${totalAmountSum.toFixed(2)} €`;
+            if (elDates) {
+                elDates.textContent = minDate && maxDate ? `${formatSpanishDate(minDate)} → ${formatSpanishDate(maxDate)}` : "—";
+            }
+
+            if (elVehicles) {
+                elVehicles.innerHTML = "";
+                if (detectedPlates.size === 0) {
+                    elVehicles.innerHTML = `<span style="font-size: 0.75rem; color: var(--text-secondary);">Ningún vehículo con matrícula específica detectado</span>`;
+                } else {
+                    detectedPlates.forEach(plate => {
+                        const badge = document.createElement("span");
+                        badge.style.cssText = "font-size: 0.75rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: var(--accent-glass); color: var(--accent); border: 1px solid var(--border-glass); font-family: monospace;";
+                        badge.textContent = plate;
+                        elVehicles.appendChild(badge);
+                    });
+                }
+            }
+
+            if (elTbody) {
+                elTbody.innerHTML = "";
+                const previewRows = candidateExpenses.slice(0, 5);
+                previewRows.forEach(item => {
+                    const tr = document.createElement("tr");
+                    tr.style.cssText = "border-bottom: 1px solid var(--border-glass);";
+                    tr.innerHTML = `
+                        <td style="padding: 6px 8px; white-space: nowrap;">${item.date}</td>
+                        <td style="padding: 6px 8px;">${escapeHtml(item.location || "—")}</td>
+                        <td style="padding: 6px 8px; font-weight: 600; color: var(--accent);">${escapeHtml(item.vehicle || "—")}</td>
+                        <td style="padding: 6px 8px;">${item.kilometers > 0 ? item.kilometers.toLocaleString('es-ES') + " km" : "—"}</td>
+                        <td style="padding: 6px 8px;">${escapeHtml(item.category)}</td>
+                        <td style="padding: 6px 8px; font-weight: 700; color: var(--success);">${item.amount.toFixed(2)} €</td>
+                        <td style="padding: 6px 8px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.concept)}</td>
+                    `;
+                    elTbody.appendChild(tr);
+                });
+            }
+
+            const modal = document.getElementById("modal-import-refuels-confirm");
+            if (modal) modal.style.display = "flex";
+
+            if (statusDiv) {
+                statusDiv.style.display = "block";
+                statusDiv.textContent = `✅ Archivo leído: ${candidateExpenses.length} nuevos registros listos para importar (${duplicatesCount} omitidos por duplicado)`;
+            }
+
+        } catch (err) {
+            console.error("Error al procesar archivo de repostajes", err);
+            showToast("Error al leer el archivo Excel/CSV: " + err.message);
+            if (statusDiv) statusDiv.textContent = "❌ Error al leer el archivo: " + err.message;
+        }
+    };
+
+    reader.readAsBinaryString(file);
+}
+
+// Confirmar e Importar Repostajes Definitivamente
+async function confirmImportRefuels() {
+    if (!pendingRefuelsImport || pendingRefuelsImport.length === 0) {
+        showToast("No hay registros pendientes para importar");
+        const modal = document.getElementById("modal-import-refuels-confirm");
+        if (modal) modal.style.display = "none";
+        return;
+    }
+
+    try {
+        showLoading(true, "Importando repostajes y actualizando flota...");
+        
+        if (!state.vault.expenses) state.vault.expenses = [];
+        
+        state.vault.expenses.push(...pendingRefuelsImport);
+        state.vault.expenses.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+
+        syncVehiclesWithExpensesAndUsers();
+
+        const importedCount = pendingRefuelsImport.length;
+        pendingRefuelsImport = [];
+
+        const input = document.getElementById("input-import-refuels-excel");
+        if (input) input.value = "";
+
+        const modal = document.getElementById("modal-import-refuels-confirm");
+        if (modal) modal.style.display = "none";
+
+        setSyncStatus(false);
+        renderExpenses();
+        if (typeof renderVehiclesList === "function") renderVehiclesList();
+        
+        playSound("success");
+        showToast(`🎉 ¡${importedCount} repostajes importados con éxito y flota actualizada!`);
+        
+        await syncWithCloud();
+    } catch (e) {
+        console.error("Error al confirmar importación de repostajes", e);
+        showToast("Error al importar los datos: " + e.message);
+    } finally {
+        showLoading(false);
+    }
 }
 
 function renderDbClientsSelectorList(query = "") {
