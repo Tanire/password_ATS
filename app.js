@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.21.01",
+        version: "1.21.02",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -334,6 +334,14 @@ function setupEventListeners() {
     
     const btnNewMaintFromDetail = document.getElementById("btn-new-maint-from-detail");
     if (btnNewMaintFromDetail) btnNewMaintFromDetail.addEventListener("click", () => openVehicleMaintenanceForm(state.fleet.activeVehicleId, null));
+    
+    const btnNewFuelFromDetail = document.getElementById("btn-new-fuel-from-detail");
+    if (btnNewFuelFromDetail) {
+        btnNewFuelFromDetail.addEventListener("click", () => {
+            const veh = (state.vault.vehicles || []).find(v => v.id === state.fleet.activeVehicleId);
+            openNewFuelExpenseForVehicle(veh);
+        });
+    }
     
     const btnBackFormVehicle = document.getElementById("btn-back-form-vehicle");
     if (btnBackFormVehicle) btnBackFormVehicle.addEventListener("click", () => switchScreen(state.fleet.activeVehicleId ? "vehicle-detail" : "vehicles"));
@@ -1256,37 +1264,8 @@ async function handleUnlock() {
             state.vault.manual_categories = ["Ademco", "DSC", "Paradox", "Risco", "Galaxy", "Ajax", "Texecom", "General"];
         }
 
-        // Auto-seed fleet from user profiles if fleet is empty
-        if (state.vault.vehicles.length === 0 && state.vault.users && state.vault.users.length > 0) {
-            state.vault.users.forEach(u => {
-                if (u.vehiculo && u.vehiculo.trim()) {
-                    const plate = u.vehiculo.trim().toUpperCase();
-                    if (!state.vault.vehicles.some(v => v.plate === plate)) {
-                        state.vault.vehicles.push({
-                            id: "veh_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
-                            plate: plate,
-                            brand_model: u.vehiculoBrandModel || "Vehículo Técnico",
-                            assigned_user: u.username,
-                            current_km: 0,
-                            km_last_update: new Date().toISOString().split("T")[0],
-                            fuel_type: "Diésel",
-                            status: "operativo",
-                            renting_company: "",
-                            renting_contract: "",
-                            renting_end_date: "",
-                            revision_interval_km: 15000,
-                            next_revision_date: "",
-                            next_revision_km: 0,
-                            itv_date: "",
-                            insurance_company: "",
-                            insurance_phone: "",
-                            photo: "",
-                            notes: "Importado automáticamente de perfil de usuario"
-                        });
-                    }
-                }
-            });
-        }
+        // Auto-synchronize and merge fleet vehicles with fuel expenses and user profiles v1.21.02
+        syncVehiclesWithExpensesAndUsers();
         
         // Automatic default admin user initialization on first unlock
         if (userCount === 0) {
@@ -1295,7 +1274,7 @@ async function handleUnlock() {
             ];
             const adminWrapped = await encryptData(vaultKey, vaultKey);
             state.usersMetadata["admin"] = adminWrapped;
-            state.vault.version = "1.21.01";
+            state.vault.version = "1.21.02";
             state.vault.company_name = "ALTA TECNOLOGIA PARA LA SEGURIDAD";
         }
         
@@ -1467,7 +1446,7 @@ async function syncWithCloud(isRetry = false) {
 // Lock application and wipe password from memory
 function lockVault() {
     state.masterPassword = "";
-    state.vault = { version: "1.21.01", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [], sim_cards: [], vehicles: [], vehicle_incidents: [], vehicle_maintenances: [], vehicle_mileages: [] };
+    state.vault = { version: "1.21.02", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [], sim_cards: [], vehicles: [], vehicle_incidents: [], vehicle_maintenances: [], vehicle_mileages: [] };
     state.gitSha = null;
     state.currentUser = null;
     
@@ -2120,61 +2099,52 @@ function populateVehicleSelector() {
 
     selector.innerHTML = "";
 
-    const userVehicles = new Map(); // plate -> brand/model
+    // Sync fleet vehicles with expenses & users first to ensure complete data
+    syncVehiclesWithExpensesAndUsers();
 
-    // 0. Gather vehicles from state.vault.vehicles (v1.21.01)
+    const userVehicles = new Map(); // plate -> { brand, currentKm, id }
+
+    // 0. Primary source: state.vault.vehicles
     if (state.vault.vehicles) {
         state.vault.vehicles.forEach(v => {
             if (v.plate) {
                 const plate = v.plate.trim().toUpperCase();
                 const brand = (v.brand_model || "").trim();
-                userVehicles.set(plate, brand);
+                const currentKm = parseFloat(v.current_km) || 0;
+                userVehicles.set(plate, { brand, currentKm, id: v.id });
             }
         });
     }
 
-    // 1. Gather vehicles from user profiles
+    // 1. Gather vehicles from user profiles if missing
     if (state.vault.users) {
         state.vault.users.forEach(u => {
             if (u.vehiculo) {
-                const plate = u.vehiculo.trim().toUpperCase();
+                let plate = u.vehiculo.trim().toUpperCase();
                 let brand = (u.vehiculoBrandModel || "").trim();
-                if (!brand && u.vehiculo.includes(" ")) {
-                    const parts = u.vehiculo.trim().split(" ");
+                if (!brand && plate.includes(" ")) {
+                    const parts = plate.split(" ");
+                    plate = parts[0];
                     brand = parts.slice(1).join(" ");
                 }
-                if (!userVehicles.has(plate) || !userVehicles.get(plate)) {
-                    userVehicles.set(plate, brand);
+                if (!userVehicles.has(plate)) {
+                    userVehicles.set(plate, { brand, currentKm: 0, id: "" });
                 }
             }
         });
     }
 
-    // 2. Gather vehicles from existing combustible expenses
-    if (state.vault.expenses) {
-        state.vault.expenses.forEach(e => {
-            if (e.category === "Combustible" && e.vehicle) {
-                const plate = e.vehicle.trim().toUpperCase();
-                const brand = e.brand_model ? e.brand_model.trim() : "";
-                if (plate) {
-                    if (!userVehicles.has(plate) || (brand && !userVehicles.get(plate))) {
-                        userVehicles.set(plate, brand);
-                    }
-                }
-            }
-        });
-    }
-
-    // 3. Create options
+    // 2. Create options
     const defaultOpt = document.createElement("option");
     defaultOpt.value = "";
     defaultOpt.textContent = "— Seleccionar Vehículo —";
     selector.appendChild(defaultOpt);
 
-    userVehicles.forEach((brand, plate) => {
+    userVehicles.forEach((data, plate) => {
         const opt = document.createElement("option");
-        opt.value = `${plate}|${brand}`;
-        opt.textContent = brand ? `${plate} - ${brand}` : plate;
+        opt.value = `${plate}|${data.brand}|${data.currentKm}`;
+        const kmText = data.currentKm > 0 ? ` (${data.currentKm.toLocaleString('es-ES')} km)` : "";
+        opt.textContent = data.brand ? `${plate} - ${data.brand}${kmText}` : `${plate}${kmText}`;
         selector.appendChild(opt);
     });
 
@@ -2185,6 +2155,8 @@ function populateVehicleSelector() {
 
     const vehicleInput = document.getElementById("exp-vehicle");
     const brandModelInput = document.getElementById("exp-brand-model");
+    const kmInput = document.getElementById("exp-kilometers");
+    const kmHelper = document.getElementById("exp-km-helper");
     
     // Auto-select current technician's vehicle if available
     const myVehicle = state.currentUser ? (state.currentUser.vehiculo || "").trim() : "";
@@ -2203,10 +2175,19 @@ function populateVehicleSelector() {
         for (let option of selector.options) {
             if (option.value.startsWith(myPlate + "|") || option.value === myPlate) {
                 option.selected = true;
+                const parts = option.value.split("|");
                 vehicleInput.value = myPlate;
                 vehicleInput.readOnly = true;
-                brandModelInput.value = guessedBrand || option.value.split("|")[1] || "";
+                brandModelInput.value = guessedBrand || parts[1] || "";
                 brandModelInput.readOnly = true;
+                const kmVal = parseFloat(parts[2]) || 0;
+                if (kmHelper) {
+                    kmHelper.textContent = kmVal > 0 ? `ℹ️ Último odómetro registrado: ${kmVal.toLocaleString('es-ES')} km` : "";
+                    kmHelper.style.display = kmVal > 0 ? "block" : "none";
+                }
+                if (kmInput && kmVal > 0) {
+                    kmInput.placeholder = `> ${kmVal.toLocaleString('es-ES')} km`;
+                }
                 matched = true;
                 break;
             }
@@ -2218,6 +2199,7 @@ function populateVehicleSelector() {
         brandModelInput.value = "";
         vehicleInput.readOnly = false;
         brandModelInput.readOnly = false;
+        if (kmHelper) kmHelper.style.display = "none";
     }
 }
 
@@ -2225,18 +2207,34 @@ function handleVehicleSelectionChange(e) {
     const selectedVal = e.target.value;
     const vehicleInput = document.getElementById("exp-vehicle");
     const brandModelInput = document.getElementById("exp-brand-model");
+    const kmInput = document.getElementById("exp-kilometers");
+    const kmHelper = document.getElementById("exp-km-helper");
     
     if (selectedVal === "new" || selectedVal === "") {
         vehicleInput.value = "";
         brandModelInput.value = "";
         vehicleInput.readOnly = false;
         brandModelInput.readOnly = false;
+        if (kmHelper) kmHelper.style.display = "none";
+        if (kmInput) kmInput.placeholder = "Ej. 145200";
     } else {
         const parts = selectedVal.split("|");
-        vehicleInput.value = parts[0] || "";
-        brandModelInput.value = parts[1] || "";
+        const plate = parts[0] || "";
+        const brand = parts[1] || "";
+        const km = parseFloat(parts[2]) || 0;
+
+        vehicleInput.value = plate;
+        brandModelInput.value = brand;
         vehicleInput.readOnly = true;
         brandModelInput.readOnly = true;
+
+        if (kmHelper) {
+            kmHelper.textContent = km > 0 ? `ℹ️ Último odómetro registrado: ${km.toLocaleString('es-ES')} km` : "";
+            kmHelper.style.display = km > 0 ? "block" : "none";
+        }
+        if (kmInput && km > 0) {
+            kmInput.placeholder = `> ${km.toLocaleString('es-ES')} km`;
+        }
     }
 }
 
@@ -2272,53 +2270,9 @@ async function saveExpenseEntry(evt) {
 
     state.vault.expenses.unshift(expenseData);
 
-    // Auto-update vehicle odometer in fleet if fuel expense has mileage v1.21.01
+    // Auto-update and synchronize vehicle in fleet if fuel expense has mileage v1.21.02
     if (category === "Combustible" && vehicle) {
-        const plate = vehicle.trim().toUpperCase();
-        if (!state.vault.vehicles) state.vault.vehicles = [];
-        let veh = state.vault.vehicles.find(v => v.plate === plate);
-        if (!veh) {
-            // Auto-create in fleet if not present
-            veh = {
-                id: "veh_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
-                plate: plate,
-                brand_model: brandModel || "Vehículo Técnico",
-                assigned_user: state.currentUser ? state.currentUser.username : "",
-                current_km: kilometers,
-                km_last_update: date || new Date().toISOString().split("T")[0],
-                fuel_type: "Diésel",
-                status: "operativo",
-                renting_company: "",
-                renting_contract: "",
-                renting_end_date: "",
-                revision_interval_km: 15000,
-                next_revision_date: "",
-                next_revision_km: 0,
-                itv_date: "",
-                insurance_company: "",
-                insurance_phone: "",
-                photo: "",
-                notes: ""
-            };
-            state.vault.vehicles.push(veh);
-        } else if (kilometers > (parseFloat(veh.current_km) || 0)) {
-            veh.current_km = kilometers;
-            veh.km_last_update = date || new Date().toISOString().split("T")[0];
-        }
-
-        if (kilometers > 0) {
-            if (!state.vault.vehicle_mileages) state.vault.vehicle_mileages = [];
-            state.vault.vehicle_mileages.unshift({
-                id: "km_" + Date.now(),
-                vehicle_id: veh.id,
-                plate: veh.plate,
-                date: date || new Date().toISOString().split("T")[0],
-                km: kilometers,
-                source: "repostaje",
-                registered_by: state.currentUser ? state.currentUser.username : "admin",
-                notes: `Repostaje combustible: ${liters > 0 ? liters + ' L' : ''} ${amount > 0 ? '(' + amount.toFixed(2) + ' €)' : ''}`.trim()
-            });
-        }
+        syncVehiclesWithExpensesAndUsers();
     }
 
     setSyncStatus(false);
@@ -2338,6 +2292,7 @@ async function deleteExpenseEntry(id) {
     if (confirm("¿Seguro que quieres borrar este gasto?")) {
         state.vault.expenses = state.vault.expenses.filter(e => e.id !== id);
         setSyncStatus(false);
+        syncVehiclesWithExpensesAndUsers();
         renderExpenses();
         await syncWithCloud();
     }
@@ -9808,6 +9763,395 @@ function handleFilePreview(event, previewContainerId) {
     });
 }
 
+// Synchronize Fleet Vehicles with Fuel Expenses and User Profiles (v1.21.02)
+function syncVehiclesWithExpensesAndUsers() {
+    if (!state.vault) return;
+    if (!state.vault.vehicles) state.vault.vehicles = [];
+    if (!state.vault.expenses) state.vault.expenses = [];
+    if (!state.vault.users) state.vault.users = [];
+    if (!state.vault.vehicle_maintenances) state.vault.vehicle_maintenances = [];
+    if (!state.vault.vehicle_incidents) state.vault.vehicle_incidents = [];
+    if (!state.vault.vehicle_mileages) state.vault.vehicle_mileages = [];
+
+    const normalizePlate = (str) => (str ? str.toString().trim().toUpperCase() : "");
+
+    // 1. Gather all vehicles from Combustible expenses
+    const fuelMap = new Map(); // normalizedPlate -> { brand_model, latestDate, maxKm, latestKmDate, assignedUser, expensesCount }
+
+    state.vault.expenses.forEach(e => {
+        if (e.category === "Combustible" && e.vehicle) {
+            const plate = normalizePlate(e.vehicle);
+            if (!plate) return;
+
+            const km = parseFloat(e.kilometers) || 0;
+            const entryDate = e.date || "";
+            const brand = (e.brand_model || "").trim();
+            const owner = (e.owner || e.user_name || "").trim();
+
+            if (!fuelMap.has(plate)) {
+                fuelMap.set(plate, {
+                    brand_model: brand,
+                    latestDate: entryDate,
+                    maxKm: km,
+                    latestKmDate: km > 0 ? entryDate : "",
+                    assignedUser: owner,
+                    expensesCount: 1
+                });
+            } else {
+                const item = fuelMap.get(plate);
+                item.expensesCount++;
+                if (brand && !item.brand_model) item.brand_model = brand;
+                if (entryDate > item.latestDate) {
+                    item.latestDate = entryDate;
+                    if (owner && !item.assignedUser) item.assignedUser = owner;
+                }
+                if (km > item.maxKm) {
+                    item.maxKm = km;
+                    item.latestKmDate = entryDate;
+                }
+            }
+        }
+    });
+
+    // 2. Gather vehicles from user profiles
+    state.vault.users.forEach(u => {
+        if (u.vehiculo) {
+            let plate = u.vehiculo.trim();
+            let brand = (u.vehiculoBrandModel || "").trim();
+            if (!brand && plate.includes(" ")) {
+                const parts = plate.split(" ");
+                plate = parts[0];
+                brand = parts.slice(1).join(" ");
+            }
+            plate = normalizePlate(plate);
+            if (plate) {
+                if (!fuelMap.has(plate)) {
+                    fuelMap.set(plate, {
+                        brand_model: brand,
+                        latestDate: "",
+                        maxKm: 0,
+                        latestKmDate: "",
+                        assignedUser: u.username,
+                        expensesCount: 0
+                    });
+                } else {
+                    const item = fuelMap.get(plate);
+                    if (u.username) item.assignedUser = u.username;
+                    if (brand && !item.brand_model) item.brand_model = brand;
+                }
+            }
+        }
+    });
+
+    // 3. Ensure every vehicle from fuel expenses & users exists in state.vault.vehicles
+    fuelMap.forEach((data, plate) => {
+        let veh = state.vault.vehicles.find(v => normalizePlate(v.plate) === plate);
+        if (!veh) {
+            const maxKm = data.maxKm || 0;
+            veh = {
+                id: "veh_" + Date.now() + "_" + Math.random().toString(36).substr(2, 6),
+                plate: plate,
+                brand_model: data.brand_model || "Vehículo Técnico",
+                assigned_user: data.assignedUser || "",
+                current_km: maxKm,
+                km_last_update: data.latestKmDate || data.latestDate || new Date().toISOString().split("T")[0],
+                fuel_type: "Diésel",
+                status: "operativo",
+                renting_company: "",
+                renting_contract: "",
+                renting_end_date: "",
+                revision_interval_km: 15000,
+                next_revision_date: "",
+                next_revision_km: maxKm > 0 ? (Math.ceil((maxKm + 1000) / 15000) * 15000) : 15000,
+                itv_date: "",
+                insurance_company: "",
+                insurance_phone: "",
+                photo: "",
+                notes: "Unificado automáticamente con registros de combustible"
+            };
+            state.vault.vehicles.push(veh);
+        } else {
+            const currentKm = parseFloat(veh.current_km) || 0;
+            if (data.maxKm > currentKm) {
+                veh.current_km = data.maxKm;
+                if (data.latestKmDate) veh.km_last_update = data.latestKmDate;
+            }
+            if ((!veh.brand_model || veh.brand_model === "Vehículo Técnico") && data.brand_model) {
+                veh.brand_model = data.brand_model;
+            }
+            if (!veh.assigned_user && data.assignedUser) {
+                veh.assigned_user = data.assignedUser;
+            }
+        }
+    });
+
+    // 4. Update highest km on each vehicle from all database sources
+    state.vault.vehicles.forEach(veh => {
+        const p = normalizePlate(veh.plate);
+        let highestKm = parseFloat(veh.current_km) || 0;
+        let highestKmDate = veh.km_last_update || "";
+
+        // Combustible expenses
+        state.vault.expenses.forEach(e => {
+            if (e.category === "Combustible" && normalizePlate(e.vehicle) === p) {
+                const km = parseFloat(e.kilometers) || 0;
+                if (km > highestKm) {
+                    highestKm = km;
+                    highestKmDate = e.date || highestKmDate;
+                }
+            }
+        });
+
+        // Maintenances
+        state.vault.vehicle_maintenances.forEach(m => {
+            if (m.vehicle_id === veh.id || normalizePlate(m.plate) === p) {
+                const km = parseFloat(m.km) || 0;
+                if (km > highestKm) {
+                    highestKm = km;
+                    highestKmDate = m.date || highestKmDate;
+                }
+            }
+        });
+
+        // Incidents
+        state.vault.vehicle_incidents.forEach(i => {
+            if (i.vehicle_id === veh.id || normalizePlate(i.plate) === p) {
+                const km = parseFloat(i.current_km) || 0;
+                if (km > highestKm) {
+                    highestKm = km;
+                    highestKmDate = i.date || highestKmDate;
+                }
+            }
+        });
+
+        // Manual mileages
+        state.vault.vehicle_mileages.forEach(kmEntry => {
+            if (kmEntry.vehicle_id === veh.id || normalizePlate(kmEntry.plate) === p) {
+                const km = parseFloat(kmEntry.km) || 0;
+                if (km > highestKm) {
+                    highestKm = km;
+                    highestKmDate = kmEntry.date || highestKmDate;
+                }
+            }
+        });
+
+        if (highestKm > (parseFloat(veh.current_km) || 0)) {
+            veh.current_km = highestKm;
+            if (highestKmDate) veh.km_last_update = highestKmDate;
+        }
+    });
+
+    updateVehicleBadges();
+}
+
+// Calculate comprehensive Fuel & Refuel Statistics for a Vehicle (v1.21.02)
+function getVehicleFuelStats(vehId, plate) {
+    const normalizePlate = (str) => (str ? str.toString().trim().toUpperCase() : "");
+    const targetPlate = normalizePlate(plate);
+
+    const fuelExpenses = (state.vault.expenses || []).filter(e => {
+        if (e.category !== "Combustible") return false;
+        if (vehId && e.vehicle_id && e.vehicle_id === vehId) return true;
+        if (targetPlate && normalizePlate(e.vehicle) === targetPlate) return true;
+        return false;
+    });
+
+    // Sort newest first
+    fuelExpenses.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+    let totalAmount = 0.0;
+    let totalLiters = 0.0;
+    let minKm = null;
+    let maxKm = null;
+
+    fuelExpenses.forEach(e => {
+        const amt = parseFloat(e.amount) || 0;
+        const lit = parseFloat(e.liters) || 0;
+        const km = parseFloat(e.kilometers) || 0;
+
+        totalAmount += amt;
+        totalLiters += lit;
+
+        if (km > 0) {
+            if (minKm === null || km < minKm) minKm = km;
+            if (maxKm === null || km > maxKm) maxKm = km;
+        }
+    });
+
+    const refuelCount = fuelExpenses.length;
+    const avgCostPerLiter = totalLiters > 0 ? (totalAmount / totalLiters) : 0;
+    const deltaKm = (minKm !== null && maxKm !== null && maxKm > minKm) ? (maxKm - minKm) : 0;
+    const avgConsumptionL100km = (deltaKm > 0 && totalLiters > 0) ? ((totalLiters / deltaKm) * 100) : null;
+    const avgCostPerKm = (deltaKm > 0 && totalAmount > 0) ? (totalAmount / deltaKm) : null;
+    const lastRefuel = fuelExpenses.length > 0 ? fuelExpenses[0] : null;
+
+    return {
+        fuelExpenses,
+        totalAmount,
+        totalLiters,
+        refuelCount,
+        avgCostPerLiter,
+        minKm,
+        maxKm,
+        deltaKm,
+        avgConsumptionL100km,
+        avgCostPerKm,
+        lastRefuel
+    };
+}
+
+// Build Unified Timeline of all vehicle checkpoints: Refuels, Maintenances, Incidents, Manual logs (v1.21.02)
+function getVehicleUnifiedTimeline(vehId, plate) {
+    const normalizePlate = (str) => (str ? str.toString().trim().toUpperCase() : "");
+    const targetPlate = normalizePlate(plate);
+
+    const events = [];
+
+    // 1. Fuel expenses
+    (state.vault.expenses || []).forEach(e => {
+        if (e.category === "Combustible" && (normalizePlate(e.vehicle) === targetPlate || (vehId && e.vehicle_id === vehId))) {
+            const km = parseFloat(e.kilometers) || 0;
+            events.push({
+                type: 'fuel',
+                id: 'exp_' + e.id,
+                date: e.date || "",
+                km: km,
+                amount: parseFloat(e.amount) || 0,
+                liters: parseFloat(e.liters) || 0,
+                pricePerLiter: (e.amount && e.liters) ? (parseFloat(e.amount) / parseFloat(e.liters)) : 0,
+                location: e.location || "",
+                registered_by: e.user_name || e.owner || "Técnico",
+                notes: e.concept || "Repostaje de combustible",
+                photo: e.image_path || ""
+            });
+        }
+    });
+
+    // 2. Maintenances
+    (state.vault.vehicle_maintenances || []).forEach(m => {
+        if (m.vehicle_id === vehId || normalizePlate(m.plate) === targetPlate) {
+            events.push({
+                type: 'maintenance',
+                id: 'maint_' + m.id,
+                date: m.date || "",
+                km: parseFloat(m.km) || 0,
+                cost: parseFloat(m.cost) || 0,
+                workshop: m.workshop || "Taller",
+                invoice_number: m.invoice_number || "",
+                registered_by: "Taller / Mantenimiento",
+                notes: m.notes || m.type || "Revisión / Mantenimiento",
+                photo: m.invoice_photo || ""
+            });
+        }
+    });
+
+    // 3. Incidents
+    (state.vault.vehicle_incidents || []).forEach(i => {
+        if (i.vehicle_id === vehId || normalizePlate(i.plate) === targetPlate) {
+            events.push({
+                type: 'incident',
+                id: 'inc_' + i.id,
+                date: i.date || "",
+                km: parseFloat(i.current_km) || 0,
+                urgency: i.urgency || "leve",
+                category: i.category || "Avería",
+                registered_by: i.technician_name || i.technician_user || "Técnico",
+                notes: i.description || "Avería / Incidencia",
+                photo: (i.photos && i.photos.length > 0) ? i.photos[0] : "",
+                status: i.status
+            });
+        }
+    });
+
+    // 4. Manual / Odometer readings
+    (state.vault.vehicle_mileages || []).forEach(kmEntry => {
+        if (kmEntry.vehicle_id === vehId || normalizePlate(kmEntry.plate) === targetPlate) {
+            if (kmEntry.source !== "repostaje") { // Avoid duplicates with fuel expenses
+                events.push({
+                    type: 'manual',
+                    id: kmEntry.id || ('km_' + Date.now()),
+                    date: kmEntry.date || "",
+                    km: parseFloat(kmEntry.km) || 0,
+                    source: kmEntry.source || "manual",
+                    registered_by: kmEntry.registered_by || "Técnico",
+                    notes: kmEntry.notes || "Lectura de Odómetro",
+                    photo: ""
+                });
+            }
+        }
+    });
+
+    // Sort chronologically ascending to compute delta km
+    events.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+
+    let prevKm = null;
+    events.forEach(ev => {
+        if (ev.km > 0) {
+            if (prevKm !== null && ev.km > prevKm) {
+                ev.deltaKm = ev.km - prevKm;
+            } else {
+                ev.deltaKm = null;
+            }
+            prevKm = ev.km;
+        } else {
+            ev.deltaKm = null;
+        }
+    });
+
+    // Reverse to display newest first
+    events.reverse();
+    return events;
+}
+
+// Open Expense Form pre-filled for a specific Vehicle Refuel (v1.21.02)
+function openNewFuelExpenseForVehicle(veh) {
+    if (!veh) return;
+    switchScreen("form-expense");
+
+    const catSelect = document.getElementById("exp-category");
+    if (catSelect) {
+        catSelect.value = "Combustible";
+        catSelect.dispatchEvent(new Event("change"));
+    }
+
+    const fuelContainer = document.getElementById("fuel-fields-container");
+    if (fuelContainer) fuelContainer.style.display = "block";
+
+    populateVehicleSelector();
+
+    const selector = document.getElementById("exp-vehicle-select");
+    const vehicleInput = document.getElementById("exp-vehicle");
+    const brandModelInput = document.getElementById("exp-brand-model");
+    const kmInput = document.getElementById("exp-kilometers");
+    const kmHelper = document.getElementById("exp-km-helper");
+
+    if (selector) {
+        for (let opt of selector.options) {
+            if (opt.value.startsWith(veh.plate + "|") || opt.value.toUpperCase().includes(veh.plate.toUpperCase())) {
+                opt.selected = true;
+                break;
+            }
+        }
+    }
+
+    if (vehicleInput) {
+        vehicleInput.value = veh.plate;
+        vehicleInput.readOnly = true;
+    }
+    if (brandModelInput) {
+        brandModelInput.value = veh.brand_model || "";
+        brandModelInput.readOnly = true;
+    }
+    if (kmHelper) {
+        const curKm = parseFloat(veh.current_km) || 0;
+        kmHelper.textContent = `ℹ️ Odómetro actual registrado: ${curKm.toLocaleString('es-ES')} km`;
+        kmHelper.style.display = "block";
+    }
+    if (kmInput) {
+        kmInput.placeholder = veh.current_km ? `> ${veh.current_km} km` : "Ej. 145200";
+    }
+}
+
 // Helper: Calculate Renting status and days left
 function calculateRentingStatus(veh) {
     if (!veh || !veh.renting_end_date) {
@@ -9921,7 +10265,7 @@ function renderVehiclesList() {
     let revisionesAlertCount = 0;
 
     vehicles.forEach(v => {
-        const hasOpenIncident = incidents.some(i => i.vehicle_id === v.id && i.status !== "resuelta");
+        const hasOpenIncident = incidents.some(i => (i.vehicle_id === v.id || (v.plate && i.plate === v.plate)) && i.status !== "resuelta");
         if (v.status === "operativo" && !hasOpenIncident) {
             operativosCount++;
         }
@@ -9964,10 +10308,10 @@ function renderVehiclesList() {
             if (!state.currentUser) return false;
             return (v.assigned_user || "").toLowerCase() === state.currentUser.username.toLowerCase();
         } else if (filter === "operativo") {
-            const hasOpenIncident = incidents.some(i => i.vehicle_id === v.id && i.status !== "resuelta");
+            const hasOpenIncident = incidents.some(i => (i.vehicle_id === v.id || (v.plate && i.plate === v.plate)) && i.status !== "resuelta");
             return (v.status || "operativo") === "operativo" && !hasOpenIncident;
         } else if (filter === "issues") {
-            const hasOpenIncident = incidents.some(i => i.vehicle_id === v.id && i.status !== "resuelta");
+            const hasOpenIncident = incidents.some(i => (i.vehicle_id === v.id || (v.plate && i.plate === v.plate)) && i.status !== "resuelta");
             return v.status === "taller" || v.status === "revision" || hasOpenIncident;
         } else if (filter === "renting") {
             const r = calculateRentingStatus(v);
@@ -9995,7 +10339,7 @@ function renderVehiclesList() {
         const card = document.createElement("div");
         card.className = "vehicle-card anim-fade";
 
-        const hasOpenIncident = incidents.some(i => i.vehicle_id === v.id && i.status !== "resuelta");
+        const hasOpenIncident = incidents.some(i => (i.vehicle_id === v.id || (v.plate && i.plate === v.plate)) && i.status !== "resuelta");
         
         let statusBadgeClass = "operativo";
         let statusLabel = "Operativo";
@@ -10022,6 +10366,8 @@ function renderVehiclesList() {
 
         const rentingStatus = calculateRentingStatus(v);
         const revStatus = calculateRevisionStatus(v);
+        const fuelStats = getVehicleFuelStats(v.id, v.plate);
+        const fuelFormatted = `⛽ ${fuelStats.totalAmount.toFixed(0)} € (${fuelStats.totalLiters.toFixed(0)} L)`;
 
         let rentingPillClass = "ok";
         if (rentingStatus.status === 'expired' || rentingStatus.status === 'danger') rentingPillClass = "danger";
@@ -10062,10 +10408,14 @@ function renderVehiclesList() {
             </div>
 
             <!-- Metrics & Alerts Pills -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 8px; background: rgba(0,0,0,0.18); padding: 8px 10px; border-radius: var(--radius-sm);">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-top: 8px; background: rgba(0,0,0,0.18); padding: 8px 10px; border-radius: var(--radius-sm);">
                 <div>
                     <div style="font-size: 0.68rem; color: var(--text-secondary); text-transform: uppercase;">Odómetro</div>
                     <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); font-family: monospace;">${kmFormatted}</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.68rem; color: var(--text-secondary); text-transform: uppercase;">Combustible</div>
+                    <div style="font-size: 0.82rem; font-weight: 700; color: #10b981; font-family: monospace;" title="Total invertido y litros">${fuelFormatted}</div>
                 </div>
                 <div>
                     <div style="font-size: 0.68rem; color: var(--text-secondary); text-transform: uppercase;">Fin Renting</div>
@@ -10122,7 +10472,7 @@ function renderVehiclesList() {
     updateVehicleBadges();
 }
 
-// Render complete Vehicle Detail (4 Tabs)
+// Render complete Vehicle Detail (5 Tabs: Ficha, Repostajes, Averías, Revisiones, Historial Kms)
 function renderVehicleDetail(vehicleId) {
     state.fleet.activeVehicleId = vehicleId;
     const veh = (state.vault.vehicles || []).find(v => v.id === vehicleId);
@@ -10132,9 +10482,10 @@ function renderVehicleDetail(vehicleId) {
         return;
     }
 
-    const incidents = (state.vault.vehicle_incidents || []).filter(i => i.vehicle_id === veh.id);
-    const maintenances = (state.vault.vehicle_maintenances || []).filter(m => m.vehicle_id === veh.id);
-    const mileages = (state.vault.vehicle_mileages || []).filter(m => m.vehicle_id === veh.id);
+    const fuelStats = getVehicleFuelStats(veh.id, veh.plate);
+    const incidents = (state.vault.vehicle_incidents || []).filter(i => i.vehicle_id === veh.id || (veh.plate && i.plate === veh.plate));
+    const maintenances = (state.vault.vehicle_maintenances || []).filter(m => m.vehicle_id === veh.id || (veh.plate && m.plate === veh.plate));
+    const unifiedTimeline = getVehicleUnifiedTimeline(veh.id, veh.plate);
 
     // 1. Hero Header
     document.getElementById("veh-detail-plate").textContent = veh.plate || "0000-XXX";
@@ -10171,7 +10522,22 @@ function renderVehicleDetail(vehicleId) {
         }
     }
 
-    // 2. Tab 1: Ficha & Renting
+    // 2. Tab 1: Ficha & Renting & Fuel Summary
+    const fuelSumAmount = document.getElementById("veh-detail-fuel-sum-amount");
+    if (fuelSumAmount) fuelSumAmount.textContent = fuelStats.totalAmount.toFixed(2) + " €";
+    
+    const fuelSumLiters = document.getElementById("veh-detail-fuel-sum-liters");
+    if (fuelSumLiters) fuelSumLiters.textContent = fuelStats.totalLiters.toFixed(1) + " L (" + fuelStats.refuelCount + " repostajes)";
+    
+    const fuelSumAvgCons = document.getElementById("veh-detail-fuel-sum-avg-cons");
+    if (fuelSumAvgCons) fuelSumAvgCons.textContent = fuelStats.avgConsumptionL100km ? fuelStats.avgConsumptionL100km.toFixed(1) + " L/100km" : "—";
+    
+    const fuelSumCostKm = document.getElementById("veh-detail-fuel-sum-cost-km");
+    if (fuelSumCostKm) fuelSumCostKm.textContent = fuelStats.avgCostPerKm ? fuelStats.avgCostPerKm.toFixed(3) + " €/km" : (fuelStats.avgCostPerLiter > 0 ? fuelStats.avgCostPerLiter.toFixed(3) + " €/L" : "—");
+    
+    const fuelLastDate = document.getElementById("veh-detail-fuel-last-date");
+    if (fuelLastDate) fuelLastDate.textContent = fuelStats.lastRefuel ? "Último: " + formatSpanishDate(fuelStats.lastRefuel.date) : "Sin repostajes registrados";
+
     document.getElementById("veh-detail-renting-company").textContent = veh.renting_company || "No especificada";
     document.getElementById("veh-detail-renting-contract").textContent = veh.renting_contract || "—";
     document.getElementById("veh-detail-renting-end").textContent = veh.renting_end_date ? formatSpanishDate(veh.renting_end_date) : "—";
@@ -10233,7 +10599,95 @@ function renderVehicleDetail(vehicleId) {
         }
     }
 
-    // 3. Tab 2: Incidencias / Averías List
+    // 3. Tab 2: Repostajes & Consumos (v1.21.02)
+    const fuelKpiAmt = document.getElementById("veh-fuel-kpi-total-amount");
+    if (fuelKpiAmt) fuelKpiAmt.textContent = fuelStats.totalAmount.toFixed(2) + " €";
+    
+    const fuelKpiLit = document.getElementById("veh-fuel-kpi-total-liters");
+    if (fuelKpiLit) fuelKpiLit.textContent = fuelStats.totalLiters.toFixed(1) + " L";
+    
+    const fuelKpiCons = document.getElementById("veh-fuel-kpi-avg-consumption");
+    if (fuelKpiCons) fuelKpiCons.textContent = fuelStats.avgConsumptionL100km ? fuelStats.avgConsumptionL100km.toFixed(1) + " L/100km" : (fuelStats.refuelCount > 0 ? "Calculando..." : "—");
+    
+    const fuelKpiCostKm = document.getElementById("veh-fuel-kpi-avg-cost-km");
+    if (fuelKpiCostKm) fuelKpiCostKm.textContent = fuelStats.avgCostPerKm ? fuelStats.avgCostPerKm.toFixed(3) + " €/km" : (fuelStats.avgCostPerLiter > 0 ? fuelStats.avgCostPerLiter.toFixed(3) + " €/L" : "—");
+
+    const fuelBadge = document.getElementById("veh-detail-fuel-badge");
+    if (fuelBadge) {
+        if (fuelStats.refuelCount > 0) {
+            fuelBadge.textContent = fuelStats.refuelCount;
+            fuelBadge.style.display = "inline-flex";
+        } else {
+            fuelBadge.style.display = "none";
+        }
+    }
+
+    const fuelListCont = document.getElementById("veh-detail-fuel-list");
+    if (fuelListCont) {
+        fuelListCont.innerHTML = "";
+        if (fuelStats.fuelExpenses.length === 0) {
+            fuelListCont.innerHTML = `
+                <div style="text-align: center; padding: 30px 20px; color: var(--text-secondary); background: rgba(255,255,255,0.02); border-radius: var(--radius-md); border: 1px dashed var(--border-glass);">
+                    <i class="bx bx-gas-pump" style="font-size: 2.2rem; color: #10b981; opacity: 0.8; margin-bottom: 6px;"></i>
+                    <p style="margin: 0; font-size: 0.88rem;">No hay repostajes registrados para este vehículo en Gastos.</p>
+                </div>
+            `;
+        } else {
+            fuelStats.fuelExpenses.forEach(fExp => {
+                const fCard = document.createElement("div");
+                fCard.className = "glass-card anim-fade";
+                fCard.style.padding = "14px";
+                fCard.style.borderLeft = "3px solid #10b981";
+
+                const amt = parseFloat(fExp.amount) || 0;
+                const lit = parseFloat(fExp.liters) || 0;
+                const km = parseFloat(fExp.kilometers) || 0;
+                const pricePerLiter = (amt > 0 && lit > 0) ? (amt / lit).toFixed(3) + " €/L" : "";
+
+                let ticketPhotoHtml = "";
+                if (fExp.image_path) {
+                    ticketPhotoHtml = `
+                        <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 0.72rem; color: var(--text-secondary);">Ticket adjunto:</span>
+                            <div style="width: 38px; height: 38px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border-glass); cursor: pointer;" onclick="viewFullscreenImage('${fExp.image_path.replace(/'/g, "\\'")}')">
+                                <img src="${fExp.image_path}" style="width: 100%; height: 100%; object-fit: cover;">
+                            </div>
+                        </div>
+                    `;
+                }
+
+                fCard.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <span style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                                <i class="bx bx-gas-pump" style="color: #10b981;"></i> ${lit > 0 ? lit + ' Litros' : 'Repostaje Combustible'}
+                                ${pricePerLiter ? `<span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: normal;">(${pricePerLiter})</span>` : ''}
+                            </span>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
+                                <i class="bx bx-user"></i> ${escapeHtml(fExp.user_name || fExp.owner || "Técnico")}
+                                ${fExp.location ? ` • <i class="bx bx-map-pin"></i> ${escapeHtml(fExp.location)}` : ''}
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <span style="font-size: 0.95rem; font-weight: 800; color: #10b981; font-family: monospace;">${amt.toFixed(2)} €</span>
+                            <div style="font-size: 0.72rem; color: var(--text-secondary);">${fExp.date ? formatSpanishDate(fExp.date) : "-"}</div>
+                        </div>
+                    </div>
+                    ${km > 0 ? `
+                        <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 6px; display: flex; align-items: center; gap: 6px;">
+                            <i class="bx bx-tachometer" style="color: var(--accent);"></i>
+                            Odómetro: <strong>${km.toLocaleString('es-ES')} km</strong>
+                        </div>
+                    ` : ''}
+                    ${fExp.concept ? `<div style="font-size: 0.75rem; color: var(--text-primary); margin-top: 6px; background: rgba(0,0,0,0.15); padding: 5px 8px; border-radius: 4px;">${escapeHtml(fExp.concept)}</div>` : ''}
+                    ${ticketPhotoHtml}
+                `;
+                fuelListCont.appendChild(fCard);
+            });
+        }
+    }
+
+    // 4. Tab 3: Incidencias / Averías List
     const openIncidentsCount = incidents.filter(i => i.status !== "resuelta").length;
     const incCountBadge = document.getElementById("veh-detail-incidents-count");
     if (incCountBadge) {
@@ -10256,7 +10710,6 @@ function renderVehicleDetail(vehicleId) {
                 </div>
             `;
         } else {
-            // Sort newest first
             incidents.sort((a, b) => (b.created_at || b.id) - (a.created_at || a.id));
             incidents.forEach(inc => {
                 const incCard = document.createElement("div");
@@ -10344,7 +10797,7 @@ function renderVehicleDetail(vehicleId) {
         }
     }
 
-    // 4. Tab 3: Revisiones List & Summary
+    // 5. Tab 4: Revisiones List & Summary
     const revSummaryEl = document.getElementById("veh-detail-next-rev-summary");
     const revChipEl = document.getElementById("veh-detail-next-rev-chip");
     const revStatus = calculateRevisionStatus(veh);
@@ -10365,7 +10818,6 @@ function renderVehicleDetail(vehicleId) {
                 </div>
             `;
         } else {
-            // Sort newest first
             maintenances.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
             maintenances.forEach(m => {
                 const maintCard = document.createElement("div");
@@ -10409,52 +10861,65 @@ function renderVehicleDetail(vehicleId) {
         }
     }
 
-    // 4. Tab 4: Historial de Kilometrajes
+    // 6. Tab 5: Historial Unificado de Kilometraje (Combustible, Taller, Averías, Manual)
     document.getElementById("veh-detail-mileage-current").textContent = kmVal.toLocaleString('es-ES') + " km";
     document.getElementById("veh-detail-mileage-date").textContent = veh.km_last_update ? "Última lectura: " + formatSpanishDate(veh.km_last_update) : "Sin lecturas recientes";
 
     const mileageListCont = document.getElementById("veh-detail-mileage-list");
     if (mileageListCont) {
         mileageListCont.innerHTML = "";
-        if (mileages.length === 0) {
+        if (unifiedTimeline.length === 0) {
             mileageListCont.innerHTML = `
                 <div style="text-align: center; padding: 25px; color: var(--text-secondary); font-size: 0.85rem;">
-                    No hay registros de kilometraje adicionales.
+                    No hay registros de kilometraje ni repostajes para este vehículo.
                 </div>
             `;
         } else {
-            // Sort newest first
-            mileages.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-            mileages.forEach(kmEntry => {
+            unifiedTimeline.forEach(ev => {
                 const kmRow = document.createElement("div");
                 kmRow.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); font-size: 0.85rem;";
                 
                 let sourceBadge = "Manual";
                 let badgeBg = "rgba(59, 130, 246, 0.2)";
                 let badgeColor = "#60a5fa";
-                if (kmEntry.source === "repostaje") {
-                    sourceBadge = "Repostaje Combustible";
+
+                if (ev.type === "fuel") {
+                    sourceBadge = "⛽ Repostaje";
                     badgeBg = "rgba(16, 185, 129, 0.2)";
                     badgeColor = "#10b981";
-                } else if (kmEntry.source === "mantenimiento") {
-                    sourceBadge = "Revisión Taller";
+                } else if (ev.type === "maintenance") {
+                    sourceBadge = "🛠️ Revisión";
                     badgeBg = "rgba(139, 92, 246, 0.2)";
                     badgeColor = "#a78bfa";
-                } else if (kmEntry.source === "incidencia") {
-                    sourceBadge = "Avería / Incidencia";
+                } else if (ev.type === "incident") {
+                    sourceBadge = "🚨 Avería";
                     badgeBg = "rgba(239, 68, 68, 0.2)";
                     badgeColor = "#f87171";
                 }
 
-                kmRow.innerHTML = `
-                    <div>
-                        <div style="font-weight: 700; font-size: 0.95rem; font-family: monospace; color: var(--text-primary);">${(parseFloat(kmEntry.km) || 0).toLocaleString('es-ES')} km</div>
-                        <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 2px;">
-                            ${kmEntry.date ? formatSpanishDate(kmEntry.date) : "-"} • ${kmEntry.registered_by ? kmEntry.registered_by.toUpperCase() : "Técnico"}
-                        </div>
-                        ${kmEntry.notes ? `<div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 2px;">${escapeHtml(kmEntry.notes)}</div>` : ""}
+                const deltaKmHtml = ev.deltaKm ? `<span style="font-size: 0.75rem; color: #10b981; font-weight: 600; margin-left: 6px;">(+${ev.deltaKm.toLocaleString('es-ES')} km)</span>` : "";
+                const photoThumbHtml = ev.photo ? `
+                    <div style="width: 32px; height: 32px; border-radius: 4px; overflow: hidden; border: 1px solid var(--border-glass); cursor: pointer; flex-shrink: 0; margin-left: 8px;" onclick="viewFullscreenImage('${ev.photo.replace(/'/g, "\\'")}')">
+                        <img src="${ev.photo}" style="width: 100%; height: 100%; object-fit: cover;">
                     </div>
-                    <span style="font-size: 0.7rem; font-weight: 600; padding: 3px 8px; border-radius: 12px; background: ${badgeBg}; color: ${badgeColor}; white-space: nowrap;">${sourceBadge}</span>
+                ` : "";
+
+                kmRow.innerHTML = `
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="display: flex; align-items: baseline; gap: 4px;">
+                            <span style="font-weight: 700; font-size: 0.95rem; font-family: monospace; color: var(--text-primary);">${(ev.km || 0).toLocaleString('es-ES')} km</span>
+                            ${deltaKmHtml}
+                        </div>
+                        <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 2px;">
+                            ${ev.date ? formatSpanishDate(ev.date) : "-"} • ${escapeHtml(ev.registered_by || "Técnico")}
+                            ${ev.liters ? ` • ${ev.liters} L (${ev.amount ? ev.amount.toFixed(2) + ' €' : ''})` : ''}
+                        </div>
+                        ${ev.notes ? `<div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(ev.notes)}</div>` : ""}
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <span style="font-size: 0.7rem; font-weight: 600; padding: 3px 8px; border-radius: 12px; background: ${badgeBg}; color: ${badgeColor}; white-space: nowrap;">${sourceBadge}</span>
+                        ${photoThumbHtml}
+                    </div>
                 `;
                 mileageListCont.appendChild(kmRow);
             });
