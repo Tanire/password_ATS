@@ -42,10 +42,14 @@
                 <div style="text-align: center;">
                     <div style="font-size: 2.2rem; margin-bottom: 8px;">🚀</div>
                     <h2 style="font-size: 1.3rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">¡Aplicación Actualizada!</h2>
-                    <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3);">Versión 1.20.07</span>
+                    <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3);">Versión 1.21.01</span>
                 </div>
                 
                 <div style="border-top: 1px solid var(--border-glass); border-bottom: 1px solid var(--border-glass); padding: 14px 0; max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; line-height: 1.4; color: var(--text-primary);">
+                    <div>
+                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">🚗 v1.21.01 - Control de Vehículos y Gestión Integral de Flota</strong>
+                        <p style="margin: 0; color: var(--text-secondary);">Nuevo módulo de control de vehículos: seguimiento de odómetro y kilometrajes, fin de contrato de renting con avisos de vencimiento, programación e historial de revisiones e ITVs con facturas, y sistema de reporte de averías/incidencias con captura GPS, fotografías y aviso instantáneo a la responsable de flota por Telegram, WhatsApp y Email.</p>
+                    </div>
                     <div>
                         <strong style="color: var(--accent); display: block; margin-bottom: 3px;">🚗 v1.20.07 - Borrado de Historial, Geocodificación Exacta y Filtro de Duplicados</strong>
                         <p style="margin: 0; color: var(--text-secondary);">El historial de rutas se limpia automáticamente al entrar. La optimización de rutas ahora realiza geocodificación exacta en caliente de todos los clientes sin coordenadas. En la lista de rutas se resalta la información de cliente y sistema. En los ajustes de clientes se evita la duplicación de sistemas.</p>
@@ -115,7 +119,7 @@
                     <input type="password" id="login-password" class="input-control" placeholder="Contraseña" required>
                 </div>
                 <div style="margin-top: 20px; font-size: 0.8rem; color: var(--text-secondary); text-align: center;">
-                    Versión 1.20.07 - By JMSYSTEMAS
+                    Versión 1.21.01 - By JMSYSTEMAS
                 </div>
                 <button id="btn-login" class="btn-premium">
                     <i class="bx bx-key"></i> DESBLOQUEAR
@@ -181,13 +185,18 @@
                             <span class="card-icon" style="color: #06b6d4;">💳</span>
                             <span class="card-title">Tarjetas SIM</span>
                         </div>
+                        <div class="menu-card" id="menu-vehicles" style="position: relative;">
+                            <span class="card-icon" style="color: #38bdf8;">🚘</span>
+                            <span class="card-title">Vehículos</span>
+                            <span id="vehicle-fleet-badge" class="badge-notification" style="display: none; position: absolute; top: -5px; right: -5px; background: var(--danger); color: #fff; border-radius: 50%; width: 20px; height: 20px; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg-secondary);">0</span>
+                        </div>
                         <div class="menu-card" id="menu-audit" style="display: none;">
                             <span class="card-icon" style="color: #06b6d4;">📊</span>
                             <span class="card-title">Auditoría</span>
                         </div>
                     </div>
                     <div style="text-align: center; margin-top: 40px; font-size: 0.8rem; color: var(--text-secondary);" class="dashboard-footer">
-                        Versión 1.20.07 - JMSYSTEMAS
+                        Versión 1.21.01 - JMSYSTEMAS
                     </div>
                 </div>
 
@@ -707,6 +716,11 @@
                             <h3 style="font-size: 0.95rem; margin-top: 25px; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; border-top: 1px solid var(--border-glass); padding-top: 20px;">Clientes de Rutas</h3>
                             <button id="btn-go-to-clients-db" type="button" class="btn-premium btn-secondary" style="margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 8px;">
                                 <i class="bx bx-folder"></i> GESTIONAR BASE DE DATOS DE CLIENTES
+                            </button>
+
+                            <h3 style="font-size: 0.95rem; margin-top: 25px; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; border-top: 1px solid var(--border-glass); padding-top: 20px;">Control de Flota</h3>
+                            <button id="btn-open-fleet-settings" type="button" class="btn-premium btn-secondary" style="margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                <i class="bx bx-car"></i> CONFIGURAR RESPONSABLE DE FLOTA
                             </button>
                         </div>
                         
@@ -2119,7 +2133,589 @@
                     </form>
                 </div>
 
-    </main>
+                <!-- ========================================== -->
+                <!-- SCREEN: VEHICLES FLEET MANAGEMENT (v1.21.01) -->
+                <!-- ========================================== -->
+                <div id="screen-vehicles" class="screen">
+                    <div class="list-header" style="margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button class="btn-icon" id="btn-back-vehicles"><i class="bx bx-arrow-back"></i></button>
+                            <h2 style="margin: 0; font-size: 1.25rem;">Control de Flota</h2>
+                        </div>
+                        <div style="display: flex; gap: 6px;">
+                            <button class="btn-premium" id="btn-new-incident-top" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); padding: 7px 12px; font-size: 0.78rem; font-weight: 700; display: flex; align-items: center; gap: 5px;">
+                                <i class="bx bx-error-alt"></i> Avería
+                            </button>
+                            <button class="btn-add-circle" id="btn-new-vehicle" title="Nuevo Vehículo">+</button>
+                        </div>
+                    </div>
+
+                    <!-- Fleet KPI Summary Cards -->
+                    <div class="fleet-kpi-grid anim-fade">
+                        <div class="fleet-kpi-card" data-filter="all">
+                            <span class="fleet-kpi-val" id="kpi-fleet-total">0</span>
+                            <span class="fleet-kpi-lbl">Total Flota</span>
+                        </div>
+                        <div class="fleet-kpi-card" data-filter="operativo">
+                            <span class="fleet-kpi-val" id="kpi-fleet-operativos" style="color: var(--success);">0</span>
+                            <span class="fleet-kpi-lbl">Operativos</span>
+                        </div>
+                        <div class="fleet-kpi-card" data-filter="issues">
+                            <span class="fleet-kpi-val" id="kpi-fleet-taller" style="color: var(--danger);">0</span>
+                            <span class="fleet-kpi-lbl">Averías / Taller</span>
+                        </div>
+                        <div class="fleet-kpi-card" data-filter="renting">
+                            <span class="fleet-kpi-val" id="kpi-fleet-renting" style="color: #fbbf24;">0</span>
+                            <span class="fleet-kpi-lbl">Fin Renting</span>
+                        </div>
+                        <div class="fleet-kpi-card" data-filter="revisiones">
+                            <span class="fleet-kpi-val" id="kpi-fleet-revisiones" style="color: #60a5fa;">0</span>
+                            <span class="fleet-kpi-lbl">Revisiones</span>
+                        </div>
+                    </div>
+
+                    <!-- Filter Pills -->
+                    <div class="fleet-filter-bar anim-fade">
+                        <button class="fleet-filter-pill active" data-filter="all"><i class="bx bx-grid-alt"></i> Todos</button>
+                        <button class="fleet-filter-pill" data-filter="mine"><i class="bx bx-user"></i> Mi Vehículo</button>
+                        <button class="fleet-filter-pill" data-filter="issues"><i class="bx bx-wrench"></i> Averías / Taller</button>
+                        <button class="fleet-filter-pill" data-filter="renting"><i class="bx bx-calendar-event"></i> Renting</button>
+                        <button class="fleet-filter-pill" data-filter="revisiones"><i class="bx bx-check-shield"></i> Revisiones / ITV</button>
+                    </div>
+
+                    <!-- Search bar -->
+                    <div class="search-container">
+                        <i class="bx bx-search search-icon"></i>
+                        <input type="text" id="search-vehicles" class="search-input" placeholder="Buscar por matrícula, conductor, modelo, renting...">
+                    </div>
+
+                    <!-- Vehicles Card List -->
+                    <div class="items-list anim-fade" id="list-vehicles" style="padding-bottom: 80px;">
+                        <!-- Dynamically populated -->
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- SCREEN: VEHICLE DETAIL FICHA (v1.21.01)     -->
+                <!-- ========================================== -->
+                <div id="screen-vehicle-detail" class="screen">
+                    <div class="list-header" style="margin-bottom: 12px; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button class="btn-icon" id="btn-back-vehicle-detail"><i class="bx bx-arrow-back"></i></button>
+                            <h2 id="veh-detail-header-title" style="margin: 0; font-size: 1.15rem;">Ficha Vehículo</h2>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn-icon" id="btn-edit-vehicle-from-detail" title="Editar Ficha"><i class="bx bx-edit-alt"></i></button>
+                            <button class="btn-icon" id="btn-delete-vehicle-from-detail" style="color: var(--danger);" title="Eliminar"><i class="bx bx-trash"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Hero Card -->
+                    <div class="glass-card anim-fade" style="padding: 16px; margin-bottom: 14px; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+                            <div>
+                                <span class="vehicle-plate-badge" id="veh-detail-plate">0000-XXX</span>
+                                <h3 id="veh-detail-brand" style="margin-top: 6px; font-size: 1.05rem; font-weight: 700; color: var(--text-primary);">Marca y Modelo</h3>
+                                <div id="veh-detail-driver" style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 2px; display: flex; align-items: center; gap: 5px;">
+                                    <i class="bx bx-user"></i> <span>Sin asignar</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                                <span id="veh-detail-status-badge" class="vehicle-status-badge operativo">Operativo</span>
+                                <div id="veh-detail-photo-thumb" style="width: 55px; height: 55px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-glass); display: none;">
+                                    <img src="" style="width: 100%; height: 100%; object-fit: cover;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Mileage & Actions in Hero -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.25); border-radius: var(--radius-sm); padding: 8px 12px; margin-top: 4px;">
+                            <div>
+                                <div style="font-size: 0.7rem; color: var(--text-secondary);">ODÓMETRO ACTUAL</div>
+                                <div id="veh-detail-hero-km" style="font-size: 1.15rem; font-weight: 800; color: var(--text-primary); font-family: monospace;">0 km</div>
+                            </div>
+                            <button type="button" id="btn-quick-update-km" class="btn-premium" style="width: auto; padding: 6px 12px; font-size: 0.75rem; background: var(--accent-gradient); margin: 0; display: flex; align-items: center; gap: 4px;">
+                                <i class="bx bx-tachometer"></i> Actualizar Kms
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Navigation Tabs -->
+                    <div class="vehicle-detail-tabs anim-fade">
+                        <button class="vehicle-tab-btn active" data-veh-tab="ficha"><i class="bx bx-file"></i> Ficha & Renting</button>
+                        <button class="vehicle-tab-btn" data-veh-tab="incidents"><i class="bx bx-error-alt"></i> Averías <span id="veh-detail-incidents-count" class="badge-notification" style="display: none; width: 18px; height: 18px; font-size: 0.7rem; margin-left: 2px;">0</span></button>
+                        <button class="vehicle-tab-btn" data-veh-tab="maintenances"><i class="bx bx-wrench"></i> Revisiones</button>
+                        <button class="vehicle-tab-btn" data-veh-tab="mileage"><i class="bx bx-history"></i> Historial Kms</button>
+                    </div>
+
+                    <!-- TAB 1: FICHA GENERAL & RENTING -->
+                    <div id="veh-tab-ficha" class="vehicle-tab-content active anim-fade" style="padding-bottom: 80px;">
+                        <!-- Renting Section Card -->
+                        <div class="glass-card" style="padding: 16px;">
+                            <h4 style="font-size: 0.85rem; color: var(--accent); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                                <i class="bx bx-calendar-event"></i> Contrato de Renting
+                            </h4>
+                            <div class="vehicle-info-grid" style="margin-bottom: 12px;">
+                                <div class="vehicle-info-item">
+                                    <span class="lbl">Empresa Renting</span>
+                                    <span class="val" id="veh-detail-renting-company">-</span>
+                                </div>
+                                <div class="vehicle-info-item">
+                                    <span class="lbl">Nº Contrato</span>
+                                    <span class="val" id="veh-detail-renting-contract">-</span>
+                                </div>
+                                <div class="vehicle-info-item">
+                                    <span class="lbl">Fecha Fin Renting</span>
+                                    <span class="val" id="veh-detail-renting-end">-</span>
+                                </div>
+                                <div class="vehicle-info-item">
+                                    <span class="lbl">Estado Contrato</span>
+                                    <span class="val" id="veh-detail-renting-days-left">-</span>
+                                </div>
+                            </div>
+                            <div id="veh-detail-renting-progress-container" style="display: none; margin-top: 8px;">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 4px;">
+                                    <span>Vigencia del Renting</span>
+                                    <span id="veh-detail-renting-pct">0%</span>
+                                </div>
+                                <div class="fleet-progress-bar">
+                                    <div id="veh-detail-renting-bar" class="fleet-progress-fill" style="width: 0%;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Insurance & Road Assistance -->
+                        <div class="glass-card" style="padding: 16px;">
+                            <h4 style="font-size: 0.85rem; color: #10b981; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                                <i class="bx bx-shield-quarter"></i> Seguro y Asistencia en Carretera
+                            </h4>
+                            <div class="vehicle-info-grid" style="margin-bottom: 12px;">
+                                <div class="vehicle-info-item">
+                                    <span class="lbl">Compañía Aseguradora</span>
+                                    <span class="val" id="veh-detail-insurance-company">-</span>
+                                </div>
+                                <div class="vehicle-info-item">
+                                    <span class="lbl">Asistencia 24h</span>
+                                    <span class="val" id="veh-detail-insurance-phone">-</span>
+                                </div>
+                            </div>
+                            <a id="btn-veh-detail-call-insurance" href="#" class="btn-premium" style="display: none; background: #059669; text-decoration: none; padding: 10px; font-size: 0.82rem; font-weight: 700; align-items: center; justify-content: center; gap: 8px;">
+                                <i class="bx bx-phone-call"></i> LLAMAR A ASISTENCIA 24H
+                            </a>
+                        </div>
+
+                        <!-- Technical specs & Notes -->
+                        <div class="glass-card" style="padding: 16px;">
+                            <h4 style="font-size: 0.85rem; color: #8b5cf6; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                                <i class="bx bx-cog"></i> Especificaciones y Notas
+                            </h4>
+                            <div class="vehicle-info-grid" style="margin-bottom: 10px;">
+                                <div class="vehicle-info-item">
+                                    <span class="lbl">Tipo Combustible</span>
+                                    <span class="val" id="veh-detail-fuel-type">Diésel</span>
+                                </div>
+                                <div class="vehicle-info-item">
+                                    <span class="lbl">Próxima ITV</span>
+                                    <span class="val" id="veh-detail-itv-date">-</span>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 6px;">
+                                <strong>Observaciones:</strong>
+                                <p id="veh-detail-notes" style="margin-top: 4px; color: var(--text-primary); white-space: pre-line; line-height: 1.4;">Sin notas adicionales.</p>
+                            </div>
+                            <div id="veh-detail-photo-full-container" style="display: none; margin-top: 12px; text-align: center;">
+                                <img id="veh-detail-photo-full" src="" style="max-width: 100%; max-height: 200px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass);">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 2: AVERÍAS E INCIDENCIAS -->
+                    <div id="veh-tab-incidents" class="vehicle-tab-content anim-fade" style="padding-bottom: 80px;">
+                        <button type="button" id="btn-new-incident-from-detail" class="btn-premium" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); padding: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <i class="bx bx-plus-circle"></i> REPORTAR NUEVA AVERÍA / INCIDENCIA
+                        </button>
+                        <div id="veh-detail-incidents-list" style="display: flex; flex-direction: column; gap: 10px;">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- TAB 3: REVISIONES Y MANTENIMIENTOS -->
+                    <div id="veh-tab-maintenances" class="vehicle-tab-content anim-fade" style="padding-bottom: 80px;">
+                        <div class="glass-card" style="padding: 14px; background: rgba(59, 130, 246, 0.08); border-color: rgba(59, 130, 246, 0.3);">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-size: 0.72rem; color: var(--accent); font-weight: 700; text-transform: uppercase;">Próxima Revisión Prevista</div>
+                                    <div id="veh-detail-next-rev-summary" style="font-size: 1rem; font-weight: 700; color: var(--text-primary); margin-top: 2px;">-</div>
+                                </div>
+                                <div id="veh-detail-next-rev-chip" class="vehicle-alert-chip info">Al día</div>
+                            </div>
+                        </div>
+                        <button type="button" id="btn-new-maint-from-detail" class="btn-premium" style="background: var(--accent-gradient); padding: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <i class="bx bx-plus-circle"></i> REGISTRAR REVISIÓN / MANTENIMIENTO
+                        </button>
+                        <div id="veh-detail-maints-list" style="display: flex; flex-direction: column; gap: 10px;">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- TAB 4: HISTORIAL DE KILOMETRAJE -->
+                    <div id="veh-tab-mileage" class="vehicle-tab-content anim-fade" style="padding-bottom: 80px;">
+                        <div class="glass-card" style="padding: 14px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-size: 0.72rem; color: var(--text-secondary); text-transform: uppercase;">Última Lectura Registrada</div>
+                                <div id="veh-detail-mileage-current" style="font-size: 1.15rem; font-weight: 800; font-family: monospace;">0 km</div>
+                                <div id="veh-detail-mileage-date" style="font-size: 0.72rem; color: var(--text-secondary);">-</div>
+                            </div>
+                            <button type="button" id="btn-update-km-from-detail" class="btn-premium" style="width: auto; padding: 8px 14px; font-size: 0.8rem; margin: 0;">
+                                <i class="bx bx-tachometer"></i> Actualizar
+                            </button>
+                        </div>
+                        <div id="veh-detail-mileage-list" style="display: flex; flex-direction: column; gap: 8px;">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- SCREEN: FORM NEW / EDIT VEHICLE (v1.21.01) -->
+                <!-- ========================================== -->
+                <div id="screen-form-vehicle" class="screen">
+                    <div class="list-header">
+                        <h2 id="veh-form-title">Nuevo Vehículo</h2>
+                        <button class="btn-icon" id="btn-back-form-vehicle"><i class="bx bx-arrow-back"></i></button>
+                    </div>
+                    <form id="form-vehicle" class="anim-fade" style="padding-bottom: 80px;">
+                        <input type="hidden" id="veh-id">
+                        
+                        <div class="form-row" style="display: flex; gap: 15px;">
+                            <div class="form-group" style="flex: 1;">
+                                <label>Matrícula *</label>
+                                <input type="text" id="veh-plate" class="input-control" placeholder="Ej. 1234ABC" required style="font-family: monospace; font-weight: 700; text-transform: uppercase;">
+                            </div>
+                            <div class="form-group" style="flex: 2;">
+                                <label>Marca y Modelo *</label>
+                                <input type="text" id="veh-brand" class="input-control" placeholder="Ej. Peugeot Partner 1.6 BlueHDi" required>
+                            </div>
+                        </div>
+
+                        <div class="form-row" style="display: flex; gap: 15px;">
+                            <div class="form-group" style="flex: 1.5;">
+                                <label>Conductor / Técnico Asignado</label>
+                                <select id="veh-driver" class="input-control">
+                                    <option value="">-- Sin asignar (Flota general) --</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label>Tipo Combustible</label>
+                                <select id="veh-fuel" class="input-control">
+                                    <option value="Diésel">Diésel</option>
+                                    <option value="Gasolina">Gasolina</option>
+                                    <option value="Híbrido">Híbrido</option>
+                                    <option value="Eléctrico">Eléctrico</option>
+                                    <option value="GLP">GLP</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label>Estado Inicial</label>
+                                <select id="veh-status" class="input-control">
+                                    <option value="operativo">Operativo</option>
+                                    <option value="taller">En Taller / Averiado</option>
+                                    <option value="revision">En Revisión</option>
+                                    <option value="baja">Baja</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Kilómetros Actuales (Odómetro) *</label>
+                            <input type="number" step="1" id="veh-km" class="input-control" placeholder="Ej. 145000" required>
+                        </div>
+
+                        <!-- Renting Contract Block -->
+                        <div class="glass-card" style="padding: 14px; margin-bottom: 16px; border: 1px solid var(--border-glass);">
+                            <h4 style="font-size: 0.82rem; color: var(--accent); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="bx bx-calendar-event"></i> Datos de Renting
+                            </h4>
+                            <div class="form-row" style="display: flex; gap: 12px;">
+                                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                    <label>Empresa Renting</label>
+                                    <input type="text" id="veh-renting-company" class="input-control" placeholder="Ej. Arval, LeasePlan, Alphabet...">
+                                </div>
+                                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                    <label>Nº Contrato</label>
+                                    <input type="text" id="veh-renting-contract" class="input-control" placeholder="Ej. CNT-98741">
+                                </div>
+                                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                    <label>Fecha Fin Renting</label>
+                                    <input type="date" id="veh-renting-end" class="input-control">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Maintenance & Revisions Block -->
+                        <div class="glass-card" style="padding: 14px; margin-bottom: 16px; border: 1px solid var(--border-glass);">
+                            <h4 style="font-size: 0.82rem; color: #8b5cf6; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="bx bx-wrench"></i> Programación de Revisiones e ITV
+                            </h4>
+                            <div class="form-row" style="display: flex; gap: 12px; margin-bottom: 10px;">
+                                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                    <label>Intervalo Revisión (Km)</label>
+                                    <input type="number" step="1000" id="veh-interval-km" class="input-control" placeholder="Ej. 15000" value="15000">
+                                </div>
+                                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                    <label>Próxima Revisión (Fecha)</label>
+                                    <input type="date" id="veh-next-rev-date" class="input-control">
+                                </div>
+                                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                    <label>Próxima Revisión (Kms)</label>
+                                    <input type="number" step="1" id="veh-next-rev-km" class="input-control" placeholder="Ej. 160000">
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Fecha Próxima ITV</label>
+                                <input type="date" id="veh-itv-date" class="input-control">
+                            </div>
+                        </div>
+
+                        <!-- Insurance & Road Assistance -->
+                        <div class="glass-card" style="padding: 14px; margin-bottom: 16px; border: 1px solid var(--border-glass);">
+                            <h4 style="font-size: 0.82rem; color: #10b981; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="bx bx-shield-quarter"></i> Seguro y Asistencia en Carretera
+                            </h4>
+                            <div class="form-row" style="display: flex; gap: 12px;">
+                                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                    <label>Compañía Aseguradora / Póliza</label>
+                                    <input type="text" id="veh-insurance-company" class="input-control" placeholder="Ej. Mapfre - Póliza 847291">
+                                </div>
+                                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                    <label>Teléfono Asistencia 24h</label>
+                                    <input type="tel" id="veh-insurance-phone" class="input-control" placeholder="Ej. 900123456">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Vehicle Photo & Notes -->
+                        <div class="form-group">
+                            <label>Foto del Vehículo</label>
+                            <input type="file" id="veh-photo-file" class="input-control" accept="image/*" capture="environment">
+                            <div id="veh-photo-preview" style="margin-top: 10px; display: none; text-align: center;">
+                                <img src="" style="max-width: 100%; max-height: 160px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass);">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Observaciones / Equipamiento</label>
+                            <textarea id="veh-notes" class="input-control" rows="2" placeholder="Detalles de equipamiento, baca, rotulación, etc."></textarea>
+                        </div>
+
+                        <button type="submit" class="btn-premium" style="margin-top: 10px;">
+                            <i class="bx bx-save"></i> GUARDAR VEHÍCULO
+                        </button>
+                    </form>
+                </div>
+
+                <!-- ======================================================== -->
+                <!-- SCREEN: REPORT BREAKDOWN / INCIDENT TO FLEET (v1.21.01)  -->
+                <!-- ======================================================== -->
+                <div id="screen-form-vehicle-incident" class="screen">
+                    <div class="list-header">
+                        <h2>Reportar Avería / Incidencia</h2>
+                        <button class="btn-icon" id="btn-back-form-incident"><i class="bx bx-arrow-back"></i></button>
+                    </div>
+                    <form id="form-vehicle-incident" class="anim-fade" style="padding-bottom: 80px;">
+                        <input type="hidden" id="incident-id">
+                        <input type="hidden" id="incident-lat">
+                        <input type="hidden" id="incident-lon">
+                        <input type="hidden" id="incident-maps-url">
+
+                        <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 16px; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;">
+                            <strong style="color: #f87171; display: block; margin-bottom: 2px;"><i class="bx bx-info-circle"></i> Notificación Automática</strong>
+                            Al registrar esta avería se notificará de inmediato a la responsable de flota con la ubicación GPS y las fotografías adjuntas.
+                        </div>
+
+                        <div class="form-group">
+                            <label>Vehículo Afectado *</label>
+                            <select id="incident-vehicle-select" class="input-control" required style="font-weight: 600;">
+                                <option value="">-- Selecciona el vehículo --</option>
+                            </select>
+                        </div>
+
+                        <div class="form-row" style="display: flex; gap: 15px;">
+                            <div class="form-group" style="flex: 1.5;">
+                                <label>Técnico Informante</label>
+                                <input type="text" id="incident-tech-name" class="input-control" readonly style="opacity: 0.9;">
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label>Kilómetros Actuales</label>
+                                <input type="number" step="1" id="incident-km" class="input-control" placeholder="Ej. 145200">
+                            </div>
+                        </div>
+
+                        <div class="form-row" style="display: flex; gap: 15px;">
+                            <div class="form-group" style="flex: 1;">
+                                <label>Nivel de Urgencia *</label>
+                                <select id="incident-urgency" class="input-control" required style="font-weight: 600;">
+                                    <option value="urgente">🔴 URGENTE (Vehículo Inmovilizado / Grúa)</option>
+                                    <option value="moderada" selected>🟡 MODERADA (Requiere taller prioritario)</option>
+                                    <option value="leve">🟢 LEVE (Aviso / Desperfecto no urgente)</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label>Categoría de Avería *</label>
+                                <select id="incident-category" class="input-control" required>
+                                    <option value="Motor / Mecánica">Motor / Mecánica</option>
+                                    <option value="Frenos / Dirección">Frenos / Dirección</option>
+                                    <option value="Neumáticos / Pinchazo">Neumáticos / Pinchazo</option>
+                                    <option value="Luces / Sistema Eléctrico">Luces / Sistema Eléctrico</option>
+                                    <option value="Chapa / Accidente">Chapa / Accidente</option>
+                                    <option value="Lunas / Cristales">Lunas / Cristales</option>
+                                    <option value="Climatización">Climatización / Aire</option>
+                                    <option value="Otro">Otro motivo</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Descripción Detallada de la Avería *</label>
+                            <textarea id="incident-desc" class="input-control" rows="3" placeholder="Explica qué ha ocurrido, ruidos, testigos encendidos en el cuadro, síntomas..." required></textarea>
+                        </div>
+
+                        <!-- Location & GPS Block -->
+                        <div class="glass-card" style="padding: 14px; margin-bottom: 16px; border: 1px solid var(--border-glass);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <label style="margin: 0; font-size: 0.82rem; color: var(--accent); font-weight: 700; text-transform: uppercase;">
+                                    <i class="bx bx-map-pin"></i> Ubicación del Vehículo
+                                </label>
+                                <button type="button" id="btn-incident-gps" class="btn-premium" style="width: auto; padding: 6px 12px; font-size: 0.76rem; background: var(--accent-gradient); margin: 0; display: flex; align-items: center; gap: 4px;">
+                                    <i class="bx bx-target-lock"></i> Obtener GPS Actual
+                                </button>
+                            </div>
+                            <input type="text" id="incident-location" class="input-control" placeholder="Ej. Autovía A-3 Km 342 sentido Valencia, o Calle Mayor 15...">
+                            <div id="incident-gps-status" style="font-size: 0.75rem; color: var(--accent); margin-top: 6px; display: none; font-weight: 600;"></div>
+                        </div>
+
+                        <!-- Photo attachments -->
+                        <div class="glass-card" style="padding: 14px; margin-bottom: 16px; border: 1px solid var(--border-glass);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <label style="margin: 0; font-size: 0.82rem; color: #ec4899; font-weight: 700; text-transform: uppercase;">
+                                    <i class="bx bx-camera"></i> Fotografías de la Avería / Daños
+                                </label>
+                                <label for="incident-photo-file" class="btn-premium" style="width: auto; padding: 6px 12px; font-size: 0.76rem; background: #db2777; margin: 0; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                    <i class="bx bx-plus"></i> Añadir Foto
+                                </label>
+                                <input type="file" id="incident-photo-file" accept="image/*" capture="environment" style="display: none;">
+                            </div>
+                            <div id="incident-photos-preview" class="incident-photo-grid">
+                                <!-- Populated dynamically with preview images -->
+                            </div>
+                            <div id="incident-photos-empty-hint" style="font-size: 0.75rem; color: var(--text-secondary); text-align: center; padding: 8px 0;">
+                                No has adjuntado fotos todavía (opcional pero recomendado).
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-premium" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 14px; font-weight: 700; font-size: 0.92rem; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);">
+                            <i class="bx bx-send"></i> MANDAR INCIDENCIA A RESPONSABLE DE FLOTA
+                        </button>
+                    </form>
+                </div>
+
+                <!-- ======================================================== -->
+                <!-- SCREEN: FORM REGISTER MAINTENANCE / REVISION (v1.21.01)  -->
+                <!-- ======================================================== -->
+                <div id="screen-form-vehicle-maintenance" class="screen">
+                    <div class="list-header">
+                        <h2>Registrar Revisión / Mantenimiento</h2>
+                        <button class="btn-icon" id="btn-back-form-maintenance"><i class="bx bx-arrow-back"></i></button>
+                    </div>
+                    <form id="form-vehicle-maintenance" class="anim-fade" style="padding-bottom: 80px;">
+                        <input type="hidden" id="maint-id">
+                        <input type="hidden" id="maint-veh-id">
+
+                        <div class="form-group">
+                            <label>Vehículo *</label>
+                            <select id="maint-vehicle-select" class="input-control" required style="font-weight: 600;">
+                                <option value="">-- Selecciona el vehículo --</option>
+                            </select>
+                        </div>
+
+                        <div class="form-row" style="display: flex; gap: 15px;">
+                            <div class="form-group" style="flex: 1;">
+                                <label>Fecha de Revisión *</label>
+                                <input type="date" id="maint-date" class="input-control" required>
+                            </div>
+                            <div class="form-group" style="flex: 1.5;">
+                                <label>Tipo de Mantenimiento *</label>
+                                <select id="maint-type" class="input-control" required>
+                                    <option value="Revisión Oficial / Periódica">Revisión Oficial / Periódica</option>
+                                    <option value="ITV">Inspección ITV</option>
+                                    <option value="Cambio de Neumáticos">Cambio de Neumáticos</option>
+                                    <option value="Cambio de Aceite y Filtros">Cambio de Aceite y Filtros</option>
+                                    <option value="Frenos y Pastillas">Frenos y Pastillas</option>
+                                    <option value="Correa / Distribución">Correa / Distribución</option>
+                                    <option value="Reparación Avería">Reparación de Avería</option>
+                                    <option value="Otro">Otro mantenimiento</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row" style="display: flex; gap: 15px;">
+                            <div class="form-group" style="flex: 1;">
+                                <label>Kilómetros Odómetro *</label>
+                                <input type="number" step="1" id="maint-km" class="input-control" placeholder="Ej. 150200" required>
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label>Coste (€)</label>
+                                <input type="number" step="0.01" id="maint-cost" class="input-control" placeholder="0.00">
+                            </div>
+                        </div>
+
+                        <div class="form-row" style="display: flex; gap: 15px;">
+                            <div class="form-group" style="flex: 2;">
+                                <label>Taller / Centro de Servicio</label>
+                                <input type="text" id="maint-workshop" class="input-control" placeholder="Ej. Taller Oficial Peugeot, Norauto...">
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label>Nº Factura / Albarán</label>
+                                <input type="text" id="maint-invoice-num" class="input-control" placeholder="Ej. F-2026-891">
+                            </div>
+                        </div>
+
+                        <!-- Schedule next revision -->
+                        <div class="glass-card" style="padding: 14px; margin-bottom: 16px; border: 1px solid var(--border-glass);">
+                            <h4 style="font-size: 0.82rem; color: var(--accent); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="bx bx-calendar-plus"></i> Programar Siguiente Revisión
+                            </h4>
+                            <div class="form-row" style="display: flex; gap: 12px;">
+                                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                    <label>Próxima Fecha Estimada</label>
+                                    <input type="date" id="maint-next-date" class="input-control">
+                                </div>
+                                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                    <label>Próximos Kms Recomendados</label>
+                                    <input type="number" step="1000" id="maint-next-km" class="input-control" placeholder="Ej. 165000">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Invoice photo upload -->
+                        <div class="form-group">
+                            <label>Foto Factura / Albarán (Opcional)</label>
+                            <input type="file" id="maint-photo-file" class="input-control" accept="image/*" capture="environment">
+                            <div id="maint-photo-preview" style="margin-top: 10px; display: none; text-align: center;">
+                                <img src="" style="max-width: 100%; max-height: 160px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass);">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Observaciones / Trabajos Realizados</label>
+                            <textarea id="maint-notes" class="input-control" rows="2" placeholder="Trabajos ejecutados, piezas cambiadas, recomendaciones del taller..."></textarea>
+                        </div>
+
+                        <button type="submit" class="btn-premium" style="margin-top: 10px;">
+                            <i class="bx bx-save"></i> GUARDAR REVISIÓN
+                        </button>
+                    </form>
+                </div>
 
     <!-- Bottom Navigation Bar -->
     <nav>
@@ -2226,6 +2822,99 @@
                 <div style="display: flex; gap: 12px; margin-top: 10px;">
                     <button type="button" id="btn-cancel-edit-client" class="btn-premium btn-secondary" style="flex: 1; margin: 0;">Cancelar</button>
                     <button type="submit" class="btn-premium" style="flex: 1; margin: 0; background: var(--accent-gradient);">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL ACTUALIZAR KILÓMETROS RÁPIDO v1.21.01 -->
+    <div id="modal-vehicle-km-update" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.65); backdrop-filter: blur(5px); z-index: 1200; align-items: center; justify-content: center; padding: 20px;">
+        <div class="glass-card" style="width: 100%; max-width: 400px; padding: 24px; border: 1px solid var(--border-glass); border-radius: var(--radius-lg); animation: slideUp 0.3s ease-out; display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary); margin: 0;"><i class="bx bx-tachometer" style="color: var(--accent);"></i> Actualizar Odómetro</h3>
+                <button type="button" class="btn-icon" id="btn-close-km-modal" style="padding: 4px;"><i class="bx bx-x" style="font-size: 1.4rem;"></i></button>
+            </div>
+            <form id="form-vehicle-quick-km" style="display: flex; flex-direction: column; gap: 12px;">
+                <input type="hidden" id="quick-km-veh-id">
+                <div style="font-size: 0.85rem; color: var(--text-secondary);" id="quick-km-veh-info">Vehículo: -</div>
+                <div class="form-group" style="margin: 0;">
+                    <label>Nuevo Kilometraje Actual *</label>
+                    <input type="number" step="1" id="quick-km-val" class="input-control" required placeholder="Ej. 146500" style="font-size: 1.1rem; font-weight: 700;">
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <label>Fecha de Lectura</label>
+                    <input type="date" id="quick-km-date" class="input-control">
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <label>Nota / Motivo (Opcional)</label>
+                    <input type="text" id="quick-km-notes" class="input-control" placeholder="Ej. Chequeo mensual, cambio de conductor...">
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 6px;">
+                    <button type="button" id="btn-cancel-quick-km" class="btn-premium btn-secondary" style="flex: 1; margin: 0;">Cancelar</button>
+                    <button type="submit" class="btn-premium" style="flex: 1; margin: 0; background: var(--accent-gradient);">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIRMACIÓN DE INCIDENCIA ENVIADA CON ACCESOS MULTICANAL v1.21.01 -->
+    <div id="modal-incident-sent-success" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); z-index: 1300; align-items: center; justify-content: center; padding: 20px;">
+        <div class="glass-card anim-fade" style="width: 100%; max-width: 460px; padding: 24px; border: 1px solid var(--border-glass); border-radius: var(--radius-lg); display: flex; flex-direction: column; gap: 14px; text-align: center;">
+            <div style="font-size: 2.4rem;">🚨</div>
+            <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0;">¡Incidencia Registrada!</h3>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">
+                Se ha guardado en el historial y se ha enviado la notificación automática por Telegram con tu ubicación y fotos.
+            </p>
+
+            <div style="background: rgba(255,255,255,0.04); border-radius: var(--radius-sm); padding: 12px; text-align: left; font-size: 0.8rem; display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--border-glass);">
+                <div><strong style="color: var(--text-secondary);">Vehículo:</strong> <span id="incident-success-veh">-</span></div>
+                <div><strong style="color: var(--text-secondary);">Gravedad:</strong> <span id="incident-success-urgency">-</span></div>
+                <div><strong style="color: var(--text-secondary);">Ubicación:</strong> <span id="incident-success-loc">-</span></div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
+                <a id="btn-incident-whatsapp" href="#" target="_blank" class="btn-premium" style="background: #25D366; color: #fff; text-decoration: none; padding: 11px; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <i class="bx bxl-whatsapp" style="font-size: 1.2rem;"></i> AVISAR POR WHATSAPP A FLOTA
+                </a>
+                <a id="btn-incident-email" href="#" class="btn-premium btn-secondary" style="text-decoration: none; padding: 10px; font-size: 0.82rem; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <i class="bx bx-envelope"></i> Enviar Correo a Flota
+                </a>
+                <a id="btn-incident-call-insurance" href="#" class="btn-premium" style="display: none; background: #dc2626; color: #fff; text-decoration: none; padding: 10px; font-size: 0.82rem; font-weight: 700; align-items: center; justify-content: center; gap: 8px;">
+                    <i class="bx bx-phone-call"></i> Llamar Asistencia en Carretera 24h
+                </a>
+                <button type="button" id="btn-incident-modal-close" class="btn-premium btn-secondary" style="margin-top: 4px; padding: 10px;">
+                    Entendido / Volver a Flota
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIGURACIÓN DE RESPONSABLE DE FLOTA v1.21.01 -->
+    <div id="modal-fleet-settings" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.65); backdrop-filter: blur(5px); z-index: 1200; align-items: center; justify-content: center; padding: 20px;">
+        <div class="glass-card" style="width: 100%; max-width: 440px; padding: 24px; border: 1px solid var(--border-glass); border-radius: var(--radius-lg); animation: slideUp 0.3s ease-out; display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary); margin: 0;"><i class="bx bx-car" style="color: var(--accent);"></i> Contacto Responsable de Flota</h3>
+                <button type="button" class="btn-icon" id="btn-close-fleet-settings-modal" style="padding: 4px;"><i class="bx bx-x" style="font-size: 1.4rem;"></i></button>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;">
+                Estos datos se utilizarán para enviar alertas directas por WhatsApp y Email cuando los técnicos reporten una avería o soliciten asistencia.
+            </div>
+            <form id="form-fleet-settings" style="display: flex; flex-direction: column; gap: 12px;">
+                <div class="form-group" style="margin: 0;">
+                    <label>Nombre de la Responsable</label>
+                    <input type="text" id="fleet-set-name" class="input-control" placeholder="Ej. Responsable de Flota / Elena Martínez" required>
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <label>Teléfono Móvil / WhatsApp (con prefijo o 9 dígitos)</label>
+                    <input type="tel" id="fleet-set-phone" class="input-control" placeholder="Ej. 600123456 o +34600123456" required>
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <label>Correo Electrónico de Flota</label>
+                    <input type="email" id="fleet-set-email" class="input-control" placeholder="Ej. flota@altatecnologia.es">
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 6px;">
+                    <button type="button" id="btn-cancel-fleet-settings" class="btn-premium btn-secondary" style="flex: 1; margin: 0;">Cancelar</button>
+                    <button type="submit" class="btn-premium" style="flex: 1; margin: 0; background: var(--accent-gradient);">Guardar Contacto</button>
                 </div>
             </form>
         </div>

@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.20.07",
+        version: "1.21.01",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -15,7 +15,16 @@ const state = {
         expenses: [],      // Expense logs
         users: [],         // User list
         commercial_reports: [], // Technical-commercial reports
-        vacations: []      // Vacation requests v1.14.00
+        vacations: [],     // Vacation requests v1.14.00
+        vehicles: [],      // Fleet vehicles v1.21.01
+        vehicle_incidents: [], // Vehicle breakdown incidents v1.21.01
+        vehicle_maintenances: [], // Maintenance & ITV logs v1.21.01
+        vehicle_mileages: [], // Odometer logs v1.21.01
+        fleet_settings: {
+            responsible_name: "Responsable de Flota",
+            responsible_phone: "",
+            responsible_email: ""
+        }
     },
     masterPassword: "",
     gitClient: null,
@@ -31,6 +40,13 @@ const state = {
     usersMetadata: {},   // Wrapped keys metadata
     currentUser: null,   // Current active user
     isProcessingQueue: false, // Prevent double processing of offline queue
+    
+    // Fleet module state v1.21.01
+    fleet: {
+        activeVehicleId: null,
+        filter: "all",
+        tempIncidentPhotos: []
+    },
     
     // Routes module state v1.18.01
     routes: {
@@ -115,7 +131,7 @@ const state = {
 
 // Personalización de Interfaz v1.19.01
 const DEFAULT_LAYOUTS = {
-    dashboard_order: ["passwords", "subscribers", "manuals", "expenses", "commercial", "vacations", "routes", "sims", "audit"],
+    dashboard_order: ["passwords", "subscribers", "manuals", "expenses", "commercial", "vacations", "routes", "sims", "vehicles", "audit"],
     dashboard_visible: {
         passwords: true,
         subscribers: true,
@@ -125,6 +141,7 @@ const DEFAULT_LAYOUTS = {
         vacations: true,
         routes: true,
         sims: true,
+        vehicles: true,
         audit: true
     },
     nav_order: ["dashboard", "subscribers", "expenses-submenu", "vacations", "settings"]
@@ -140,6 +157,7 @@ const NAV_ITEMS_METADATA = {
     commercial: { icon: "bx-briefcase", title: "Comercial", screen: "commercial-home" },
     routes: { icon: "bx-navigation", title: "Rutas", screen: "routes" },
     sims: { icon: "bx-card", title: "SIMs", screen: "sims" },
+    vehicles: { icon: "bx-car", title: "Vehículos", screen: "vehicles" },
     settings: { icon: "bx-cog", title: "Ajustes", screen: "settings" }
 };
 
@@ -282,6 +300,145 @@ function setupEventListeners() {
     document.getElementById("search-sims").addEventListener("input", debounce(renderSimCards));
     document.getElementById("menu-audit").addEventListener("click", () => switchScreen("audit"));
     document.getElementById("btn-back-audit").addEventListener("click", () => switchScreen("dashboard"));
+
+    // Fleet & Vehicles Module Listeners (v1.21.01)
+    const menuVehicles = document.getElementById("menu-vehicles");
+    if (menuVehicles) menuVehicles.addEventListener("click", () => switchScreen("vehicles"));
+    
+    const btnBackVehicles = document.getElementById("btn-back-vehicles");
+    if (btnBackVehicles) btnBackVehicles.addEventListener("click", () => switchScreen("dashboard"));
+    
+    const btnNewVehicle = document.getElementById("btn-new-vehicle");
+    if (btnNewVehicle) btnNewVehicle.addEventListener("click", () => openVehicleForm(null));
+    
+    const btnNewIncidentTop = document.getElementById("btn-new-incident-top");
+    if (btnNewIncidentTop) btnNewIncidentTop.addEventListener("click", () => openVehicleIncidentForm(null));
+    
+    const btnBackVehicleDetail = document.getElementById("btn-back-vehicle-detail");
+    if (btnBackVehicleDetail) btnBackVehicleDetail.addEventListener("click", () => switchScreen("vehicles"));
+    
+    const btnEditVehicleFromDetail = document.getElementById("btn-edit-vehicle-from-detail");
+    if (btnEditVehicleFromDetail) btnEditVehicleFromDetail.addEventListener("click", () => openVehicleForm(state.fleet.activeVehicleId));
+    
+    const btnDeleteVehicleFromDetail = document.getElementById("btn-delete-vehicle-from-detail");
+    if (btnDeleteVehicleFromDetail) btnDeleteVehicleFromDetail.addEventListener("click", () => deleteVehicleEntry(state.fleet.activeVehicleId));
+    
+    const btnQuickUpdateKm = document.getElementById("btn-quick-update-km");
+    if (btnQuickUpdateKm) btnQuickUpdateKm.addEventListener("click", () => openVehicleKmModal(state.fleet.activeVehicleId));
+    
+    const btnUpdateKmFromDetail = document.getElementById("btn-update-km-from-detail");
+    if (btnUpdateKmFromDetail) btnUpdateKmFromDetail.addEventListener("click", () => openVehicleKmModal(state.fleet.activeVehicleId));
+    
+    const btnNewIncidentFromDetail = document.getElementById("btn-new-incident-from-detail");
+    if (btnNewIncidentFromDetail) btnNewIncidentFromDetail.addEventListener("click", () => openVehicleIncidentForm(state.fleet.activeVehicleId));
+    
+    const btnNewMaintFromDetail = document.getElementById("btn-new-maint-from-detail");
+    if (btnNewMaintFromDetail) btnNewMaintFromDetail.addEventListener("click", () => openVehicleMaintenanceForm(state.fleet.activeVehicleId, null));
+    
+    const btnBackFormVehicle = document.getElementById("btn-back-form-vehicle");
+    if (btnBackFormVehicle) btnBackFormVehicle.addEventListener("click", () => switchScreen(state.fleet.activeVehicleId ? "vehicle-detail" : "vehicles"));
+    
+    const btnBackFormIncident = document.getElementById("btn-back-form-incident");
+    if (btnBackFormIncident) btnBackFormIncident.addEventListener("click", () => switchScreen(state.fleet.activeVehicleId ? "vehicle-detail" : "vehicles"));
+    
+    const btnBackFormMaintenance = document.getElementById("btn-back-form-maintenance");
+    if (btnBackFormMaintenance) btnBackFormMaintenance.addEventListener("click", () => switchScreen("vehicle-detail"));
+    
+    const formVehicle = document.getElementById("form-vehicle");
+    if (formVehicle) formVehicle.addEventListener("submit", saveVehicleEntry);
+    
+    const formVehicleIncident = document.getElementById("form-vehicle-incident");
+    if (formVehicleIncident) formVehicleIncident.addEventListener("submit", saveVehicleIncident);
+    
+    const formVehicleMaintenance = document.getElementById("form-vehicle-maintenance");
+    if (formVehicleMaintenance) formVehicleMaintenance.addEventListener("submit", saveVehicleMaintenance);
+    
+    const formVehicleQuickKm = document.getElementById("form-vehicle-quick-km");
+    if (formVehicleQuickKm) formVehicleQuickKm.addEventListener("submit", saveVehicleQuickKm);
+    
+    const formFleetSettings = document.getElementById("form-fleet-settings");
+    if (formFleetSettings) formFleetSettings.addEventListener("submit", saveFleetSettings);
+    
+    const searchVehicles = document.getElementById("search-vehicles");
+    if (searchVehicles) searchVehicles.addEventListener("input", debounce(renderVehiclesList));
+    
+    const btnIncidentGps = document.getElementById("btn-incident-gps");
+    if (btnIncidentGps) btnIncidentGps.addEventListener("click", getIncidentGeoLocation);
+    
+    const incidentPhotoFile = document.getElementById("incident-photo-file");
+    if (incidentPhotoFile) incidentPhotoFile.addEventListener("change", handleIncidentPhotos);
+    
+    const vehPhotoFile = document.getElementById("veh-photo-file");
+    if (vehPhotoFile) vehPhotoFile.addEventListener("change", (e) => handleFilePreview(e, "veh-photo-preview"));
+    
+    const maintPhotoFile = document.getElementById("maint-photo-file");
+    if (maintPhotoFile) maintPhotoFile.addEventListener("change", (e) => handleFilePreview(e, "maint-photo-preview"));
+    
+    // Vehicle detail tabs
+    document.querySelectorAll(".vehicle-tab-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const targetTab = btn.getAttribute("data-veh-tab");
+            document.querySelectorAll(".vehicle-tab-btn").forEach(b => b.classList.remove("active"));
+            document.querySelectorAll(".vehicle-tab-content").forEach(c => c.classList.remove("active"));
+            btn.classList.add("active");
+            const content = document.getElementById(`veh-tab-${targetTab}`);
+            if (content) content.classList.add("active");
+        });
+    });
+
+    // Vehicle filter pills and KPI cards
+    document.querySelectorAll(".fleet-filter-pill").forEach(pill => {
+        pill.addEventListener("click", () => {
+            document.querySelectorAll(".fleet-filter-pill").forEach(p => p.classList.remove("active"));
+            document.querySelectorAll(".fleet-kpi-card").forEach(k => k.classList.remove("active-filter"));
+            pill.classList.add("active");
+            state.fleet.filter = pill.getAttribute("data-filter") || "all";
+            renderVehiclesList();
+        });
+    });
+
+    document.querySelectorAll(".fleet-kpi-card").forEach(card => {
+        card.addEventListener("click", () => {
+            const filter = card.getAttribute("data-filter") || "all";
+            state.fleet.filter = filter;
+            document.querySelectorAll(".fleet-kpi-card").forEach(k => k.classList.remove("active-filter"));
+            card.classList.add("active-filter");
+            document.querySelectorAll(".fleet-filter-pill").forEach(p => {
+                p.classList.toggle("active", p.getAttribute("data-filter") === filter);
+            });
+            renderVehiclesList();
+        });
+    });
+
+    // Modals buttons
+    const btnOpenFleetSettings = document.getElementById("btn-open-fleet-settings");
+    if (btnOpenFleetSettings) btnOpenFleetSettings.addEventListener("click", openFleetSettingsModal);
+
+    const btnCloseFleetSettingsModal = document.getElementById("btn-close-fleet-settings-modal");
+    if (btnCloseFleetSettingsModal) btnCloseFleetSettingsModal.addEventListener("click", () => {
+        document.getElementById("modal-fleet-settings").style.display = "none";
+    });
+
+    const btnCancelFleetSettings = document.getElementById("btn-cancel-fleet-settings");
+    if (btnCancelFleetSettings) btnCancelFleetSettings.addEventListener("click", () => {
+        document.getElementById("modal-fleet-settings").style.display = "none";
+    });
+
+    const btnCloseKmModal = document.getElementById("btn-close-km-modal");
+    if (btnCloseKmModal) btnCloseKmModal.addEventListener("click", () => {
+        document.getElementById("modal-vehicle-km-update").style.display = "none";
+    });
+
+    const btnCancelQuickKm = document.getElementById("btn-cancel-quick-km");
+    if (btnCancelQuickKm) btnCancelQuickKm.addEventListener("click", () => {
+        document.getElementById("modal-vehicle-km-update").style.display = "none";
+    });
+
+    const btnIncidentModalClose = document.getElementById("btn-incident-modal-close");
+    if (btnIncidentModalClose) btnIncidentModalClose.addEventListener("click", () => {
+        document.getElementById("modal-incident-sent-success").style.display = "none";
+        switchScreen(state.fleet.activeVehicleId ? "vehicle-detail" : "vehicles");
+    });
 
     // V1.05 Expenses Submenu Navigation
     document.getElementById("menu-sub-hours").addEventListener("click", () => switchScreen("hours"));
@@ -954,6 +1111,12 @@ function switchScreen(screenId) {
     if (screenId === "sims") {
         renderSimCards();
     }
+    if (screenId === "vehicles") {
+        renderVehiclesList();
+    }
+    if (screenId === "vehicle-detail" && state.fleet.activeVehicleId) {
+        renderVehicleDetail(state.fleet.activeVehicleId);
+    }
     if (screenId === "admin-routes-clients") {
         renderAdminRoutesClients();
     }
@@ -1078,8 +1241,51 @@ async function handleUnlock() {
         if (!state.vault.routes_clients) state.vault.routes_clients = [];
         if (!state.vault.notifications) state.vault.notifications = [];
         if (!state.vault.sim_cards) state.vault.sim_cards = [];
+        if (!state.vault.vehicles) state.vault.vehicles = [];
+        if (!state.vault.vehicle_incidents) state.vault.vehicle_incidents = [];
+        if (!state.vault.vehicle_maintenances) state.vault.vehicle_maintenances = [];
+        if (!state.vault.vehicle_mileages) state.vault.vehicle_mileages = [];
+        if (!state.vault.fleet_settings) {
+            state.vault.fleet_settings = {
+                responsible_name: "Responsable de Flota",
+                responsible_phone: "",
+                responsible_email: ""
+            };
+        }
         if (!state.vault.manual_categories) {
             state.vault.manual_categories = ["Ademco", "DSC", "Paradox", "Risco", "Galaxy", "Ajax", "Texecom", "General"];
+        }
+
+        // Auto-seed fleet from user profiles if fleet is empty
+        if (state.vault.vehicles.length === 0 && state.vault.users && state.vault.users.length > 0) {
+            state.vault.users.forEach(u => {
+                if (u.vehiculo && u.vehiculo.trim()) {
+                    const plate = u.vehiculo.trim().toUpperCase();
+                    if (!state.vault.vehicles.some(v => v.plate === plate)) {
+                        state.vault.vehicles.push({
+                            id: "veh_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
+                            plate: plate,
+                            brand_model: u.vehiculoBrandModel || "Vehículo Técnico",
+                            assigned_user: u.username,
+                            current_km: 0,
+                            km_last_update: new Date().toISOString().split("T")[0],
+                            fuel_type: "Diésel",
+                            status: "operativo",
+                            renting_company: "",
+                            renting_contract: "",
+                            renting_end_date: "",
+                            revision_interval_km: 15000,
+                            next_revision_date: "",
+                            next_revision_km: 0,
+                            itv_date: "",
+                            insurance_company: "",
+                            insurance_phone: "",
+                            photo: "",
+                            notes: "Importado automáticamente de perfil de usuario"
+                        });
+                    }
+                }
+            });
         }
         
         // Automatic default admin user initialization on first unlock
@@ -1089,7 +1295,7 @@ async function handleUnlock() {
             ];
             const adminWrapped = await encryptData(vaultKey, vaultKey);
             state.usersMetadata["admin"] = adminWrapped;
-            state.vault.version = "4.01";
+            state.vault.version = "1.21.01";
             state.vault.company_name = "ALTA TECNOLOGIA PARA LA SEGURIDAD";
         }
         
@@ -1138,6 +1344,7 @@ async function handleUnlock() {
         els.appBody.style.display = "flex";
         playSound("success");
         switchScreen("dashboard");
+        updateVehicleBadges();
         showToast(isOffline ? "Sesión iniciada fuera de línea" : "Sesión iniciada correctamente");
         
         // Check for App Update/Changelog notification
@@ -1260,7 +1467,7 @@ async function syncWithCloud(isRetry = false) {
 // Lock application and wipe password from memory
 function lockVault() {
     state.masterPassword = "";
-    state.vault = { version: "1.20.07", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [], sim_cards: [] };
+    state.vault = { version: "1.21.01", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [], sim_cards: [], vehicles: [], vehicle_incidents: [], vehicle_maintenances: [], vehicle_mileages: [] };
     state.gitSha = null;
     state.currentUser = null;
     
@@ -1913,8 +2120,20 @@ function populateVehicleSelector() {
 
     selector.innerHTML = "";
 
-    // 1. Gather vehicles from user profiles
     const userVehicles = new Map(); // plate -> brand/model
+
+    // 0. Gather vehicles from state.vault.vehicles (v1.21.01)
+    if (state.vault.vehicles) {
+        state.vault.vehicles.forEach(v => {
+            if (v.plate) {
+                const plate = v.plate.trim().toUpperCase();
+                const brand = (v.brand_model || "").trim();
+                userVehicles.set(plate, brand);
+            }
+        });
+    }
+
+    // 1. Gather vehicles from user profiles
     if (state.vault.users) {
         state.vault.users.forEach(u => {
             if (u.vehiculo) {
@@ -1924,7 +2143,9 @@ function populateVehicleSelector() {
                     const parts = u.vehiculo.trim().split(" ");
                     brand = parts.slice(1).join(" ");
                 }
-                userVehicles.set(plate, brand);
+                if (!userVehicles.has(plate) || !userVehicles.get(plate)) {
+                    userVehicles.set(plate, brand);
+                }
             }
         });
     }
@@ -2050,6 +2271,56 @@ async function saveExpenseEntry(evt) {
     };
 
     state.vault.expenses.unshift(expenseData);
+
+    // Auto-update vehicle odometer in fleet if fuel expense has mileage v1.21.01
+    if (category === "Combustible" && vehicle) {
+        const plate = vehicle.trim().toUpperCase();
+        if (!state.vault.vehicles) state.vault.vehicles = [];
+        let veh = state.vault.vehicles.find(v => v.plate === plate);
+        if (!veh) {
+            // Auto-create in fleet if not present
+            veh = {
+                id: "veh_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
+                plate: plate,
+                brand_model: brandModel || "Vehículo Técnico",
+                assigned_user: state.currentUser ? state.currentUser.username : "",
+                current_km: kilometers,
+                km_last_update: date || new Date().toISOString().split("T")[0],
+                fuel_type: "Diésel",
+                status: "operativo",
+                renting_company: "",
+                renting_contract: "",
+                renting_end_date: "",
+                revision_interval_km: 15000,
+                next_revision_date: "",
+                next_revision_km: 0,
+                itv_date: "",
+                insurance_company: "",
+                insurance_phone: "",
+                photo: "",
+                notes: ""
+            };
+            state.vault.vehicles.push(veh);
+        } else if (kilometers > (parseFloat(veh.current_km) || 0)) {
+            veh.current_km = kilometers;
+            veh.km_last_update = date || new Date().toISOString().split("T")[0];
+        }
+
+        if (kilometers > 0) {
+            if (!state.vault.vehicle_mileages) state.vault.vehicle_mileages = [];
+            state.vault.vehicle_mileages.unshift({
+                id: "km_" + Date.now(),
+                vehicle_id: veh.id,
+                plate: veh.plate,
+                date: date || new Date().toISOString().split("T")[0],
+                km: kilometers,
+                source: "repostaje",
+                registered_by: state.currentUser ? state.currentUser.username : "admin",
+                notes: `Repostaje combustible: ${liters > 0 ? liters + ' L' : ''} ${amount > 0 ? '(' + amount.toFixed(2) + ' €)' : ''}`.trim()
+            });
+        }
+    }
+
     setSyncStatus(false);
     switchScreen("expenses");
     showToast("Gasto guardado");
@@ -2267,19 +2538,56 @@ async function enviarAlertaTelegram(tipo, datos, isRetry = false) {
         tecnicoMsg = escapeMarkdown(datos.tecnico || "TÉCNICO");
         detalleMsg = escapeMarkdown(datos.detalle || "-");
         montoMsg = escapeMarkdown(datos.estado || "Pendiente");
+    } else if (tipo === "IncidenciaVehiculo") {
+        tipoMsg = escapeMarkdown(`🚨 Incidencia Flota - ${datos.category || "Avería"}`);
+        tecnicoMsg = escapeMarkdown(datos.technician_name || (state.currentUser ? (state.currentUser.fullName || state.currentUser.username) : "TÉCNICO"));
+        
+        let detail = `• *Vehículo:* ${datos.plate} (${datos.brand_model || ""})
+• *Urgencia:* ${datos.urgency === "urgente" ? "🔴 URGENTE / INMOVILIZADO" : (datos.urgency === "moderada" ? "🟡 MODERADA / TALLER" : "🟢 LEVE")}
+• *Kms:* ${datos.current_km ? datos.current_km + " km" : "-"}
+• *Descripción:* ${datos.description || "-"}`;
+        if (datos.location) {
+            detail += `\n• *Ubicación:* ${datos.location}`;
+        }
+        if (datos.maps_url) {
+            detail += `\n• *Mapa GPS:* ${datos.maps_url}`;
+        }
+        if (datos.photos && datos.photos.length > 0) {
+            detail += `\n• *Fotos:* ${datos.photos.length} fotografía(s) adjunta(s)`;
+        }
+        detalleMsg = detail;
+        montoMsg = escapeMarkdown(datos.urgency ? datos.urgency.toUpperCase() : "PENDIENTE");
+    } else if (tipo === "MantenimientoVehiculo") {
+        tipoMsg = escapeMarkdown(`🔧 Mantenimiento Flota - ${datos.type}`);
+        tecnicoMsg = escapeMarkdown(state.currentUser ? (state.currentUser.fullName || state.currentUser.username.toUpperCase()) : "TÉCNICO");
+        detalleMsg = escapeMarkdown(`Vehículo: ${datos.plate} | Taller: ${datos.workshop || "-"} | Kms: ${datos.km || 0} km | Próx: ${datos.next_revision_date || "-"} (${datos.next_revision_km || 0} km)`);
+        montoMsg = escapeMarkdown(datos.cost ? `${parseFloat(datos.cost).toFixed(2)} €` : "Registrado");
     }
 
     let headerTitle = datos.isNew === false ? "*Registro Modificado en ALTA TECNOLOGIA PARA LA SEGURIDAD*" : "*Nuevo Registro en ALTA TECNOLOGIA PARA LA SEGURIDAD*";
     if (tipo === "Vacaciones") {
         headerTitle = datos.subtipo === "Solicitud" ? "*Nueva Solicitud de Vacaciones*" : "*Resolución de Vacaciones*";
+    } else if (tipo === "IncidenciaVehiculo") {
+        headerTitle = "🚨 *INCIDENCIA DE VEHÍCULO REPORTADA*";
+    } else if (tipo === "MantenimientoVehiculo") {
+        headerTitle = "🔧 *REVISIÓN DE VEHÍCULO REGISTRADA*";
     }
     
-    const message = `${headerTitle}
+    let message = "";
+    if (tipo === "IncidenciaVehiculo") {
+        message = `${headerTitle}
+• *Tipo:* ${tipoMsg}
+• *Técnico:* ${tecnicoMsg}
+${detalleMsg}
+• *Fecha:* ${fechaFormateada}`;
+    } else {
+        message = `${headerTitle}
 • *Tipo:* ${tipoMsg}
 • *Técnico:* ${tecnicoMsg}
 • *Detalle / Concepto:* ${detalleMsg}
 • *Estado / Info:* ${montoMsg}
 • *Fecha:* ${fechaFormateada}`;
+    }
 
     const url = `https://api.telegram.org/bot${TELEGRAM_CONFIG.token}/sendMessage`;
 
@@ -2854,6 +3162,8 @@ function applyUserPrivileges(user) {
             commercial: document.getElementById("menu-commercial"),
             vacations: document.getElementById("menu-vacations"),
             routes: document.getElementById("menu-routes"),
+            sims: document.getElementById("menu-sims"),
+            vehicles: document.getElementById("menu-vehicles"),
             audit: document.getElementById("menu-audit")
         };
 
@@ -2871,6 +3181,8 @@ function applyUserPrivileges(user) {
                     (key === "commercial" && (scopes.includes("commercial") || user.role === "admin")) ||
                     (key === "vacations" && (scopes.includes("vacations") || user.role === "admin")) ||
                     (key === "routes" && (scopes.includes("routes") || user.role === "admin")) ||
+                    (key === "sims" && (scopes.includes("subscribers") || user.role === "admin")) ||
+                    (key === "vehicles") ||
                     (key === "audit" && (user.role === "admin" || user.role === "responsable_tecnico"))
                 );
 
@@ -2900,7 +3212,9 @@ function applyUserPrivileges(user) {
                 (key === "expenses-submenu" && (scopes.includes("expenses") || user.role === "admin" || user.role === "encargado_combustible")) ||
                 (key === "commercial" && (scopes.includes("commercial") || user.role === "admin")) ||
                 (key === "vacations" && (scopes.includes("vacations") || user.role === "admin")) ||
-                (key === "routes" && (scopes.includes("routes") || user.role === "admin"))
+                (key === "routes" && (scopes.includes("routes") || user.role === "admin")) ||
+                (key === "sims" && (scopes.includes("subscribers") || user.role === "admin")) ||
+                (key === "vehicles")
             );
 
             if (isAllowed) {
@@ -2931,6 +3245,9 @@ function applyUserPrivileges(user) {
 
     // Update vacation badge
     updateVacationBadge();
+    
+    // Update vehicle fleet badge v1.21.01
+    updateVehicleBadges();
 }
 
 function renderAuditScreen() {
@@ -8694,6 +9011,8 @@ function renderLocalDashboardList() {
         commercial: "📝 Comercial",
         vacations: "📅 Vacaciones",
         routes: "🚗 Rutas",
+        sims: "💳 Tarjetas SIM",
+        vehicles: "🚘 Flota de Vehículos",
         audit: "📊 Auditoría"
     };
 
@@ -8706,6 +9025,8 @@ function renderLocalDashboardList() {
             (key === "commercial" && (scopes.includes("commercial") || state.currentUser.role === "admin")) ||
             (key === "vacations" && (scopes.includes("vacations") || state.currentUser.role === "admin")) ||
             (key === "routes" && (scopes.includes("routes") || state.currentUser.role === "admin")) ||
+            (key === "sims" && (scopes.includes("subscribers") || state.currentUser.role === "admin")) ||
+            (key === "vehicles") ||
             (key === "audit" && (state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico"))
         );
 
@@ -8775,6 +9096,8 @@ function renderLocalNavList() {
         manuals: "📚 Manuales",
         commercial: "💼 Comercial",
         routes: "🚗 Rutas",
+        sims: "💳 SIMs",
+        vehicles: "🚘 Vehículos",
         settings: "⚙️ Ajustes"
     };
 
@@ -8788,7 +9111,9 @@ function renderLocalNavList() {
             (key === "expenses-submenu" && (scopes.includes("expenses") || state.currentUser.role === "admin" || state.currentUser.role === "encargado_combustible")) ||
             (key === "commercial" && (scopes.includes("commercial") || state.currentUser.role === "admin")) ||
             (key === "vacations" && (scopes.includes("vacations") || state.currentUser.role === "admin")) ||
-            (key === "routes" && (scopes.includes("routes") || state.currentUser.role === "admin"))
+            (key === "routes" && (scopes.includes("routes") || state.currentUser.role === "admin")) ||
+            (key === "sims" && (scopes.includes("subscribers") || state.currentUser.role === "admin")) ||
+            (key === "vehicles")
         );
 
         if (!isAllowed) return;
@@ -8853,7 +9178,7 @@ function renderLocalNavList() {
     // Agregar botón para añadir módulos excluidos al menú rápido
     const allPossible = [
         "dashboard", "subscribers", "expenses-submenu", "vacations",
-        "passwords", "manuals", "commercial", "routes", "settings"
+        "passwords", "manuals", "commercial", "routes", "sims", "vehicles", "settings"
     ];
 
     const allowedExcluded = allPossible.filter(key => {
@@ -8865,7 +9190,9 @@ function renderLocalNavList() {
             (key === "expenses-submenu" && (scopes.includes("expenses") || state.currentUser.role === "admin" || state.currentUser.role === "encargado_combustible")) ||
             (key === "commercial" && (scopes.includes("commercial") || state.currentUser.role === "admin")) ||
             (key === "vacations" && (scopes.includes("vacations") || state.currentUser.role === "admin")) ||
-            (key === "routes" && (scopes.includes("routes") || state.currentUser.role === "admin"))
+            (key === "routes" && (scopes.includes("routes") || state.currentUser.role === "admin")) ||
+            (key === "sims" && (scopes.includes("subscribers") || state.currentUser.role === "admin")) ||
+            (key === "vehicles")
         );
     });
 
@@ -9457,6 +9784,1411 @@ async function deleteSimCardEntry(id) {
     renderSimCards();
     await syncWithCloud();
 }
+
+// ============================================================================
+// FLEET MANAGEMENT CONTROLLER (v1.21.01)
+// ============================================================================
+
+// Helper: Handle file input preview and Base64 storage
+function handleFilePreview(event, previewContainerId) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    processAndCompressImage(file).then(base64 => {
+        event.target.dataset.base64 = base64;
+        const container = document.getElementById(previewContainerId);
+        if (container) {
+            const img = container.querySelector("img");
+            if (img) img.src = base64;
+            container.style.display = "block";
+        }
+    }).catch(err => {
+        console.error("Error compressing image:", err);
+        showToast("Error al procesar la imagen");
+    });
+}
+
+// Helper: Calculate Renting status and days left
+function calculateRentingStatus(veh) {
+    if (!veh || !veh.renting_end_date) {
+        return { status: 'none', daysLeft: null, text: 'Sin fecha de fin', label: 'Sin Renting' };
+    }
+    const end = new Date(veh.renting_end_date + "T00:00:00");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffTime = end.getTime() - today.getTime();
+    const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (daysLeft < 0) {
+        return { status: 'expired', daysLeft, text: `Vencido hace ${Math.abs(daysLeft)} días`, label: 'Vencido' };
+    } else if (daysLeft <= 30) {
+        return { status: 'danger', daysLeft, text: `Vence en ${daysLeft} días`, label: `${daysLeft}d restantes` };
+    } else if (daysLeft <= 60) {
+        return { status: 'warning', daysLeft, text: `Vence en ${daysLeft} días`, label: `${daysLeft}d restantes` };
+    } else {
+        return { status: 'ok', daysLeft, text: `Vence el ${formatSpanishDate(veh.renting_end_date)} (${daysLeft} días)`, label: `${daysLeft}d` };
+    }
+}
+
+// Helper: Calculate Revision / ITV status
+function calculateRevisionStatus(veh) {
+    if (!veh) return { status: 'none', text: 'No programada', label: 'Sin programar' };
+    
+    const currentKm = parseFloat(veh.current_km) || 0;
+    const nextKm = parseFloat(veh.next_revision_km) || 0;
+    const kmDiff = nextKm > 0 ? (nextKm - currentKm) : null;
+
+    let daysDiff = null;
+    if (veh.next_revision_date) {
+        const nextDate = new Date(veh.next_revision_date + "T00:00:00");
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        daysDiff = Math.ceil((nextDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    }
+
+    if (kmDiff === null && daysDiff === null) {
+        return { status: 'none', text: 'No programada', label: 'Sin programar' };
+    }
+
+    const isKmOverdue = kmDiff !== null && kmDiff <= 0;
+    const isDateOverdue = daysDiff !== null && daysDiff < 0;
+
+    if (isKmOverdue || isDateOverdue) {
+        const reason = isKmOverdue ? `${Math.abs(kmDiff).toLocaleString('es-ES')} km de exceso` : `${Math.abs(daysDiff)} días de retraso`;
+        return { status: 'danger', kmDiff, daysDiff, text: `Revisión Vencida (${reason})`, label: 'Vencida' };
+    }
+
+    const isKmClose = kmDiff !== null && kmDiff <= 1500;
+    const isDateClose = daysDiff !== null && daysDiff <= 30;
+
+    if (isKmClose || isDateClose) {
+        const reason = isKmClose ? `en ${kmDiff.toLocaleString('es-ES')} km` : `en ${daysDiff} días`;
+        return { status: 'warning', kmDiff, daysDiff, text: `Revisión Próxima (${reason})`, label: 'Próxima' };
+    }
+
+    let okText = 'Al día';
+    if (kmDiff !== null && daysDiff !== null) {
+        okText = `En ${kmDiff.toLocaleString('es-ES')} km o el ${formatSpanishDate(veh.next_revision_date)}`;
+    } else if (kmDiff !== null) {
+        okText = `En ${kmDiff.toLocaleString('es-ES')} km`;
+    } else if (daysDiff !== null) {
+        okText = `El ${formatSpanishDate(veh.next_revision_date)}`;
+    }
+
+    return { status: 'ok', kmDiff, daysDiff, text: okText, label: 'Al día' };
+}
+
+// Update badges across the app (Dashboard card badge & Vehicle tab)
+function updateVehicleBadges() {
+    const badge = document.getElementById("vehicle-fleet-badge");
+    if (!badge) return;
+
+    const vehicles = state.vault.vehicles || [];
+    const openIncidents = (state.vault.vehicle_incidents || []).filter(i => i.status !== "resuelta").length;
+    
+    let issuesCount = openIncidents;
+    vehicles.forEach(v => {
+        const rStat = calculateRentingStatus(v);
+        if (rStat.status === 'expired' || rStat.status === 'danger') issuesCount++;
+        const revStat = calculateRevisionStatus(v);
+        if (revStat.status === 'danger') issuesCount++;
+    });
+
+    if (issuesCount > 0) {
+        badge.textContent = issuesCount > 99 ? "99+" : issuesCount;
+        badge.style.display = "flex";
+    } else {
+        badge.style.display = "none";
+    }
+}
+
+// Render Fleet overview screen and list
+function renderVehiclesList() {
+    const list = document.getElementById("list-vehicles");
+    if (!list) return;
+    list.innerHTML = "";
+
+    const vehicles = state.vault.vehicles || [];
+    const incidents = state.vault.vehicle_incidents || [];
+    const query = (document.getElementById("search-vehicles")?.value || "").trim().toLowerCase();
+    const filter = state.fleet.filter || "all";
+
+    // 1. Calculate KPIs
+    let totalCount = vehicles.length;
+    let operativosCount = 0;
+    let tallerCount = 0;
+    let rentingAlertCount = 0;
+    let revisionesAlertCount = 0;
+
+    vehicles.forEach(v => {
+        const hasOpenIncident = incidents.some(i => i.vehicle_id === v.id && i.status !== "resuelta");
+        if (v.status === "operativo" && !hasOpenIncident) {
+            operativosCount++;
+        }
+        if (v.status === "taller" || v.status === "revision" || hasOpenIncident) {
+            tallerCount++;
+        }
+        const rStatus = calculateRentingStatus(v);
+        if (rStatus.status === 'expired' || rStatus.status === 'danger' || rStatus.status === 'warning') {
+            rentingAlertCount++;
+        }
+        const revStatus = calculateRevisionStatus(v);
+        if (revStatus.status === 'danger' || revStatus.status === 'warning') {
+            revisionesAlertCount++;
+        }
+    });
+
+    const setKpi = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+    };
+    setKpi("kpi-fleet-total", totalCount);
+    setKpi("kpi-fleet-operativos", operativosCount);
+    setKpi("kpi-fleet-taller", tallerCount);
+    setKpi("kpi-fleet-renting", rentingAlertCount);
+    setKpi("kpi-fleet-revisiones", revisionesAlertCount);
+
+    // 2. Filter Vehicles
+    const filtered = vehicles.filter(v => {
+        // Query match
+        if (query) {
+            const plateMatch = (v.plate || "").toLowerCase().includes(query);
+            const brandMatch = (v.brand_model || "").toLowerCase().includes(query);
+            const userMatch = (v.assigned_user || "").toLowerCase().includes(query);
+            const rentingMatch = (v.renting_company || "").toLowerCase().includes(query) || (v.renting_contract || "").toLowerCase().includes(query);
+            if (!plateMatch && !brandMatch && !userMatch && !rentingMatch) return false;
+        }
+
+        // Category filter match
+        if (filter === "mine") {
+            if (!state.currentUser) return false;
+            return (v.assigned_user || "").toLowerCase() === state.currentUser.username.toLowerCase();
+        } else if (filter === "operativo") {
+            const hasOpenIncident = incidents.some(i => i.vehicle_id === v.id && i.status !== "resuelta");
+            return (v.status || "operativo") === "operativo" && !hasOpenIncident;
+        } else if (filter === "issues") {
+            const hasOpenIncident = incidents.some(i => i.vehicle_id === v.id && i.status !== "resuelta");
+            return v.status === "taller" || v.status === "revision" || hasOpenIncident;
+        } else if (filter === "renting") {
+            const r = calculateRentingStatus(v);
+            return r.status === 'expired' || r.status === 'danger' || r.status === 'warning';
+        } else if (filter === "revisiones") {
+            const rev = calculateRevisionStatus(v);
+            return rev.status === 'danger' || rev.status === 'warning';
+        }
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        list.innerHTML = `
+            <div style="text-align: center; padding: 35px 20px; color: var(--text-secondary);">
+                <i class="bx bx-car" style="font-size: 2.5rem; opacity: 0.4; margin-bottom: 8px;"></i>
+                <p style="font-size: 0.9rem; margin: 0;">No se encontraron vehículos con los filtros actuales.</p>
+            </div>
+        `;
+        updateVehicleBadges();
+        return;
+    }
+
+    // 3. Render Cards
+    filtered.forEach(v => {
+        const card = document.createElement("div");
+        card.className = "vehicle-card anim-fade";
+
+        const hasOpenIncident = incidents.some(i => i.vehicle_id === v.id && i.status !== "resuelta");
+        
+        let statusBadgeClass = "operativo";
+        let statusLabel = "Operativo";
+        if (v.status === "taller" || hasOpenIncident) {
+            statusBadgeClass = "taller";
+            statusLabel = hasOpenIncident ? "Incidencia Abierta" : "En Taller";
+        } else if (v.status === "revision") {
+            statusBadgeClass = "revision";
+            statusLabel = "En Revisión";
+        } else if (v.status === "baja") {
+            statusBadgeClass = "baja";
+            statusLabel = "Baja";
+        }
+
+        // Assigned user full name
+        let driverText = "Sin conductor asignado";
+        if (v.assigned_user) {
+            const u = (state.vault.users || []).find(user => user.username.toLowerCase() === v.assigned_user.toLowerCase());
+            driverText = u ? (u.fullName || u.username.toUpperCase()) : v.assigned_user.toUpperCase();
+        }
+
+        const kmVal = parseFloat(v.current_km) || 0;
+        const kmFormatted = kmVal.toLocaleString('es-ES') + " km";
+
+        const rentingStatus = calculateRentingStatus(v);
+        const revStatus = calculateRevisionStatus(v);
+
+        let rentingPillClass = "ok";
+        if (rentingStatus.status === 'expired' || rentingStatus.status === 'danger') rentingPillClass = "danger";
+        else if (rentingStatus.status === 'warning') rentingPillClass = "warning";
+        else if (rentingStatus.status === 'none') rentingPillClass = "none";
+
+        let revPillClass = "ok";
+        if (revStatus.status === 'danger') revPillClass = "danger";
+        else if (revStatus.status === 'warning') revPillClass = "warning";
+        else if (revStatus.status === 'none') revPillClass = "none";
+
+        const photoHtml = v.photo ? `
+            <div style="width: 52px; height: 52px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-glass); flex-shrink: 0; cursor: pointer;" onclick="event.stopPropagation(); viewFullscreenImage('${v.photo.replace(/'/g, "\\'")}')">
+                <img src="${v.photo}" style="width: 100%; height: 100%; object-fit: cover;">
+            </div>
+        ` : `
+            <div style="width: 52px; height: 52px; border-radius: 8px; background: rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: center; font-size: 1.6rem; color: var(--accent); border: 1px solid var(--border-glass); flex-shrink: 0;">
+                🚘
+            </div>
+        `;
+
+        card.innerHTML = `
+            <div style="display: flex; gap: 12px; align-items: flex-start;">
+                ${photoHtml}
+                <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                        <span class="vehicle-plate-badge">${escapeHtml(v.plate || "0000-XXX")}</span>
+                        <span class="vehicle-status-badge ${statusBadgeClass}">${statusLabel}</span>
+                    </div>
+                    <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${escapeHtml(v.brand_model || "Vehículo Técnico")}
+                    </div>
+                    <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 2px; display: flex; align-items: center; gap: 4px;">
+                        <i class="bx bx-user" style="color: var(--accent);"></i>
+                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(driverText)}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metrics & Alerts Pills -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 8px; background: rgba(0,0,0,0.18); padding: 8px 10px; border-radius: var(--radius-sm);">
+                <div>
+                    <div style="font-size: 0.68rem; color: var(--text-secondary); text-transform: uppercase;">Odómetro</div>
+                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); font-family: monospace;">${kmFormatted}</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.68rem; color: var(--text-secondary); text-transform: uppercase;">Fin Renting</div>
+                    <div class="vehicle-alert-chip ${rentingPillClass}" style="margin-top: 2px;">
+                        <i class="bx bx-calendar-event"></i> ${rentingStatus.label}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size: 0.68rem; color: var(--text-secondary); text-transform: uppercase;">Revisión / ITV</div>
+                    <div class="vehicle-alert-chip ${revPillClass}" style="margin-top: 2px;">
+                        <i class="bx bx-wrench"></i> ${revStatus.label}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card Bottom Action Buttons -->
+            <div style="display: flex; gap: 6px; margin-top: 6px; justify-content: flex-end; border-top: 1px solid var(--border-glass); padding-top: 10px;">
+                <button type="button" class="btn-premium btn-secondary btn-veh-km" style="padding: 6px 10px; font-size: 0.75rem; margin: 0; display: flex; align-items: center; gap: 4px;">
+                    <i class="bx bx-tachometer"></i> Kms
+                </button>
+                <button type="button" class="btn-premium btn-veh-incident" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); padding: 6px 10px; font-size: 0.75rem; margin: 0; display: flex; align-items: center; gap: 4px; font-weight: 700;">
+                    <i class="bx bx-error-alt"></i> Avería
+                </button>
+                <button type="button" class="btn-premium btn-veh-detail" style="padding: 6px 14px; font-size: 0.75rem; margin: 0; background: var(--accent-gradient); display: flex; align-items: center; gap: 4px; font-weight: 700;">
+                    Ver Ficha <i class="bx bx-chevron-right"></i>
+                </button>
+            </div>
+        `;
+
+        card.addEventListener("click", () => {
+            renderVehicleDetail(v.id);
+            switchScreen("vehicle-detail");
+        });
+
+        card.querySelector(".btn-veh-km").addEventListener("click", (e) => {
+            e.stopPropagation();
+            openVehicleKmModal(v.id);
+        });
+
+        card.querySelector(".btn-veh-incident").addEventListener("click", (e) => {
+            e.stopPropagation();
+            openVehicleIncidentForm(v.id);
+        });
+
+        card.querySelector(".btn-veh-detail").addEventListener("click", (e) => {
+            e.stopPropagation();
+            renderVehicleDetail(v.id);
+            switchScreen("vehicle-detail");
+        });
+
+        list.appendChild(card);
+    });
+
+    updateVehicleBadges();
+}
+
+// Render complete Vehicle Detail (4 Tabs)
+function renderVehicleDetail(vehicleId) {
+    state.fleet.activeVehicleId = vehicleId;
+    const veh = (state.vault.vehicles || []).find(v => v.id === vehicleId);
+    if (!veh) {
+        showToast("No se encontró el vehículo");
+        switchScreen("vehicles");
+        return;
+    }
+
+    const incidents = (state.vault.vehicle_incidents || []).filter(i => i.vehicle_id === veh.id);
+    const maintenances = (state.vault.vehicle_maintenances || []).filter(m => m.vehicle_id === veh.id);
+    const mileages = (state.vault.vehicle_mileages || []).filter(m => m.vehicle_id === veh.id);
+
+    // 1. Hero Header
+    document.getElementById("veh-detail-plate").textContent = veh.plate || "0000-XXX";
+    document.getElementById("veh-detail-brand").textContent = veh.brand_model || "Vehículo Técnico";
+    
+    let driverText = "Sin conductor asignado";
+    if (veh.assigned_user) {
+        const u = (state.vault.users || []).find(user => user.username.toLowerCase() === veh.assigned_user.toLowerCase());
+        driverText = u ? (u.fullName || u.username.toUpperCase()) : veh.assigned_user.toUpperCase();
+    }
+    const driverEl = document.getElementById("veh-detail-driver");
+    if (driverEl) {
+        driverEl.innerHTML = `<i class="bx bx-user" style="color: var(--accent);"></i> <span>${escapeHtml(driverText)}</span>`;
+    }
+
+    const hasOpenIncident = incidents.some(i => i.status !== "resuelta");
+    const statusBadge = document.getElementById("veh-detail-status-badge");
+    if (statusBadge) {
+        statusBadge.className = "vehicle-status-badge " + (hasOpenIncident ? "taller" : (veh.status || "operativo"));
+        statusBadge.textContent = hasOpenIncident ? "Incidencia Abierta" : (veh.status === "taller" ? "En Taller" : (veh.status === "revision" ? "En Revisión" : "Operativo"));
+    }
+
+    const kmVal = parseFloat(veh.current_km) || 0;
+    document.getElementById("veh-detail-hero-km").textContent = kmVal.toLocaleString('es-ES') + " km";
+
+    const thumb = document.getElementById("veh-detail-photo-thumb");
+    if (thumb) {
+        if (veh.photo) {
+            thumb.querySelector("img").src = veh.photo;
+            thumb.style.display = "block";
+            thumb.onclick = () => viewFullscreenImage(veh.photo);
+        } else {
+            thumb.style.display = "none";
+        }
+    }
+
+    // 2. Tab 1: Ficha & Renting
+    document.getElementById("veh-detail-renting-company").textContent = veh.renting_company || "No especificada";
+    document.getElementById("veh-detail-renting-contract").textContent = veh.renting_contract || "—";
+    document.getElementById("veh-detail-renting-end").textContent = veh.renting_end_date ? formatSpanishDate(veh.renting_end_date) : "—";
+    
+    const rStatus = calculateRentingStatus(veh);
+    const rDaysEl = document.getElementById("veh-detail-renting-days-left");
+    if (rDaysEl) {
+        let color = "var(--success)";
+        if (rStatus.status === "expired" || rStatus.status === "danger") color = "var(--danger)";
+        else if (rStatus.status === "warning") color = "#fbbf24";
+        rDaysEl.innerHTML = `<span style="color:${color}; font-weight:700;">${rStatus.text}</span>`;
+    }
+
+    // Renting progress bar
+    const progressContainer = document.getElementById("veh-detail-renting-progress-container");
+    if (progressContainer) {
+        if (veh.renting_end_date) {
+            progressContainer.style.display = "block";
+            const totalContractDays = 1460; // Standard 4-year renting
+            const daysLeft = rStatus.daysLeft || 0;
+            const pct = Math.max(0, Math.min(100, Math.round(((totalContractDays - daysLeft) / totalContractDays) * 100)));
+            document.getElementById("veh-detail-renting-pct").textContent = pct + "% transcurrido";
+            const bar = document.getElementById("veh-detail-renting-bar");
+            if (bar) {
+                bar.style.width = pct + "%";
+                bar.className = "fleet-progress-fill " + (rStatus.status === "expired" || rStatus.status === "danger" ? "danger" : (rStatus.status === "warning" ? "warning" : ""));
+            }
+        } else {
+            progressContainer.style.display = "none";
+        }
+    }
+
+    // Insurance & Road Assistance
+    document.getElementById("veh-detail-insurance-company").textContent = veh.insurance_company || "—";
+    document.getElementById("veh-detail-insurance-phone").textContent = veh.insurance_phone || "—";
+    const btnCallInsurance = document.getElementById("btn-veh-detail-call-insurance");
+    if (btnCallInsurance) {
+        if (veh.insurance_phone) {
+            btnCallInsurance.href = "tel:" + veh.insurance_phone.replace(/\s+/g, "");
+            btnCallInsurance.style.display = "flex";
+        } else {
+            btnCallInsurance.style.display = "none";
+        }
+    }
+
+    document.getElementById("veh-detail-fuel-type").textContent = veh.fuel_type || "Diésel";
+    document.getElementById("veh-detail-itv-date").textContent = veh.itv_date ? formatSpanishDate(veh.itv_date) : "—";
+    document.getElementById("veh-detail-notes").textContent = veh.notes || "Sin observaciones adicionales.";
+
+    const photoFullCont = document.getElementById("veh-detail-photo-full-container");
+    const photoFullImg = document.getElementById("veh-detail-photo-full");
+    if (photoFullCont && photoFullImg) {
+        if (veh.photo) {
+            photoFullImg.src = veh.photo;
+            photoFullCont.style.display = "block";
+            photoFullImg.onclick = () => viewFullscreenImage(veh.photo);
+        } else {
+            photoFullCont.style.display = "none";
+        }
+    }
+
+    // 3. Tab 2: Incidencias / Averías List
+    const openIncidentsCount = incidents.filter(i => i.status !== "resuelta").length;
+    const incCountBadge = document.getElementById("veh-detail-incidents-count");
+    if (incCountBadge) {
+        if (openIncidentsCount > 0) {
+            incCountBadge.textContent = openIncidentsCount;
+            incCountBadge.style.display = "inline-flex";
+        } else {
+            incCountBadge.style.display = "none";
+        }
+    }
+
+    const incListCont = document.getElementById("veh-detail-incidents-list");
+    if (incListCont) {
+        incListCont.innerHTML = "";
+        if (incidents.length === 0) {
+            incListCont.innerHTML = `
+                <div style="text-align: center; padding: 30px 20px; color: var(--text-secondary); background: rgba(255,255,255,0.02); border-radius: var(--radius-md); border: 1px dashed var(--border-glass);">
+                    <i class="bx bx-check-shield" style="font-size: 2.2rem; color: var(--success); opacity: 0.8; margin-bottom: 6px;"></i>
+                    <p style="margin: 0; font-size: 0.88rem;">No hay averías o incidencias registradas para este vehículo.</p>
+                </div>
+            `;
+        } else {
+            // Sort newest first
+            incidents.sort((a, b) => (b.created_at || b.id) - (a.created_at || a.id));
+            incidents.forEach(inc => {
+                const incCard = document.createElement("div");
+                incCard.className = "glass-card anim-fade";
+                incCard.style.padding = "14px";
+                incCard.style.borderLeft = inc.status === "resuelta" ? "3px solid var(--success)" : "3px solid var(--danger)";
+
+                let urgencyClass = "leve";
+                let urgencyText = "LEVE";
+                if (inc.urgency === "urgente") {
+                    urgencyClass = "urgente";
+                    urgencyText = "URGENTE";
+                } else if (inc.urgency === "moderada") {
+                    urgencyClass = "moderada";
+                    urgencyText = "MODERADA";
+                }
+
+                let photosHtml = "";
+                if (inc.photos && inc.photos.length > 0) {
+                    photosHtml = `
+                        <div style="margin-top: 10px;">
+                            <div style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 4px;">Fotos adjuntas (${inc.photos.length}):</div>
+                            <div class="incident-photo-grid">
+                                ${inc.photos.map(p => `
+                                    <div class="incident-photo-item" onclick="viewFullscreenImage('${p.replace(/'/g, "\\'")}')">
+                                        <img src="${p}">
+                                    </div>
+                                `).join("")}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                let mapsHtml = "";
+                if (inc.maps_url || inc.location) {
+                    mapsHtml = `
+                        <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 6px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                            <i class="bx bx-map-pin" style="color: var(--accent);"></i>
+                            <span>${escapeHtml(inc.location || "Coordenadas GPS")}</span>
+                            ${inc.maps_url ? `<a href="${inc.maps_url}" target="_blank" style="color: #60a5fa; font-weight: 600; text-decoration: underline; margin-left: 4px;">Abrir Mapa</a>` : ""}
+                        </div>
+                    `;
+                }
+
+                let resolutionHtml = "";
+                if (inc.status === "resuelta") {
+                    resolutionHtml = `
+                        <div style="background: rgba(16, 185, 129, 0.08); border-radius: var(--radius-sm); padding: 8px 10px; margin-top: 10px; font-size: 0.76rem; border: 1px solid rgba(16, 185, 129, 0.2);">
+                            <div style="font-weight: 700; color: var(--success);"><i class="bx bx-check-circle"></i> Resuelta ${inc.resolved_at ? 'el ' + formatSpanishDate(new Date(inc.resolved_at).toISOString().split('T')[0]) : ''}</div>
+                            <div style="color: var(--text-secondary); margin-top: 2px;">${escapeHtml(inc.resolution_notes || "Sin notas de resolución")}</div>
+                        </div>
+                    `;
+                } else {
+                    resolutionHtml = `
+                        <button type="button" class="btn-premium btn-resolve-inc" data-inc-id="${inc.id}" style="margin-top: 10px; padding: 7px 12px; font-size: 0.76rem; background: var(--accent-gradient); width: 100%; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                            <i class="bx bx-check"></i> Marcar Incidencia como Resuelta
+                        </button>
+                    `;
+                }
+
+                incCard.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                        <div>
+                            <span class="urgency-badge ${urgencyClass}">${urgencyText}</span>
+                            <span style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary); margin-left: 6px;">${escapeHtml(inc.category || "Avería")}</span>
+                        </div>
+                        <span style="font-size: 0.72rem; color: var(--text-secondary);">${inc.date || "-"} ${inc.time || ""}</span>
+                    </div>
+                    <div style="font-size: 0.82rem; color: var(--text-primary); margin-top: 8px; line-height: 1.4; white-space: pre-line;">${escapeHtml(inc.description || "")}</div>
+                    ${mapsHtml}
+                    ${photosHtml}
+                    <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 8px;">
+                        Informado por: <strong>${escapeHtml(inc.technician_name || inc.technician_user || "Técnico")}</strong> ${inc.current_km ? `• ${parseFloat(inc.current_km).toLocaleString('es-ES')} km` : ""}
+                    </div>
+                    ${resolutionHtml}
+                `;
+
+                const resolveBtn = incCard.querySelector(".btn-resolve-inc");
+                if (resolveBtn) {
+                    resolveBtn.addEventListener("click", () => resolveVehicleIncident(inc.id));
+                }
+
+                incListCont.appendChild(incCard);
+            });
+        }
+    }
+
+    // 4. Tab 3: Revisiones List & Summary
+    const revSummaryEl = document.getElementById("veh-detail-next-rev-summary");
+    const revChipEl = document.getElementById("veh-detail-next-rev-chip");
+    const revStatus = calculateRevisionStatus(veh);
+    if (revSummaryEl) revSummaryEl.textContent = revStatus.text;
+    if (revChipEl) {
+        revChipEl.className = "vehicle-alert-chip " + (revStatus.status === "danger" ? "danger" : (revStatus.status === "warning" ? "warning" : "ok"));
+        revChipEl.textContent = revStatus.label;
+    }
+
+    const maintListCont = document.getElementById("veh-detail-maints-list");
+    if (maintListCont) {
+        maintListCont.innerHTML = "";
+        if (maintenances.length === 0) {
+            maintListCont.innerHTML = `
+                <div style="text-align: center; padding: 30px 20px; color: var(--text-secondary); background: rgba(255,255,255,0.02); border-radius: var(--radius-md); border: 1px dashed var(--border-glass);">
+                    <i class="bx bx-wrench" style="font-size: 2.2rem; color: #60a5fa; opacity: 0.8; margin-bottom: 6px;"></i>
+                    <p style="margin: 0; font-size: 0.88rem;">No hay mantenimientos ni revisiones registradas en el histórico.</p>
+                </div>
+            `;
+        } else {
+            // Sort newest first
+            maintenances.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+            maintenances.forEach(m => {
+                const maintCard = document.createElement("div");
+                maintCard.className = "glass-card anim-fade";
+                maintCard.style.padding = "14px";
+
+                let invoicePhotoHtml = "";
+                if (m.invoice_photo) {
+                    invoicePhotoHtml = `
+                        <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 0.72rem; color: var(--text-secondary);">Factura adjunta:</span>
+                            <div style="width: 38px; height: 38px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border-glass); cursor: pointer;" onclick="viewFullscreenImage('${m.invoice_photo.replace(/'/g, "\\'")}')">
+                                <img src="${m.invoice_photo}" style="width: 100%; height: 100%; object-fit: cover;">
+                            </div>
+                        </div>
+                    `;
+                }
+
+                maintCard.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <span style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary);">${escapeHtml(m.type || "Mantenimiento")}</span>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
+                                <i class="bx bx-buildings"></i> ${escapeHtml(m.workshop || "Taller Oficial")} ${m.invoice_number ? `(Factura: ${escapeHtml(m.invoice_number)})` : ""}
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <span style="font-size: 0.88rem; font-weight: 800; color: #60a5fa; font-family: monospace;">${m.cost ? parseFloat(m.cost).toFixed(2) + ' €' : '-'}</span>
+                            <div style="font-size: 0.72rem; color: var(--text-secondary);">${m.date ? formatSpanishDate(m.date) : "-"}</div>
+                        </div>
+                    </div>
+                    <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 6px;">
+                        Kilometraje: <strong>${(parseFloat(m.km) || 0).toLocaleString('es-ES')} km</strong>
+                        ${m.next_revision_km ? ` • Programada sig: ${parseFloat(m.next_revision_km).toLocaleString('es-ES')} km` : ""}
+                    </div>
+                    ${m.notes ? `<div style="font-size: 0.78rem; color: var(--text-primary); margin-top: 6px; background: rgba(0,0,0,0.15); padding: 6px 8px; border-radius: 4px;">${escapeHtml(m.notes)}</div>` : ""}
+                    ${invoicePhotoHtml}
+                `;
+                maintListCont.appendChild(maintCard);
+            });
+        }
+    }
+
+    // 4. Tab 4: Historial de Kilometrajes
+    document.getElementById("veh-detail-mileage-current").textContent = kmVal.toLocaleString('es-ES') + " km";
+    document.getElementById("veh-detail-mileage-date").textContent = veh.km_last_update ? "Última lectura: " + formatSpanishDate(veh.km_last_update) : "Sin lecturas recientes";
+
+    const mileageListCont = document.getElementById("veh-detail-mileage-list");
+    if (mileageListCont) {
+        mileageListCont.innerHTML = "";
+        if (mileages.length === 0) {
+            mileageListCont.innerHTML = `
+                <div style="text-align: center; padding: 25px; color: var(--text-secondary); font-size: 0.85rem;">
+                    No hay registros de kilometraje adicionales.
+                </div>
+            `;
+        } else {
+            // Sort newest first
+            mileages.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+            mileages.forEach(kmEntry => {
+                const kmRow = document.createElement("div");
+                kmRow.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); font-size: 0.85rem;";
+                
+                let sourceBadge = "Manual";
+                let badgeBg = "rgba(59, 130, 246, 0.2)";
+                let badgeColor = "#60a5fa";
+                if (kmEntry.source === "repostaje") {
+                    sourceBadge = "Repostaje Combustible";
+                    badgeBg = "rgba(16, 185, 129, 0.2)";
+                    badgeColor = "#10b981";
+                } else if (kmEntry.source === "mantenimiento") {
+                    sourceBadge = "Revisión Taller";
+                    badgeBg = "rgba(139, 92, 246, 0.2)";
+                    badgeColor = "#a78bfa";
+                } else if (kmEntry.source === "incidencia") {
+                    sourceBadge = "Avería / Incidencia";
+                    badgeBg = "rgba(239, 68, 68, 0.2)";
+                    badgeColor = "#f87171";
+                }
+
+                kmRow.innerHTML = `
+                    <div>
+                        <div style="font-weight: 700; font-size: 0.95rem; font-family: monospace; color: var(--text-primary);">${(parseFloat(kmEntry.km) || 0).toLocaleString('es-ES')} km</div>
+                        <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 2px;">
+                            ${kmEntry.date ? formatSpanishDate(kmEntry.date) : "-"} • ${kmEntry.registered_by ? kmEntry.registered_by.toUpperCase() : "Técnico"}
+                        </div>
+                        ${kmEntry.notes ? `<div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 2px;">${escapeHtml(kmEntry.notes)}</div>` : ""}
+                    </div>
+                    <span style="font-size: 0.7rem; font-weight: 600; padding: 3px 8px; border-radius: 12px; background: ${badgeBg}; color: ${badgeColor}; white-space: nowrap;">${sourceBadge}</span>
+                `;
+                mileageListCont.appendChild(kmRow);
+            });
+        }
+    }
+}
+
+// Open Form to create or edit a Vehicle
+function openVehicleForm(id = null) {
+    const form = document.getElementById("form-vehicle");
+    if (!form) return;
+    form.reset();
+
+    const title = document.getElementById("veh-form-title");
+    const idInput = document.getElementById("veh-id");
+    const driverSelect = document.getElementById("veh-driver");
+    const preview = document.getElementById("veh-photo-preview");
+    const photoInput = document.getElementById("veh-photo-file");
+
+    if (preview) preview.style.display = "none";
+    if (photoInput) photoInput.removeAttribute("data-base64");
+
+    // Populate Technicians
+    if (driverSelect) {
+        driverSelect.innerHTML = `<option value="">-- Sin asignar (Flota general) --</option>`;
+        (state.vault.users || []).forEach(u => {
+            const opt = document.createElement("option");
+            opt.value = u.username;
+            opt.textContent = (u.fullName || u.username.toUpperCase()) + " (" + u.username + ")";
+            driverSelect.appendChild(opt);
+        });
+    }
+
+    if (id) {
+        title.textContent = "Editar Vehículo";
+        const veh = (state.vault.vehicles || []).find(v => v.id === id);
+        if (veh) {
+            idInput.value = veh.id;
+            document.getElementById("veh-plate").value = veh.plate || "";
+            document.getElementById("veh-brand").value = veh.brand_model || "";
+            if (driverSelect) driverSelect.value = veh.assigned_user || "";
+            document.getElementById("veh-fuel").value = veh.fuel_type || "Diésel";
+            document.getElementById("veh-status").value = veh.status || "operativo";
+            document.getElementById("veh-km").value = veh.current_km || 0;
+            document.getElementById("veh-renting-company").value = veh.renting_company || "";
+            document.getElementById("veh-renting-contract").value = veh.renting_contract || "";
+            document.getElementById("veh-renting-end").value = veh.renting_end_date || "";
+            document.getElementById("veh-interval-km").value = veh.revision_interval_km || 15000;
+            document.getElementById("veh-next-rev-date").value = veh.next_revision_date || "";
+            document.getElementById("veh-next-rev-km").value = veh.next_revision_km || "";
+            document.getElementById("veh-itv-date").value = veh.itv_date || "";
+            document.getElementById("veh-insurance-company").value = veh.insurance_company || "";
+            document.getElementById("veh-insurance-phone").value = veh.insurance_phone || "";
+            document.getElementById("veh-notes").value = veh.notes || "";
+
+            if (veh.photo && preview) {
+                preview.querySelector("img").src = veh.photo;
+                preview.style.display = "block";
+                photoInput.dataset.base64 = veh.photo;
+            }
+        }
+    } else {
+        title.textContent = "Nuevo Vehículo";
+        idInput.value = "";
+        document.getElementById("veh-interval-km").value = 15000;
+        document.getElementById("veh-fuel").value = "Diésel";
+        document.getElementById("veh-status").value = "operativo";
+    }
+
+    switchScreen("form-vehicle");
+}
+
+// Save Vehicle entry
+async function saveVehicleEntry(e) {
+    e.preventDefault();
+    const id = document.getElementById("veh-id").value;
+    const plate = document.getElementById("veh-plate").value.trim().toUpperCase();
+    const brand_model = document.getElementById("veh-brand").value.trim();
+    const assigned_user = document.getElementById("veh-driver").value;
+    const fuel_type = document.getElementById("veh-fuel").value;
+    const status = document.getElementById("veh-status").value;
+    const current_km = parseFloat(document.getElementById("veh-km").value) || 0;
+    const renting_company = document.getElementById("veh-renting-company").value.trim();
+    const renting_contract = document.getElementById("veh-renting-contract").value.trim();
+    const renting_end_date = document.getElementById("veh-renting-end").value;
+    const revision_interval_km = parseFloat(document.getElementById("veh-interval-km").value) || 15000;
+    const next_revision_date = document.getElementById("veh-next-rev-date").value;
+    const next_revision_km = parseFloat(document.getElementById("veh-next-rev-km").value) || 0;
+    const itv_date = document.getElementById("veh-itv-date").value;
+    const insurance_company = document.getElementById("veh-insurance-company").value.trim();
+    const insurance_phone = document.getElementById("veh-insurance-phone").value.trim();
+    const notes = document.getElementById("veh-notes").value.trim();
+    const photo = document.getElementById("veh-photo-file").dataset.base64 || "";
+
+    if (!plate || !brand_model) {
+        showToast("Matrícula y Modelo son obligatorios");
+        return;
+    }
+
+    if (!state.vault.vehicles) state.vault.vehicles = [];
+
+    const vehData = {
+        plate,
+        brand_model,
+        assigned_user,
+        fuel_type,
+        status,
+        current_km,
+        km_last_update: new Date().toISOString().split("T")[0],
+        renting_company,
+        renting_contract,
+        renting_end_date,
+        revision_interval_km,
+        next_revision_date,
+        next_revision_km,
+        itv_date,
+        insurance_company,
+        insurance_phone,
+        notes,
+        photo
+    };
+
+    let targetId = id;
+    if (id) {
+        const idx = state.vault.vehicles.findIndex(v => v.id === id);
+        if (idx !== -1) {
+            state.vault.vehicles[idx] = { ...state.vault.vehicles[idx], ...vehData };
+        }
+    } else {
+        targetId = "veh_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5);
+        vehData.id = targetId;
+        state.vault.vehicles.unshift(vehData);
+    }
+
+    // Log mileage
+    if (current_km > 0) {
+        if (!state.vault.vehicle_mileages) state.vault.vehicle_mileages = [];
+        state.vault.vehicle_mileages.unshift({
+            id: "km_" + Date.now(),
+            vehicle_id: targetId,
+            plate: plate,
+            date: new Date().toISOString().split("T")[0],
+            km: current_km,
+            source: "manual",
+            registered_by: state.currentUser ? state.currentUser.username : "admin",
+            notes: id ? "Actualización de ficha de vehículo" : "Alta inicial de vehículo"
+        });
+    }
+
+    showToast("Vehículo guardado correctamente");
+    state.fleet.activeVehicleId = targetId;
+    renderVehicleDetail(targetId);
+    switchScreen("vehicle-detail");
+    await syncWithCloud();
+}
+
+// Delete Vehicle entry
+async function deleteVehicleEntry(id) {
+    if (!id) return;
+    const veh = (state.vault.vehicles || []).find(v => v.id === id);
+    if (!confirm(`¿Estás seguro de que deseas eliminar el vehículo ${veh ? veh.plate : ""}?`)) return;
+
+    state.vault.vehicles = (state.vault.vehicles || []).filter(v => v.id !== id);
+    showToast("Vehículo eliminado");
+    state.fleet.activeVehicleId = null;
+    renderVehiclesList();
+    switchScreen("vehicles");
+    await syncWithCloud();
+}
+
+// Open Vehicle Incident Form
+function openVehicleIncidentForm(preselectedVehId = null) {
+    const form = document.getElementById("form-vehicle-incident");
+    if (!form) return;
+    form.reset();
+
+    document.getElementById("incident-id").value = "";
+    document.getElementById("incident-lat").value = "";
+    document.getElementById("incident-lon").value = "";
+    document.getElementById("incident-maps-url").value = "";
+    document.getElementById("incident-gps-status").style.display = "none";
+    
+    state.fleet.tempIncidentPhotos = [];
+    renderIncidentPhotoThumbnails();
+
+    // Populate Vehicle Dropdown
+    const vehSelect = document.getElementById("incident-vehicle-select");
+    if (vehSelect) {
+        vehSelect.innerHTML = `<option value="">-- Selecciona el vehículo --</option>`;
+        (state.vault.vehicles || []).forEach(v => {
+            const opt = document.createElement("option");
+            opt.value = v.id;
+            opt.textContent = `${v.plate} - ${v.brand_model}${v.assigned_user ? ` (${v.assigned_user})` : ""}`;
+            vehSelect.appendChild(opt);
+        });
+
+        if (preselectedVehId) {
+            vehSelect.value = preselectedVehId;
+            const chosen = (state.vault.vehicles || []).find(v => v.id === preselectedVehId);
+            if (chosen) {
+                document.getElementById("incident-km").value = chosen.current_km || "";
+            }
+        }
+    }
+
+    const techName = state.currentUser ? (state.currentUser.fullName || state.currentUser.username.toUpperCase()) : "TÉCNICO";
+    document.getElementById("incident-tech-name").value = techName;
+
+    // Auto-fetch GPS on form open
+    getIncidentGeoLocation();
+
+    switchScreen("form-vehicle-incident");
+}
+
+// Get GPS location for incident reporting
+function getIncidentGeoLocation() {
+    const statusEl = document.getElementById("incident-gps-status");
+    const locInput = document.getElementById("incident-location");
+
+    if (statusEl) {
+        statusEl.style.display = "block";
+        statusEl.textContent = "Obteniendo coordenadas GPS de alta precisión...";
+    }
+
+    if (!navigator.geolocation) {
+        if (statusEl) statusEl.textContent = "Geolocalización no soportada";
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        async (position) => {
+            const lat = position.coords.latitude.toFixed(6);
+            const lon = position.coords.longitude.toFixed(6);
+            const mapsUrl = `https://www.google.com/maps?q=${lat},${lon}`;
+
+            document.getElementById("incident-lat").value = lat;
+            document.getElementById("incident-lon").value = lon;
+            document.getElementById("incident-maps-url").value = mapsUrl;
+
+            if (statusEl) statusEl.innerHTML = `<i class="bx bx-check-circle"></i> GPS: ${lat}, ${lon} (<a href="${mapsUrl}" target="_blank" style="color:var(--accent); text-decoration:underline;">Ver Mapa</a>)`;
+
+            // Reverse geocode address
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18`, {
+                    headers: { "Accept-Language": "es" }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.display_name && !locInput.value) {
+                        locInput.value = data.display_name;
+                    }
+                }
+            } catch (e) {
+                if (!locInput.value) locInput.value = `${lat}, ${lon}`;
+            }
+        },
+        (error) => {
+            console.error("GPS error:", error);
+            if (statusEl) statusEl.textContent = "No se pudo obtener señal GPS automática. Escribe la ubicación.";
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+    );
+}
+
+// Handle Incident Photos upload
+async function handleIncidentPhotos(e) {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    showLoading(true, "Comprimiendo fotografías...");
+    try {
+        for (let file of files) {
+            const base64 = await processAndCompressImage(file);
+            state.fleet.tempIncidentPhotos.push(base64);
+        }
+        renderIncidentPhotoThumbnails();
+    } catch (err) {
+        console.error("Error processing incident photos:", err);
+        showToast("Error al procesar fotos");
+    } finally {
+        showLoading(false);
+        e.target.value = "";
+    }
+}
+
+function renderIncidentPhotoThumbnails() {
+    const container = document.getElementById("incident-photos-preview");
+    const emptyHint = document.getElementById("incident-photos-empty-hint");
+    if (!container) return;
+
+    container.innerHTML = "";
+    if (state.fleet.tempIncidentPhotos.length === 0) {
+        if (emptyHint) emptyHint.style.display = "block";
+        return;
+    }
+
+    if (emptyHint) emptyHint.style.display = "none";
+
+    state.fleet.tempIncidentPhotos.forEach((photo, idx) => {
+        const item = document.createElement("div");
+        item.className = "incident-photo-item";
+        item.innerHTML = `
+            <img src="${photo}">
+            <button type="button" class="photo-del-btn" title="Eliminar">&times;</button>
+        `;
+        item.querySelector(".photo-del-btn").addEventListener("click", (e) => {
+            e.stopPropagation();
+            state.fleet.tempIncidentPhotos.splice(idx, 1);
+            renderIncidentPhotoThumbnails();
+        });
+        item.querySelector("img").addEventListener("click", () => {
+            viewFullscreenImage(photo);
+        });
+        container.appendChild(item);
+    });
+}
+
+// Save & Dispatch Incident to Fleet Manager
+async function saveVehicleIncident(e) {
+    e.preventDefault();
+    const vehId = document.getElementById("incident-vehicle-select").value;
+    const urgency = document.getElementById("incident-urgency").value;
+    const category = document.getElementById("incident-category").value;
+    const description = document.getElementById("incident-desc").value.trim();
+    const current_km = parseFloat(document.getElementById("incident-km").value) || 0;
+    const location = document.getElementById("incident-location").value.trim();
+    const lat = document.getElementById("incident-lat").value;
+    const lon = document.getElementById("incident-lon").value;
+    const maps_url = document.getElementById("incident-maps-url").value;
+
+    if (!vehId || !description) {
+        showToast("Por favor, selecciona vehículo y describe la avería");
+        return;
+    }
+
+    const veh = (state.vault.vehicles || []).find(v => v.id === vehId);
+    const plate = veh ? veh.plate : "DESCONOCIDO";
+    const brand_model = veh ? veh.brand_model : "";
+
+    const incidentData = {
+        id: "inc_" + Date.now(),
+        vehicle_id: vehId,
+        plate: plate,
+        brand_model: brand_model,
+        technician_user: state.currentUser ? state.currentUser.username : "admin",
+        technician_name: state.currentUser ? (state.currentUser.fullName || state.currentUser.username.toUpperCase()) : "TÉCNICO",
+        date: new Date().toISOString().split("T")[0],
+        time: new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
+        urgency: urgency,
+        category: category,
+        description: description,
+        current_km: current_km,
+        location: location,
+        lat: lat,
+        lon: lon,
+        maps_url: maps_url,
+        photos: [...state.fleet.tempIncidentPhotos],
+        status: "abierta",
+        created_at: Date.now()
+    };
+
+    if (!state.vault.vehicle_incidents) state.vault.vehicle_incidents = [];
+    state.vault.vehicle_incidents.unshift(incidentData);
+
+    // Update vehicle km and status
+    if (veh) {
+        if (current_km > (parseFloat(veh.current_km) || 0)) {
+            veh.current_km = current_km;
+            veh.km_last_update = incidentData.date;
+        }
+        if (urgency === "urgente") {
+            veh.status = "taller";
+        }
+    }
+
+    // Mileage log
+    if (current_km > 0) {
+        if (!state.vault.vehicle_mileages) state.vault.vehicle_mileages = [];
+        state.vault.vehicle_mileages.unshift({
+            id: "km_" + Date.now(),
+            vehicle_id: vehId,
+            plate: plate,
+            date: incidentData.date,
+            km: current_km,
+            source: "incidencia",
+            registered_by: state.currentUser ? state.currentUser.username : "admin",
+            notes: `Incidencia ${urgency.toUpperCase()}: ${category}`
+        });
+    }
+
+    // Send Telegram alert
+    enviarAlertaTelegram("IncidenciaVehiculo", incidentData);
+
+    // Prepare Confirmation Modal & Multi-Channel Links
+    const modalSuccess = document.getElementById("modal-incident-sent-success");
+    if (modalSuccess) {
+        document.getElementById("incident-success-veh").textContent = `${plate} - ${brand_model}`;
+        
+        const urgencyLabels = {
+            urgente: "🔴 URGENTE (Vehículo Inmovilizado)",
+            moderada: "🟡 MODERADA (Taller)",
+            leve: "🟢 LEVE (Aviso)"
+        };
+        document.getElementById("incident-success-urgency").textContent = urgencyLabels[urgency] || urgency.toUpperCase();
+        document.getElementById("incident-success-loc").textContent = location || (lat ? `${lat}, ${lon}` : "No especificada");
+
+        // Fleet manager WhatsApp text
+        const fleetSettings = state.vault.fleet_settings || {};
+        const respPhone = (fleetSettings.responsible_phone || "").replace(/[^\d+]/g, "");
+        const respEmail = fleetSettings.responsible_email || "";
+
+        const waText = `🚨 *INCIDENCIA DE VEHÍCULO - ${plate}*
+• *Técnico:* ${incidentData.technician_name}
+• *Vehículo:* ${plate} (${brand_model})
+• *Urgencia:* ${urgency.toUpperCase()}
+• *Avería:* ${category} - ${description}
+• *Kms:* ${current_km || '-'}
+• *Ubicación:* ${location || '-'}
+${maps_url ? '• *Mapa:* ' + maps_url : ''}`;
+
+        const btnWa = document.getElementById("btn-incident-whatsapp");
+        if (btnWa) {
+            btnWa.href = respPhone ? `https://wa.me/${respPhone}?text=${encodeURIComponent(waText)}` : `https://wa.me/?text=${encodeURIComponent(waText)}`;
+        }
+
+        const btnMail = document.getElementById("btn-incident-email");
+        if (btnMail) {
+            btnMail.href = `mailto:${respEmail}?subject=${encodeURIComponent("🚨 INCIDENCIA VEHÍCULO " + plate)}&body=${encodeURIComponent(waText)}`;
+        }
+
+        const btnAssistance = document.getElementById("btn-incident-call-insurance");
+        if (btnAssistance) {
+            if (veh && veh.insurance_phone) {
+                btnAssistance.href = "tel:" + veh.insurance_phone.replace(/\s+/g, "");
+                btnAssistance.style.display = "flex";
+            } else {
+                btnAssistance.style.display = "none";
+            }
+        }
+
+        modalSuccess.style.display = "flex";
+    }
+
+    showToast("Incidencia registrada y notificada");
+    await syncWithCloud();
+}
+
+// Mark Incident as Resolved
+async function resolveVehicleIncident(incidentId) {
+    const inc = (state.vault.vehicle_incidents || []).find(i => i.id === incidentId);
+    if (!inc) return;
+
+    const notes = prompt("Introduce notas de resolución de la avería (reparación efectuada, taller, etc.):", "Avería reparada y vehículo verificado");
+    if (notes === null) return; // User cancelled
+
+    inc.status = "resuelta";
+    inc.resolved_at = Date.now();
+    inc.resolved_by = state.currentUser ? state.currentUser.username : "admin";
+    inc.resolution_notes = notes.trim() || "Incidencia resuelta";
+
+    const veh = (state.vault.vehicles || []).find(v => v.id === inc.vehicle_id);
+    if (veh && veh.status === "taller") {
+        if (confirm("¿Deseas volver a marcar el vehículo como 'Operativo'?")) {
+            veh.status = "operativo";
+        }
+    }
+
+    showToast("Incidencia marcada como resuelta");
+    if (state.fleet.activeVehicleId) {
+        renderVehicleDetail(state.fleet.activeVehicleId);
+    }
+    renderVehiclesList();
+    await syncWithCloud();
+}
+
+// Open Vehicle Maintenance / Revision Form
+function openVehicleMaintenanceForm(vehicleId = null, maintId = null) {
+    const form = document.getElementById("form-vehicle-maintenance");
+    if (!form) return;
+    form.reset();
+
+    document.getElementById("maint-id").value = maintId || "";
+    document.getElementById("maint-veh-id").value = vehicleId || "";
+    document.getElementById("maint-date").value = new Date().toISOString().split("T")[0];
+
+    const preview = document.getElementById("maint-photo-preview");
+    const photoInput = document.getElementById("maint-photo-file");
+    if (preview) preview.style.display = "none";
+    if (photoInput) photoInput.removeAttribute("data-base64");
+
+    const vehSelect = document.getElementById("maint-vehicle-select");
+    if (vehSelect) {
+        vehSelect.innerHTML = `<option value="">-- Selecciona el vehículo --</option>`;
+        (state.vault.vehicles || []).forEach(v => {
+            const opt = document.createElement("option");
+            opt.value = v.id;
+            opt.textContent = `${v.plate} - ${v.brand_model}`;
+            vehSelect.appendChild(opt);
+        });
+        if (vehicleId) vehSelect.value = vehicleId;
+    }
+
+    const veh = (state.vault.vehicles || []).find(v => v.id === vehicleId);
+    if (veh) {
+        const curKm = parseFloat(veh.current_km) || 0;
+        document.getElementById("maint-km").value = curKm;
+        const interval = parseFloat(veh.revision_interval_km) || 15000;
+        document.getElementById("maint-next-km").value = curKm + interval;
+
+        const nextYear = new Date();
+        nextYear.setFullYear(nextYear.getFullYear() + 1);
+        document.getElementById("maint-next-date").value = nextYear.toISOString().split("T")[0];
+    }
+
+    if (maintId) {
+        const maint = (state.vault.vehicle_maintenances || []).find(m => m.id === maintId);
+        if (maint) {
+            document.getElementById("maint-date").value = maint.date || "";
+            document.getElementById("maint-type").value = maint.type || "Revisión Oficial / Periódica";
+            document.getElementById("maint-km").value = maint.km || 0;
+            document.getElementById("maint-cost").value = maint.cost || "";
+            document.getElementById("maint-workshop").value = maint.workshop || "";
+            document.getElementById("maint-invoice-num").value = maint.invoice_number || "";
+            document.getElementById("maint-next-date").value = maint.next_revision_date || "";
+            document.getElementById("maint-next-km").value = maint.next_revision_km || "";
+            document.getElementById("maint-notes").value = maint.notes || "";
+
+            if (maint.invoice_photo && preview) {
+                preview.querySelector("img").src = maint.invoice_photo;
+                preview.style.display = "block";
+                photoInput.dataset.base64 = maint.invoice_photo;
+            }
+        }
+    }
+
+    switchScreen("form-vehicle-maintenance");
+}
+
+// Save Vehicle Maintenance / Revision entry
+async function saveVehicleMaintenance(e) {
+    e.preventDefault();
+    const id = document.getElementById("maint-id").value;
+    const vehId = document.getElementById("maint-vehicle-select").value;
+    const date = document.getElementById("maint-date").value;
+    const type = document.getElementById("maint-type").value;
+    const km = parseFloat(document.getElementById("maint-km").value) || 0;
+    const cost = parseFloat(document.getElementById("maint-cost").value) || 0;
+    const workshop = document.getElementById("maint-workshop").value.trim();
+    const invoice_number = document.getElementById("maint-invoice-num").value.trim();
+    const next_revision_date = document.getElementById("maint-next-date").value;
+    const next_revision_km = parseFloat(document.getElementById("maint-next-km").value) || 0;
+    const notes = document.getElementById("maint-notes").value.trim();
+    const invoice_photo = document.getElementById("maint-photo-file").dataset.base64 || "";
+
+    if (!vehId || !km || !date) {
+        showToast("Selecciona vehículo, fecha y kilometraje");
+        return;
+    }
+
+    const veh = (state.vault.vehicles || []).find(v => v.id === vehId);
+    const plate = veh ? veh.plate : "DESCONOCIDO";
+
+    const maintData = {
+        id: id || ("maint_" + Date.now()),
+        vehicle_id: vehId,
+        plate: plate,
+        date: date,
+        type: type,
+        km: km,
+        cost: cost,
+        workshop: workshop,
+        invoice_number: invoice_number,
+        next_revision_date: next_revision_date,
+        next_revision_km: next_revision_km,
+        notes: notes,
+        invoice_photo: invoice_photo,
+        created_at: Date.now()
+    };
+
+    if (!state.vault.vehicle_maintenances) state.vault.vehicle_maintenances = [];
+
+    if (id) {
+        const idx = state.vault.vehicle_maintenances.findIndex(m => m.id === id);
+        if (idx !== -1) state.vault.vehicle_maintenances[idx] = maintData;
+    } else {
+        state.vault.vehicle_maintenances.unshift(maintData);
+    }
+
+    // Update vehicle next schedule and current km
+    if (veh) {
+        if (km > (parseFloat(veh.current_km) || 0)) {
+            veh.current_km = km;
+            veh.km_last_update = date;
+        }
+        if (next_revision_date) veh.next_revision_date = next_revision_date;
+        if (next_revision_km > 0) veh.next_revision_km = next_revision_km;
+        if (type === "ITV" && next_revision_date) veh.itv_date = next_revision_date;
+    }
+
+    // Log mileage
+    if (km > 0) {
+        if (!state.vault.vehicle_mileages) state.vault.vehicle_mileages = [];
+        state.vault.vehicle_mileages.unshift({
+            id: "km_" + Date.now(),
+            vehicle_id: vehId,
+            plate: plate,
+            date: date,
+            km: km,
+            source: "mantenimiento",
+            registered_by: state.currentUser ? state.currentUser.username : "admin",
+            notes: `${type}: ${workshop || 'Taller'} (${cost > 0 ? cost.toFixed(2) + ' €' : 'Revisión'})`
+        });
+    }
+
+    // Telegram Notification
+    enviarAlertaTelegram("MantenimientoVehiculo", maintData);
+
+    showToast("Revisión registrada correctamente");
+    state.fleet.activeVehicleId = vehId;
+    renderVehicleDetail(vehId);
+    switchScreen("vehicle-detail");
+    await syncWithCloud();
+}
+
+// Quick KM Update Modal
+function openVehicleKmModal(vehicleId) {
+    const veh = (state.vault.vehicles || []).find(v => v.id === vehicleId);
+    if (!veh) return;
+
+    document.getElementById("quick-km-veh-id").value = vehicleId;
+    document.getElementById("quick-km-veh-info").innerHTML = `<strong>${escapeHtml(veh.plate)}</strong> - ${escapeHtml(veh.brand_model)} (Actual: <b>${(parseFloat(veh.current_km) || 0).toLocaleString('es-ES')} km</b>)`;
+    document.getElementById("quick-km-val").value = veh.current_km || "";
+    document.getElementById("quick-km-date").value = new Date().toISOString().split("T")[0];
+    document.getElementById("quick-km-notes").value = "";
+
+    const modal = document.getElementById("modal-vehicle-km-update");
+    if (modal) modal.style.display = "flex";
+}
+
+async function saveVehicleQuickKm(e) {
+    e.preventDefault();
+    const vehicleId = document.getElementById("quick-km-veh-id").value;
+    const newKm = parseFloat(document.getElementById("quick-km-val").value);
+    const date = document.getElementById("quick-km-date").value;
+    const notes = document.getElementById("quick-km-notes").value.trim();
+
+    if (isNaN(newKm) || newKm < 0) {
+        showToast("Introduce un kilometraje válido");
+        return;
+    }
+
+    const veh = (state.vault.vehicles || []).find(v => v.id === vehicleId);
+    if (!veh) return;
+
+    veh.current_km = newKm;
+    veh.km_last_update = date || new Date().toISOString().split("T")[0];
+
+    if (!state.vault.vehicle_mileages) state.vault.vehicle_mileages = [];
+    state.vault.vehicle_mileages.unshift({
+        id: "km_" + Date.now(),
+        vehicle_id: vehicleId,
+        plate: veh.plate,
+        date: veh.km_last_update,
+        km: newKm,
+        source: "manual",
+        registered_by: state.currentUser ? state.currentUser.username : "admin",
+        notes: notes || "Actualización manual de odómetro"
+    });
+
+    document.getElementById("modal-vehicle-km-update").style.display = "none";
+    showToast("Kilometraje actualizado");
+
+    if (state.currentScreen === "vehicle-detail" && state.fleet.activeVehicleId === vehicleId) {
+        renderVehicleDetail(vehicleId);
+    } else {
+        renderVehiclesList();
+    }
+
+    await syncWithCloud();
+}
+
+// Fleet Settings Modal
+function openFleetSettingsModal() {
+    const settings = state.vault.fleet_settings || {};
+    document.getElementById("fleet-set-name").value = settings.responsible_name || "Responsable de Flota";
+    document.getElementById("fleet-set-phone").value = settings.responsible_phone || "";
+    document.getElementById("fleet-set-email").value = settings.responsible_email || "";
+
+    const modal = document.getElementById("modal-fleet-settings");
+    if (modal) modal.style.display = "flex";
+}
+
+async function saveFleetSettings(e) {
+    e.preventDefault();
+    state.vault.fleet_settings = {
+        responsible_name: document.getElementById("fleet-set-name").value.trim(),
+        responsible_phone: document.getElementById("fleet-set-phone").value.trim(),
+        responsible_email: document.getElementById("fleet-set-email").value.trim()
+    };
+
+    document.getElementById("modal-fleet-settings").style.display = "none";
+    showToast("Contacto de responsable de flota guardado");
+    await syncWithCloud();
+}
+
+// Fullscreen image viewer utility
+function viewFullscreenImage(src) {
+    if (!src) return;
+    const existing = document.getElementById("modal-fullscreen-image-viewer");
+    if (existing) existing.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "modal-fullscreen-image-viewer";
+    overlay.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;";
+    overlay.className = "anim-fade";
+
+    overlay.innerHTML = `
+        <div style="position: relative; max-width: 95vw; max-height: 95vh; display: flex; align-items: center; justify-content: center;">
+            <img src="${src}" style="max-width: 100%; max-height: 90vh; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); object-fit: contain;">
+            <button type="button" id="btn-close-fullscreen-img" style="position: absolute; top: -15px; right: -15px; width: 36px; height: 36px; border-radius: 50%; background: #ef4444; color: #fff; border: none; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(0,0,0,0.5);">&times;</button>
+        </div>
+    `;
+
+    overlay.addEventListener("click", () => overlay.remove());
+    overlay.querySelector("img").addEventListener("click", (e) => e.stopPropagation());
+    overlay.querySelector("#btn-close-fullscreen-img").addEventListener("click", () => overlay.remove());
+
+    document.body.appendChild(overlay);
+}
+
+function openImageViewer(src) {
+    viewFullscreenImage(src);
+}
+
 
 
 

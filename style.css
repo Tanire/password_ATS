@@ -1504,5 +1504,422 @@ input:checked + .switch-slider:before {
     transform: scale(0.95);
 }
 
+/* ==========================================================================
+   FLEET & VEHICLES MODULE (v1.21.01)
+   ========================================================================== */
 
+.fleet-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+}
 
+.fleet-kpi-card {
+    background: rgba(22, 24, 37, 0.7);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+
+.fleet-kpi-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.18);
+    background: rgba(30, 34, 52, 0.85);
+}
+
+.fleet-kpi-card.active-filter {
+    border-color: var(--accent);
+    background: rgba(59, 130, 246, 0.15);
+}
+
+.fleet-kpi-val {
+    font-size: 1.4rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text-primary);
+}
+
+.fleet-kpi-lbl {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.fleet-filter-bar {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    margin-bottom: 12px;
+    scrollbar-width: none;
+}
+
+.fleet-filter-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.fleet-filter-pill {
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border-radius: 20px;
+    border: 1px solid var(--border-glass);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: var(--transition-smooth);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.fleet-filter-pill:hover,
+.fleet-filter-pill.active {
+    background: var(--accent-gradient);
+    color: #ffffff;
+    border-color: transparent;
+    box-shadow: 0 2px 10px var(--accent-glow);
+}
+
+.vehicle-card {
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    backdrop-filter: blur(12px);
+}
+
+.vehicle-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+}
+
+.vehicle-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.vehicle-plate-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #0f172a;
+    color: #f8fafc;
+    border: 1.5px solid #334155;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}
+
+.vehicle-plate-badge::before {
+    content: "E";
+    display: inline-block;
+    background: #1d4ed8;
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 1px 4px;
+    border-radius: 3px;
+    margin-right: 2px;
+}
+
+.vehicle-status-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.vehicle-status-badge.operativo {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.vehicle-status-badge.taller {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    animation: pulse 2s infinite;
+}
+
+.vehicle-status-badge.revision {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.vehicle-status-badge.baja {
+    background: rgba(100, 116, 139, 0.15);
+    color: #94a3b8;
+    border: 1px solid rgba(100, 116, 139, 0.35);
+}
+
+.vehicle-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 0.8rem;
+}
+
+.vehicle-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.vehicle-info-item .lbl {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+.vehicle-info-item .val {
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vehicle-alert-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.vehicle-alert-chip.warning {
+    background: rgba(245, 158, 11, 0.12);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.vehicle-alert-chip.danger {
+    background: rgba(239, 68, 68, 0.12);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.vehicle-alert-chip.info {
+    background: rgba(59, 130, 246, 0.12);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.vehicle-actions-bar {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.vehicle-actions-bar .btn-action {
+    flex: 1;
+    padding: 7px 10px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid var(--border-glass);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+
+.vehicle-actions-bar .btn-action:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.vehicle-actions-bar .btn-action.incident {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.vehicle-actions-bar .btn-action.incident:hover {
+    background: var(--danger);
+    color: #ffffff;
+}
+
+/* Vehicle Detail Tabs */
+.vehicle-detail-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-glass);
+    margin-bottom: 16px;
+    gap: 4px;
+    overflow-x: auto;
+}
+
+.vehicle-tab-btn {
+    padding: 10px 16px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: var(--transition-smooth);
+}
+
+.vehicle-tab-btn:hover {
+    color: var(--text-primary);
+}
+
+.vehicle-tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+.vehicle-tab-content {
+    display: none;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.vehicle-tab-content.active {
+    display: flex;
+}
+
+/* Incident Urgency Badges */
+.urgency-badge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    text-transform: uppercase;
+}
+
+.urgency-badge.urgente {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.urgency-badge.moderada {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--warning);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.urgency-badge.leve {
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--accent);
+    border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
+/* Progress bar for renting / mileage */
+.fleet-progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.fleet-progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: var(--accent-gradient);
+    transition: width 0.4s ease;
+.fleet-progress-fill.warning {
+    background: linear-gradient(90deg, #f59e0b, #ef4444);
+}
+
+.fleet-progress-fill.danger {
+    background: #ef4444;
+}
+
+/* Incident Photo Preview Grid */
+.incident-photo-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.incident-photo-item {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 1px solid var(--border-glass);
+}
+
+.incident-photo-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.incident-photo-remove,
+.photo-del-btn {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    line-height: 1;
+    z-index: 5;
+}
+
+.photo-del-btn:hover,
+.incident-photo-remove:hover {
+    background: var(--danger);
+}
