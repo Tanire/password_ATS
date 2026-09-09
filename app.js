@@ -1731,6 +1731,7 @@ function openManualView(m) {
 
 // E. Expenses List
 function renderExpenses() {
+    syncVehiclesWithExpensesAndUsers();
     renderFuelReport();
     els.listExpenses.innerHTML = "";
     const categoryFilter = els.filterExpensesCat.value;
@@ -2108,7 +2109,7 @@ function populateVehicleSelector() {
     if (state.vault.vehicles) {
         state.vault.vehicles.forEach(v => {
             if (v.plate) {
-                const plate = v.plate.trim().toUpperCase();
+                const plate = normalizePlate(v.plate);
                 const brand = (v.brand_model || "").trim();
                 const currentKm = parseFloat(v.current_km) || 0;
                 userVehicles.set(plate, { brand, currentKm, id: v.id });
@@ -2120,14 +2121,14 @@ function populateVehicleSelector() {
     if (state.vault.users) {
         state.vault.users.forEach(u => {
             if (u.vehiculo) {
-                let plate = u.vehiculo.trim().toUpperCase();
+                let plate = normalizePlate(u.vehiculo);
                 let brand = (u.vehiculoBrandModel || "").trim();
-                if (!brand && plate.includes(" ")) {
-                    const parts = plate.split(" ");
-                    plate = parts[0];
+                if (!brand && u.vehiculo.includes(" ")) {
+                    const parts = u.vehiculo.trim().split(" ");
+                    plate = normalizePlate(parts[0]);
                     brand = parts.slice(1).join(" ");
                 }
-                if (!userVehicles.has(plate)) {
+                if (plate && !userVehicles.has(plate)) {
                     userVehicles.set(plate, { brand, currentKm: 0, id: "" });
                 }
             }
@@ -2163,14 +2164,13 @@ function populateVehicleSelector() {
     const myBrand = state.currentUser ? (state.currentUser.vehiculoBrandModel || "").trim() : "";
     let matched = false;
     if (myVehicle) {
-        let myPlate = myVehicle.trim();
+        let myPlate = normalizePlate(myVehicle);
         let guessedBrand = myBrand;
-        if (myPlate.includes(" ")) {
-            const parts = myPlate.split(" ");
-            myPlate = parts[0];
-            if (!guessedBrand) guessedBrand = parts.slice(1).join(" ");
+        if (!guessedBrand && myVehicle.includes(" ")) {
+            const parts = myVehicle.trim().split(" ");
+            myPlate = normalizePlate(parts[0]);
+            guessedBrand = parts.slice(1).join(" ");
         }
-        myPlate = myPlate.toUpperCase();
 
         for (let option of selector.options) {
             if (option.value.startsWith(myPlate + "|") || option.value === myPlate) {
@@ -8769,17 +8769,34 @@ async function refreshVaultFromCloud() {
             );
             
             const freshVault = JSON.parse(decryptedData);
+            if (!freshVault.vehicles) freshVault.vehicles = [];
+            if (!freshVault.vehicle_incidents) freshVault.vehicle_incidents = [];
+            if (!freshVault.vehicle_maintenances) freshVault.vehicle_maintenances = [];
+            if (!freshVault.vehicle_mileages) freshVault.vehicle_mileages = [];
+            if (!freshVault.expenses) freshVault.expenses = [];
+            if (!freshVault.users) freshVault.users = [];
             
             state.vault = freshVault;
             localStorage.setItem(STORAGE_KEYS.VAULT_CACHE, fileData.content);
             
-            // Refrescar lista de selección si el técnico está visualizando las rutas
+            // Re-sync fleet and mileage databases
+            syncVehiclesWithExpensesAndUsers();
+
+            // Refrescar lista de selección si el técnico está visualizando las pantallas relevantes
             const activeScreen = document.querySelector(".screen.active");
-            if (activeScreen && activeScreen.id === "screen-routes") {
-                renderDbClientsSelectorList();
+            if (activeScreen) {
+                if (activeScreen.id === "screen-routes") {
+                    renderDbClientsSelectorList();
+                } else if (activeScreen.id === "screen-vehicles") {
+                    renderVehiclesList();
+                } else if (activeScreen.id === "screen-vehicle-detail" && state.fleet.activeVehicleId) {
+                    renderVehicleDetail(state.fleet.activeVehicleId);
+                } else if (activeScreen.id === "screen-expenses") {
+                    renderExpenses();
+                }
             }
             
-            console.log("Refresco en segundo plano completado. Clientes de rutas actualizados.");
+            console.log("Refresco en segundo plano completado. Flota y clientes actualizados.");
         }
     } catch (e) {
         console.warn("Fallo al sincronizar base de datos desde la nube en segundo plano:", e);
@@ -9763,6 +9780,91 @@ function handleFilePreview(event, previewContainerId) {
     });
 }
 
+// Normalize plate string by removing brackets, hyphens, dots, spaces, etc.
+function normalizePlate(str) {
+    if (!str) return "";
+    return str.toString()
+        .replace(/[\[\]\(\)\-\.\s_]/g, "")
+        .trim()
+        .toUpperCase();
+}
+
+// Comprehensive extraction of vehicle and fuel data from any expense format (v1.21.02)
+function extractVehicleInfoFromExpense(e) {
+    if (!e) return null;
+    
+    const cat = (e.category || "").toString().trim().toLowerCase();
+    const isFuelCat = cat === "combustible" || cat === "gasolina" || cat === "diesel" || cat === "gasoil" || cat === "combustibles";
+    
+    let rawPlate = (e.vehicle || e.vehiculo || e.plate || e.matricula || "").toString().trim();
+    let rawBrand = (e.brand_model || e.brand || e.modelo || e.marca || "").toString().trim();
+    let rawKm = parseFloat(e.kilometers || e.kilometros || e.km || e.kilometraje || 0) || 0;
+    let rawLiters = parseFloat(e.liters || e.litros || 0) || 0;
+    let rawLocation = (e.location || e.ubicacion || e.gasolinera || "").toString().trim();
+    let rawDate = e.date || "";
+    let rawAmount = parseFloat(e.amount || e.importe || 0) || 0;
+    let rawUser = (e.user_name || e.owner || e.conductor || e.tecnico || "").toString().trim();
+    let rawConcept = (e.concept || "").toString().trim();
+
+    // If rawPlate is empty or in concept, extract from bracketed or standard pattern
+    if (!rawPlate && rawConcept) {
+        const bracketMatch = rawConcept.match(/\[([0-9A-Za-z\s\-]{4,10})\]/);
+        if (bracketMatch) {
+            rawPlate = bracketMatch[1];
+        } else {
+            const plateMatch = rawConcept.match(/\b([0-9]{4}\s?[A-Za-z]{3})\b/);
+            if (plateMatch) {
+                rawPlate = plateMatch[1];
+            }
+        }
+    }
+
+    // If rawBrand is missing, check if rawConcept has model (e.g. text between ] and •)
+    if (!rawBrand && rawConcept) {
+        if (rawConcept.includes("]")) {
+            const afterBracket = rawConcept.split("]")[1] || "";
+            const brandPart = afterBracket.split("•")[0] || "";
+            if (brandPart.trim()) rawBrand = brandPart.trim();
+        }
+    }
+
+    // If rawKm is 0, check if rawConcept has km pattern
+    if (rawKm === 0 && rawConcept) {
+        const kmMatch = rawConcept.match(/(?:•|\s|^)(\d{3,7})\s*km\b/i);
+        if (kmMatch) {
+            rawKm = parseFloat(kmMatch[1]) || 0;
+        }
+    }
+
+    // If rawLiters is 0, check if rawConcept has liters pattern
+    if (rawLiters === 0 && rawConcept) {
+        const litMatch = rawConcept.match(/(?:•|\s|^)(\d+(?:[\.,]\d+)?)\s*L\b/i);
+        if (litMatch) {
+            rawLiters = parseFloat(litMatch[1].replace(',', '.')) || 0;
+        }
+    }
+
+    const cleanPlate = normalizePlate(rawPlate);
+    if (!cleanPlate && !isFuelCat) {
+        return null;
+    }
+
+    return {
+        isFuel: isFuelCat || !!cleanPlate,
+        plate: cleanPlate,
+        rawPlate: rawPlate,
+        brand_model: rawBrand,
+        kilometers: rawKm,
+        liters: rawLiters,
+        location: rawLocation,
+        date: rawDate,
+        amount: rawAmount,
+        userName: rawUser,
+        concept: rawConcept,
+        image_path: e.image_path || e.photo || ""
+    };
+}
+
 // Synchronize Fleet Vehicles with Fuel Expenses and User Profiles (v1.21.02)
 function syncVehiclesWithExpensesAndUsers() {
     if (!state.vault) return;
@@ -9773,42 +9875,46 @@ function syncVehiclesWithExpensesAndUsers() {
     if (!state.vault.vehicle_incidents) state.vault.vehicle_incidents = [];
     if (!state.vault.vehicle_mileages) state.vault.vehicle_mileages = [];
 
-    const normalizePlate = (str) => (str ? str.toString().trim().toUpperCase() : "");
+    // Map: normalizedPlate -> { brand_model, latestDate, maxKm, latestKmDate, assignedUser, expensesCount, totalAmount, totalLiters }
+    const fuelMap = new Map();
 
-    // 1. Gather all vehicles from Combustible expenses
-    const fuelMap = new Map(); // normalizedPlate -> { brand_model, latestDate, maxKm, latestKmDate, assignedUser, expensesCount }
-
+    // 1. Gather all vehicles & max kilometers from expenses
     state.vault.expenses.forEach(e => {
-        if (e.category === "Combustible" && e.vehicle) {
-            const plate = normalizePlate(e.vehicle);
-            if (!plate) return;
+        const info = extractVehicleInfoFromExpense(e);
+        if (!info || !info.plate) return;
 
-            const km = parseFloat(e.kilometers) || 0;
-            const entryDate = e.date || "";
-            const brand = (e.brand_model || "").trim();
-            const owner = (e.owner || e.user_name || "").trim();
+        const plate = info.plate;
+        const km = info.kilometers || 0;
+        const entryDate = info.date || "";
+        const brand = info.brand_model || "";
+        const owner = info.userName || "";
 
-            if (!fuelMap.has(plate)) {
-                fuelMap.set(plate, {
-                    brand_model: brand,
-                    latestDate: entryDate,
-                    maxKm: km,
-                    latestKmDate: km > 0 ? entryDate : "",
-                    assignedUser: owner,
-                    expensesCount: 1
-                });
-            } else {
-                const item = fuelMap.get(plate);
-                item.expensesCount++;
-                if (brand && !item.brand_model) item.brand_model = brand;
-                if (entryDate > item.latestDate) {
-                    item.latestDate = entryDate;
-                    if (owner && !item.assignedUser) item.assignedUser = owner;
-                }
-                if (km > item.maxKm) {
-                    item.maxKm = km;
-                    item.latestKmDate = entryDate;
-                }
+        if (!fuelMap.has(plate)) {
+            fuelMap.set(plate, {
+                brand_model: brand,
+                latestDate: entryDate,
+                maxKm: km,
+                latestKmDate: km > 0 ? entryDate : "",
+                assignedUser: owner,
+                expensesCount: 1,
+                totalAmount: info.amount || 0,
+                totalLiters: info.liters || 0
+            });
+        } else {
+            const item = fuelMap.get(plate);
+            item.expensesCount++;
+            item.totalAmount += (info.amount || 0);
+            item.totalLiters += (info.liters || 0);
+            if (brand && (!item.brand_model || item.brand_model === "Vehículo Técnico")) {
+                item.brand_model = brand;
+            }
+            if (entryDate && entryDate >= item.latestDate) {
+                item.latestDate = entryDate;
+                if (owner && !item.assignedUser) item.assignedUser = owner;
+            }
+            if (km > item.maxKm) {
+                item.maxKm = km;
+                item.latestKmDate = entryDate || item.latestKmDate;
             }
         }
     });
@@ -9816,14 +9922,13 @@ function syncVehiclesWithExpensesAndUsers() {
     // 2. Gather vehicles from user profiles
     state.vault.users.forEach(u => {
         if (u.vehiculo) {
-            let plate = u.vehiculo.trim();
+            let plate = normalizePlate(u.vehiculo);
             let brand = (u.vehiculoBrandModel || "").trim();
-            if (!brand && plate.includes(" ")) {
-                const parts = plate.split(" ");
-                plate = parts[0];
+            if (!brand && u.vehiculo.includes(" ")) {
+                const parts = u.vehiculo.trim().split(" ");
+                plate = normalizePlate(parts[0]);
                 brand = parts.slice(1).join(" ");
             }
-            plate = normalizePlate(plate);
             if (plate) {
                 if (!fuelMap.has(plate)) {
                     fuelMap.set(plate, {
@@ -9832,12 +9937,16 @@ function syncVehiclesWithExpensesAndUsers() {
                         maxKm: 0,
                         latestKmDate: "",
                         assignedUser: u.username,
-                        expensesCount: 0
+                        expensesCount: 0,
+                        totalAmount: 0,
+                        totalLiters: 0
                     });
                 } else {
                     const item = fuelMap.get(plate);
                     if (u.username) item.assignedUser = u.username;
-                    if (brand && !item.brand_model) item.brand_model = brand;
+                    if (brand && (!item.brand_model || item.brand_model === "Vehículo Técnico")) {
+                        item.brand_model = brand;
+                    }
                 }
             }
         }
@@ -9871,6 +9980,9 @@ function syncVehiclesWithExpensesAndUsers() {
             };
             state.vault.vehicles.push(veh);
         } else {
+            // Clean/normalize vehicle plate
+            veh.plate = plate;
+
             const currentKm = parseFloat(veh.current_km) || 0;
             if (data.maxKm > currentKm) {
                 veh.current_km = data.maxKm;
@@ -9888,16 +10000,18 @@ function syncVehiclesWithExpensesAndUsers() {
     // 4. Update highest km on each vehicle from all database sources
     state.vault.vehicles.forEach(veh => {
         const p = normalizePlate(veh.plate);
+        veh.plate = p; // Clean up plate formatting
         let highestKm = parseFloat(veh.current_km) || 0;
         let highestKmDate = veh.km_last_update || "";
 
         // Combustible expenses
         state.vault.expenses.forEach(e => {
-            if (e.category === "Combustible" && normalizePlate(e.vehicle) === p) {
-                const km = parseFloat(e.kilometers) || 0;
+            const info = extractVehicleInfoFromExpense(e);
+            if (info && info.plate === p) {
+                const km = info.kilometers || 0;
                 if (km > highestKm) {
                     highestKm = km;
-                    highestKmDate = e.date || highestKmDate;
+                    highestKmDate = info.date || highestKmDate;
                 }
             }
         });
@@ -9939,6 +10053,17 @@ function syncVehiclesWithExpensesAndUsers() {
             veh.current_km = highestKm;
             if (highestKmDate) veh.km_last_update = highestKmDate;
         }
+
+        // Try to match assigned_user with a registered user in state.vault.users if it's a full name
+        if (veh.assigned_user) {
+            const matchedUser = (state.vault.users || []).find(u => 
+                u.username.toLowerCase() === veh.assigned_user.toLowerCase() ||
+                (u.fullName && u.fullName.toLowerCase() === veh.assigned_user.toLowerCase())
+            );
+            if (matchedUser) {
+                veh.assigned_user = matchedUser.username;
+            }
+        }
     });
 
     updateVehicleBadges();
@@ -9946,13 +10071,13 @@ function syncVehiclesWithExpensesAndUsers() {
 
 // Calculate comprehensive Fuel & Refuel Statistics for a Vehicle (v1.21.02)
 function getVehicleFuelStats(vehId, plate) {
-    const normalizePlate = (str) => (str ? str.toString().trim().toUpperCase() : "");
     const targetPlate = normalizePlate(plate);
 
     const fuelExpenses = (state.vault.expenses || []).filter(e => {
-        if (e.category !== "Combustible") return false;
+        const info = extractVehicleInfoFromExpense(e);
+        if (!info || !info.isFuel) return false;
         if (vehId && e.vehicle_id && e.vehicle_id === vehId) return true;
-        if (targetPlate && normalizePlate(e.vehicle) === targetPlate) return true;
+        if (targetPlate && (info.plate === targetPlate || normalizePlate(e.vehicle) === targetPlate)) return true;
         return false;
     });
 
@@ -9965,9 +10090,10 @@ function getVehicleFuelStats(vehId, plate) {
     let maxKm = null;
 
     fuelExpenses.forEach(e => {
-        const amt = parseFloat(e.amount) || 0;
-        const lit = parseFloat(e.liters) || 0;
-        const km = parseFloat(e.kilometers) || 0;
+        const info = extractVehicleInfoFromExpense(e) || {};
+        const amt = parseFloat(info.amount || e.amount) || 0;
+        const lit = parseFloat(info.liters || e.liters) || 0;
+        const km = parseFloat(info.kilometers || e.kilometers) || 0;
 
         totalAmount += amt;
         totalLiters += lit;
@@ -10002,27 +10128,29 @@ function getVehicleFuelStats(vehId, plate) {
 
 // Build Unified Timeline of all vehicle checkpoints: Refuels, Maintenances, Incidents, Manual logs (v1.21.02)
 function getVehicleUnifiedTimeline(vehId, plate) {
-    const normalizePlate = (str) => (str ? str.toString().trim().toUpperCase() : "");
     const targetPlate = normalizePlate(plate);
-
     const events = [];
 
     // 1. Fuel expenses
     (state.vault.expenses || []).forEach(e => {
-        if (e.category === "Combustible" && (normalizePlate(e.vehicle) === targetPlate || (vehId && e.vehicle_id === vehId))) {
-            const km = parseFloat(e.kilometers) || 0;
+        const info = extractVehicleInfoFromExpense(e);
+        if (!info || !info.isFuel) return;
+        if (targetPlate && (info.plate === targetPlate || normalizePlate(e.vehicle) === targetPlate) || (vehId && e.vehicle_id === vehId)) {
+            const km = info.kilometers || 0;
+            const amt = info.amount || 0;
+            const lit = info.liters || 0;
             events.push({
                 type: 'fuel',
-                id: 'exp_' + e.id,
-                date: e.date || "",
+                id: 'exp_' + (e.id || Date.now()),
+                date: info.date || "",
                 km: km,
-                amount: parseFloat(e.amount) || 0,
-                liters: parseFloat(e.liters) || 0,
-                pricePerLiter: (e.amount && e.liters) ? (parseFloat(e.amount) / parseFloat(e.liters)) : 0,
-                location: e.location || "",
-                registered_by: e.user_name || e.owner || "Técnico",
-                notes: e.concept || "Repostaje de combustible",
-                photo: e.image_path || ""
+                amount: amt,
+                liters: lit,
+                pricePerLiter: (amt > 0 && lit > 0) ? (amt / lit) : 0,
+                location: info.location || "",
+                registered_by: info.userName || "Técnico",
+                notes: info.concept || "Repostaje de combustible",
+                photo: info.image_path || ""
             });
         }
     });
@@ -10248,6 +10376,8 @@ function updateVehicleBadges() {
 
 // Render Fleet overview screen and list
 function renderVehiclesList() {
+    syncVehiclesWithExpensesAndUsers();
+
     const list = document.getElementById("list-vehicles");
     if (!list) return;
     list.innerHTML = "";
@@ -10357,7 +10487,10 @@ function renderVehiclesList() {
         // Assigned user full name
         let driverText = "Sin conductor asignado";
         if (v.assigned_user) {
-            const u = (state.vault.users || []).find(user => user.username.toLowerCase() === v.assigned_user.toLowerCase());
+            const u = (state.vault.users || []).find(user => 
+                user.username.toLowerCase() === v.assigned_user.toLowerCase() ||
+                (user.fullName && user.fullName.toLowerCase() === v.assigned_user.toLowerCase())
+            );
             driverText = u ? (u.fullName || u.username.toUpperCase()) : v.assigned_user.toUpperCase();
         }
 
@@ -10474,6 +10607,8 @@ function renderVehiclesList() {
 
 // Render complete Vehicle Detail (5 Tabs: Ficha, Repostajes, Averías, Revisiones, Historial Kms)
 function renderVehicleDetail(vehicleId) {
+    syncVehiclesWithExpensesAndUsers();
+
     state.fleet.activeVehicleId = vehicleId;
     const veh = (state.vault.vehicles || []).find(v => v.id === vehicleId);
     if (!veh) {
@@ -10493,7 +10628,10 @@ function renderVehicleDetail(vehicleId) {
     
     let driverText = "Sin conductor asignado";
     if (veh.assigned_user) {
-        const u = (state.vault.users || []).find(user => user.username.toLowerCase() === veh.assigned_user.toLowerCase());
+        const u = (state.vault.users || []).find(user => 
+            user.username.toLowerCase() === veh.assigned_user.toLowerCase() ||
+            (user.fullName && user.fullName.toLowerCase() === veh.assigned_user.toLowerCase())
+        );
         driverText = u ? (u.fullName || u.username.toUpperCase()) : veh.assigned_user.toUpperCase();
     }
     const driverEl = document.getElementById("veh-detail-driver");
