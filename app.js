@@ -480,7 +480,35 @@ function setupEventListeners() {
         btnConfirmImportRefuels.addEventListener("click", confirmImportRefuels);
     }
 
-    // Device mode selector change listener (v1.21.03)
+    // Device mode quick toggle in header & settings selector (v1.21.03)
+    const btnQuickDeviceToggle = document.getElementById("btn-quick-device-toggle");
+    if (btnQuickDeviceToggle) {
+        btnQuickDeviceToggle.addEventListener("click", () => {
+            const current = localStorage.getItem(STORAGE_KEYS.DEVICE_MODE) || "auto";
+            let next = "auto";
+            if (current === "auto") {
+                const isNarrow = window.innerWidth <= 768;
+                next = isNarrow ? "pc" : "mobile";
+            } else if (current === "mobile") {
+                next = "pc";
+            } else if (current === "pc") {
+                next = "auto";
+            }
+            
+            localStorage.setItem(STORAGE_KEYS.DEVICE_MODE, next);
+            if (els.setDeviceMode) els.setDeviceMode.value = next;
+            applyDeviceMode(next);
+            
+            if (next === "pc") {
+                showToast("💻 Modo PC activado (Diseño para pantalla grande / escritorio)");
+            } else if (next === "mobile") {
+                showToast("📱 Modo Móvil activado (Diseño optimizado para smartphone)");
+            } else {
+                showToast("🤖 Modo Automático activado (Detección inteligente según pantalla)");
+            }
+        });
+    }
+
     const setDeviceMode = document.getElementById("set-device-mode");
     if (setDeviceMode) {
         setDeviceMode.addEventListener("change", (e) => {
@@ -2861,21 +2889,48 @@ function applyDeviceMode(mode) {
         isMobile = false;
     } else { // "auto"
         const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-        const isMobileUA = /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        const isNarrow = window.innerWidth < 820;
+        const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isNarrow = window.innerWidth <= 768;
         isMobile = isMobileUA || (isNarrow && isTouch) || isNarrow;
     }
 
     const deviceType = isMobile ? "mobile" : "pc";
     
     document.documentElement.setAttribute("data-device", deviceType);
-    document.body.classList.remove("device-mobile", "device-pc", "is-mobile", "is-desktop");
-    document.body.classList.add(isMobile ? "device-mobile" : "device-pc");
-    document.body.classList.add(isMobile ? "is-mobile" : "is-desktop");
+    document.documentElement.classList.remove("device-mobile", "device-pc");
+    document.documentElement.classList.add(isMobile ? "device-mobile" : "device-pc");
+    
+    if (document.body) {
+        document.body.classList.remove("device-mobile", "device-pc", "is-mobile", "is-desktop");
+        document.body.classList.add(isMobile ? "device-mobile" : "device-pc");
+        document.body.classList.add(isMobile ? "is-mobile" : "is-desktop");
+    }
     
     const container = document.getElementById("app-container");
     if (container) {
         container.setAttribute("data-device", deviceType);
+    }
+
+    // Update Quick Device Badge in Header
+    const lblIcon = document.getElementById("lbl-device-icon");
+    const lblText = document.getElementById("lbl-device-text");
+    const btnBadge = document.getElementById("btn-quick-device-toggle");
+
+    if (lblIcon) {
+        lblIcon.textContent = isMobile ? "📱" : "💻";
+    }
+    if (lblText) {
+        lblText.textContent = isMobile ? "Modo Móvil" : "Modo PC";
+    }
+    if (btnBadge) {
+        const modeLabel = selectedMode === "auto" ? "Automático (" + (isMobile ? "Móvil" : "PC") + ")" : (selectedMode === "pc" ? "PC (Fijado)" : "Móvil (Fijado)");
+        btnBadge.setAttribute("title", `Modo actual: ${modeLabel}. Haz clic para alternar entre Automático, PC o Móvil.`);
+    }
+
+    // Sync dropdown in Settings if rendered
+    const setDeviceSelect = document.getElementById("set-device-mode");
+    if (setDeviceSelect && setDeviceSelect.value !== selectedMode) {
+        setDeviceSelect.value = selectedMode;
     }
 }
 

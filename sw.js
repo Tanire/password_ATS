@@ -2,7 +2,7 @@
  * Service Worker for Offline Cache
  */
 
-const CACHE_NAME = "ats-tec-cache-v1.21.03";
+const CACHE_NAME = "ats-tec-cache-v1.21.03-pwa-v2";
 const ASSETS = [
     "index.html",
     "style.css",
@@ -11,6 +11,9 @@ const ASSETS = [
     "app.js",
     "logo.png",
     "icon-512.png",
+    "icon-192.png",
+    "apple-touch-icon.png",
+    "favicon.png",
     "manifest.json",
     "https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css",
     "https://unpkg.com/boxicons@2.1.4/fonts/boxicons.woff2",

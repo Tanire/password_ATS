@@ -1977,73 +1977,221 @@ body.device-pc #app-container,
     body:not(.device-mobile) #vehicles-list-container,
     body:not(.device-mobile) #sim-cards-list-container {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-        gap: 14px;
-    }
+/* ==========================================================================
+   DEVICE MODE RESPONSIVE ARCHITECTURE (v1.21.03)
+   Instant Automatic PC / Mobile Distinction & Custom Controls
+   ========================================================================== */
 
-    body:not(.device-mobile) nav {
-        max-width: 620px;
-        margin: 0 auto 12px;
-        border-radius: 24px;
-        border: 1px solid var(--border-glass);
-        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
-        height: 62px;
-        background: rgba(18, 20, 30, 0.88);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-    }
+/* Device Toggle Badge in Header */
+.device-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #60a5fa;
+    background: rgba(59, 130, 246, 0.12);
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    user-select: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
 
-    body:not(.device-mobile) .modal-overlay .glass-card {
-        max-width: 650px;
+.device-badge:hover {
+    background: rgba(59, 130, 246, 0.25);
+    border-color: #60a5fa;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
+}
+
+.device-badge:active {
+    transform: scale(0.95);
+}
+
+.device-badge span#lbl-device-icon {
+    font-size: 0.95rem;
+    line-height: 1;
+}
+
+@media (max-width: 420px) {
+    .device-badge .device-text {
+        display: none;
+    }
+    .device-badge {
+        padding: 6px 8px;
     }
 }
 
-/* Explicit force PC layout */
+/* --- PC / DESKTOP MODE (Active on PC or Wide Screens) --- */
+html[data-device="pc"] body,
+body.device-pc {
+    background: radial-gradient(circle at 50% 10%, #111827 0%, #050507 80%);
+}
+
+html[data-device="pc"] #app-container,
 body.device-pc #app-container {
     max-width: 1400px !important;
-    margin: 0 auto !important;
-    border-left: 1px solid var(--border-glass) !important;
-    border-right: 1px solid var(--border-glass) !important;
-    box-shadow: 0 0 50px rgba(0, 0, 0, 0.6) !important;
+    width: 96% !important;
+    height: 96vh !important;
+    margin: 2vh auto !important;
+    border-radius: 20px !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.8), 0 0 35px rgba(59, 130, 246, 0.08) !important;
+    background-color: var(--bg-primary);
 }
 
+html[data-device="pc"] header,
+body.device-pc header {
+    height: 68px !important;
+    padding: 0 28px !important;
+}
+
+html[data-device="pc"] .header-logo img,
+body.device-pc .header-logo img {
+    height: 36px !important;
+}
+
+html[data-device="pc"] .header-logo h1,
+body.device-pc .header-logo h1 {
+    font-size: 1.25rem !important;
+}
+
+html[data-device="pc"] main,
+body.device-pc main {
+    max-width: 100% !important;
+    padding: 24px 32px !important;
+}
+
+/* PC Dashboard Multi-Column Grid */
+html[data-device="pc"] .menu-grid,
 body.device-pc .menu-grid {
-    grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)) !important;
-    gap: 16px !important;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
+    gap: 18px !important;
+    margin-top: 22px !important;
 }
 
+html[data-device="pc"] .menu-card,
+body.device-pc .menu-card {
+    min-height: 120px !important;
+    padding: 18px 14px !important;
+    border-radius: var(--radius-lg) !important;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease !important;
+}
+
+html[data-device="pc"] .menu-card:hover,
+body.device-pc .menu-card:hover {
+    transform: translateY(-6px) scale(1.02) !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 12px 28px rgba(59, 130, 246, 0.22) !important;
+}
+
+html[data-device="pc"] .menu-card .card-icon,
+body.device-pc .menu-card .card-icon {
+    font-size: 2.2rem !important;
+}
+
+html[data-device="pc"] .menu-card .card-title,
+body.device-pc .menu-card .card-title {
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+}
+
+/* PC Multi-Column Card Grids for Lists */
+html[data-device="pc"] #list-passwords,
+html[data-device="pc"] #list-subscribers,
+html[data-device="pc"] #list-expenses,
+html[data-device="pc"] #vehicles-list-container,
+html[data-device="pc"] #sim-cards-list-container,
+html[data-device="pc"] #list-manuals,
+html[data-device="pc"] #list-hours,
+html[data-device="pc"] #list-diets,
+html[data-device="pc"] #list-materials,
 body.device-pc #list-passwords,
 body.device-pc #list-subscribers,
 body.device-pc #list-expenses,
 body.device-pc #vehicles-list-container,
-body.device-pc #sim-cards-list-container {
+body.device-pc #sim-cards-list-container,
+body.device-pc #list-manuals,
+body.device-pc #list-hours,
+body.device-pc #list-diets,
+body.device-pc #list-materials {
     display: grid !important;
     grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)) !important;
-    gap: 14px !important;
+    gap: 16px !important;
 }
 
+/* PC Floating Dock Navigation Bar */
+html[data-device="pc"] nav,
 body.device-pc nav {
-    max-width: 620px !important;
-    margin: 0 auto 12px !important;
-    border-radius: 24px !important;
+    max-width: 640px !important;
+    margin: 0 auto 14px !important;
+    border-radius: 28px !important;
     border: 1px solid var(--border-glass) !important;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5) !important;
+    box-shadow: 0 14px 35px rgba(0, 0, 0, 0.55) !important;
+    height: 64px !important;
+    background: rgba(18, 20, 30, 0.9) !important;
+    backdrop-filter: blur(24px) !important;
+    -webkit-backdrop-filter: blur(24px) !important;
 }
 
-/* --- Mobile Mode Explicit Rules --- */
+/* PC Centered Floating Modals */
+html[data-device="pc"] .modal-overlay .glass-card,
+body.device-pc .modal-overlay .glass-card {
+    max-width: 680px !important;
+    border-radius: 22px !important;
+}
+
+/* --- MOBILE / TOUCH MODE --- */
+html[data-device="mobile"] #app-container,
 body.device-mobile #app-container {
     max-width: 100% !important;
     width: 100% !important;
+    height: 100dvh !important;
     margin: 0 !important;
+    border-radius: 0 !important;
     border: none !important;
     box-shadow: none !important;
 }
 
+html[data-device="mobile"] header,
+body.device-mobile header {
+    height: 58px !important;
+    padding: 0 14px !important;
+}
+
+html[data-device="mobile"] .header-logo img,
+body.device-mobile .header-logo img {
+    height: 26px !important;
+}
+
+html[data-device="mobile"] .header-logo h1,
+body.device-mobile .header-logo h1 {
+    font-size: 0.95rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 180px !important;
+}
+
+html[data-device="mobile"] main,
+body.device-mobile main {
+    padding: 14px 12px !important;
+}
+
+html[data-device="mobile"] .menu-grid,
 body.device-mobile .menu-grid {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 12px !important;
 }
 
+html[data-device="mobile"] #list-passwords,
+html[data-device="mobile"] #list-subscribers,
+html[data-device="mobile"] #list-expenses,
+html[data-device="mobile"] #vehicles-list-container,
+html[data-device="mobile"] #sim-cards-list-container,
 body.device-mobile #list-passwords,
 body.device-mobile #list-subscribers,
 body.device-mobile #list-expenses,
@@ -2051,8 +2199,10 @@ body.device-mobile #vehicles-list-container,
 body.device-mobile #sim-cards-list-container {
     display: flex !important;
     flex-direction: column !important;
+    gap: 10px !important;
 }
 
+html[data-device="mobile"] nav,
 body.device-mobile nav {
     max-width: 100% !important;
     margin: 0 !important;
