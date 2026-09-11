@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.22.01",
+        version: "1.22.02",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -51,6 +51,19 @@ const state = {
         activeItemId: null,
         torchOn: false,
         batchPendingSns: []
+    },
+
+    // OCR Label Scanner state v1.22.02
+    ocrScanner: {
+        stream: null,
+        targetMode: "form", // 'form' or 'batch'
+        currentCameraId: null,
+        availableDevices: [],
+        torchOn: false,
+        lastCapturedDataUrl: null,
+        lastDetectedData: null,
+        lastRawText: "",
+        isProcessing: false
     },
     
     // Fleet module state v1.21.01
@@ -361,11 +374,56 @@ function setupEventListeners() {
     const btnScanItemSn = document.getElementById("btn-scan-item-sn");
     if (btnScanItemSn) btnScanItemSn.addEventListener("click", () => startBarcodeScanner('item-form'));
 
+    // OCR Label Scanner Buttons v1.22.02
+    const btnScanItemOcr = document.getElementById("btn-scan-item-ocr");
+    if (btnScanItemOcr) btnScanItemOcr.addEventListener("click", () => openOcrLabelScanner('form'));
+
+    const btnScanItemBarcodeTop = document.getElementById("btn-scan-item-barcode-top");
+    if (btnScanItemBarcodeTop) btnScanItemBarcodeTop.addEventListener("click", () => startBarcodeScanner('item-form'));
+
+    const btnCloseOcrModal = document.getElementById("btn-close-ocr-modal");
+    if (btnCloseOcrModal) btnCloseOcrModal.addEventListener("click", closeOcrLabelScanner);
+
+    const btnOcrTorch = document.getElementById("btn-ocr-torch");
+    if (btnOcrTorch) btnOcrTorch.addEventListener("click", toggleOcrTorch);
+
+    const ocrCamSelect = document.getElementById("ocr-camera-select");
+    if (ocrCamSelect) {
+        ocrCamSelect.addEventListener("change", (e) => {
+            state.ocrScanner.currentCameraId = e.target.value;
+            startOcrCameraStream();
+        });
+    }
+
+    const btnOcrCapturePhoto = document.getElementById("btn-ocr-capture-photo");
+    if (btnOcrCapturePhoto) btnOcrCapturePhoto.addEventListener("click", captureAndProcessOcrPhoto);
+
+    const btnOcrUploadFile = document.getElementById("btn-ocr-upload-file");
+    const inputOcrFileUpload = document.getElementById("input-ocr-file-upload");
+    if (btnOcrUploadFile && inputOcrFileUpload) {
+        btnOcrUploadFile.addEventListener("click", () => inputOcrFileUpload.click());
+        inputOcrFileUpload.addEventListener("change", (e) => {
+            if (e.target.files && e.target.files[0]) {
+                handleOcrFileUpload(e.target.files[0]);
+                e.target.value = "";
+            }
+        });
+    }
+
+    const btnOcrRetry = document.getElementById("btn-ocr-retry");
+    if (btnOcrRetry) btnOcrRetry.addEventListener("click", retryOcrScan);
+
+    const btnOcrApply = document.getElementById("btn-ocr-apply");
+    if (btnOcrApply) btnOcrApply.addEventListener("click", applyOcrData);
+
     const btnWarehouseScanSearch = document.getElementById("btn-warehouse-scan-search");
     if (btnWarehouseScanSearch) btnWarehouseScanSearch.addEventListener("click", () => startBarcodeScanner('search'));
 
     const btnWarehouseBatch = document.getElementById("btn-warehouse-batch");
     if (btnWarehouseBatch) btnWarehouseBatch.addEventListener("click", openWarehouseBatchModal);
+
+    const btnBatchScanOcr = document.getElementById("btn-batch-scan-ocr");
+    if (btnBatchScanOcr) btnBatchScanOcr.addEventListener("click", () => openOcrLabelScanner('batch'));
 
     const btnWarehouseExport = document.getElementById("btn-warehouse-export");
     if (btnWarehouseExport) btnWarehouseExport.addEventListener("click", openWarehouseExcelModal);
@@ -13637,6 +13695,598 @@ function handleWarehouseExcelImport(e) {
     };
     reader.readAsArrayBuffer(file);
 }
+
+// =========================================================================
+// OCR LABEL SCANNER (RECONOCIMIENTO INTELIGENTE DE PEGATINAS) v1.22.02
+// =========================================================================
+
+/**
+ * Opens OCR Label Scanner Modal
+ * @param {string} targetMode 'form' | 'batch'
+ */
+function openOcrLabelScanner(targetMode = "form") {
+    state.ocrScanner.targetMode = targetMode;
+    state.ocrScanner.isProcessing = false;
+    state.ocrScanner.lastCapturedDataUrl = null;
+    state.ocrScanner.lastDetectedData = null;
+    state.ocrScanner.lastRawText = "";
+
+    const modal = document.getElementById("modal-ocr-label-scanner");
+    const camSection = document.getElementById("ocr-camera-section");
+    const procSection = document.getElementById("ocr-processing-section");
+    const resSection = document.getElementById("ocr-results-section");
+
+    if (modal) modal.style.display = "flex";
+    if (camSection) camSection.style.display = "flex";
+    if (procSection) procSection.style.display = "none";
+    if (resSection) resSection.style.display = "none";
+
+    startOcrCameraStream();
+}
+
+/**
+ * Closes OCR Label Scanner Modal and releases camera
+ */
+function closeOcrLabelScanner() {
+    stopOcrCameraStream();
+    const modal = document.getElementById("modal-ocr-label-scanner");
+    if (modal) modal.style.display = "none";
+}
+
+/**
+ * Starts camera stream for OCR video feed
+ */
+async function startOcrCameraStream() {
+    const video = document.getElementById("ocr-video-feed");
+    const selectCam = document.getElementById("ocr-camera-select");
+    const torchBtn = document.getElementById("btn-ocr-torch");
+
+    stopOcrCameraStream();
+
+    try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showToast("Tu navegador no soporta acceso directo a la cámara.");
+            return;
+        }
+
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === "videoinput");
+        state.ocrScanner.availableDevices = videoDevices;
+
+        if (selectCam) {
+            selectCam.innerHTML = "";
+            videoDevices.forEach((dev, idx) => {
+                const opt = document.createElement("option");
+                opt.value = dev.deviceId;
+                opt.textContent = dev.label || `Cámara ${idx + 1}`;
+                if (dev.deviceId === state.ocrScanner.currentCameraId) opt.selected = true;
+                selectCam.appendChild(opt);
+            });
+        }
+
+        const constraints = {
+            video: state.ocrScanner.currentCameraId 
+                ? { deviceId: { exact: state.ocrScanner.currentCameraId } }
+                : { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+            audio: false
+        };
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        state.ocrScanner.stream = stream;
+        if (video) {
+            video.srcObject = stream;
+            video.play();
+        }
+
+        // Check torch capabilities
+        const track = stream.getVideoTracks()[0];
+        if (track && typeof track.getCapabilities === "function") {
+            const capabilities = track.getCapabilities();
+            if (capabilities.torch && torchBtn) {
+                torchBtn.style.display = "inline-flex";
+            } else if (torchBtn) {
+                torchBtn.style.display = "none";
+            }
+        }
+
+    } catch (err) {
+        console.error("OCR Camera stream error:", err);
+        showToast("No se pudo iniciar la cámara: " + (err.message || err));
+    }
+}
+
+/**
+ * Stops camera stream
+ */
+function stopOcrCameraStream() {
+    if (state.ocrScanner.stream) {
+        state.ocrScanner.stream.getTracks().forEach(t => t.stop());
+        state.ocrScanner.stream = null;
+    }
+    state.ocrScanner.torchOn = false;
+    const torchBtn = document.getElementById("btn-ocr-torch");
+    if (torchBtn) torchBtn.style.display = "none";
+}
+
+/**
+ * Toggles camera torch / flashlight if supported
+ */
+async function toggleOcrTorch() {
+    if (!state.ocrScanner.stream) return;
+    const track = state.ocrScanner.stream.getVideoTracks()[0];
+    if (!track) return;
+
+    try {
+        state.ocrScanner.torchOn = !state.ocrScanner.torchOn;
+        await track.applyConstraints({
+            advanced: [{ torch: state.ocrScanner.torchOn }]
+        });
+        const torchBtn = document.getElementById("btn-ocr-torch");
+        if (torchBtn) {
+            torchBtn.style.background = state.ocrScanner.torchOn ? "#fbbf24" : "var(--bg-secondary)";
+            torchBtn.style.color = state.ocrScanner.torchOn ? "#000" : "var(--text-primary)";
+        }
+    } catch (err) {
+        console.error("Error toggling torch:", err);
+    }
+}
+
+/**
+ * Preprocesses video frame or image on canvas for maximum OCR accuracy
+ * Applies center crop, grayscale and contrast enhancement
+ */
+function preprocessImageToCanvas(sourceElement) {
+    const canvas = document.getElementById("ocr-processing-canvas");
+    if (!canvas) return null;
+
+    const ctx = canvas.getContext("2d");
+    const srcWidth = sourceElement.videoWidth || sourceElement.naturalWidth || sourceElement.width || 800;
+    const srcHeight = sourceElement.videoHeight || sourceElement.naturalHeight || sourceElement.height || 600;
+
+    // Crop center 88% width x 75% height matching guide box
+    const cropW = Math.round(srcWidth * 0.88);
+    const cropH = Math.round(srcHeight * 0.75);
+    const startX = Math.max(0, Math.round((srcWidth - cropW) / 2));
+    const startY = Math.max(0, Math.round((srcHeight - cropH) / 2));
+
+    canvas.width = cropW;
+    canvas.height = cropH;
+
+    // Draw cropped region
+    ctx.drawImage(sourceElement, startX, startY, cropW, cropH, 0, 0, cropW, cropH);
+
+    // Apply Contrast / Grayscale optimization for OCR text sharpness
+    const imgData = ctx.getImageData(0, 0, cropW, cropH);
+    const data = imgData.data;
+
+    // Contrast stretching / sharpening factor
+    const contrast = 1.35;
+    const factor = (259 * (contrast * 255 + 255)) / (255 * (259 - contrast * 255));
+
+    for (let i = 0; i < data.length; i += 4) {
+        // Luminance formula
+        const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        const highContrast = factor * (gray - 128) + 128;
+        const clamped = Math.max(0, Math.min(255, highContrast));
+
+        data[i] = clamped;     // Red
+        data[i + 1] = clamped; // Green
+        data[i + 2] = clamped; // Blue
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+    return canvas.toDataURL("image/jpeg", 0.92);
+}
+
+/**
+ * Captures current video frame and processes it with OCR
+ */
+async function captureAndProcessOcrPhoto() {
+    const video = document.getElementById("ocr-video-feed");
+    if (!video || !video.videoWidth) {
+        showToast("Esperando señal de la cámara...");
+        return;
+    }
+
+    const processedDataUrl = preprocessImageToCanvas(video);
+    if (!processedDataUrl) return;
+
+    stopOcrCameraStream();
+
+    const camSection = document.getElementById("ocr-camera-section");
+    const procSection = document.getElementById("ocr-processing-section");
+    const resSection = document.getElementById("ocr-results-section");
+
+    if (camSection) camSection.style.display = "none";
+    if (procSection) procSection.style.display = "flex";
+    if (resSection) resSection.style.display = "none";
+
+    try {
+        const { parsed, rawText } = await runOcrOnImageSource(processedDataUrl);
+        renderOcrResults(parsed, processedDataUrl, rawText);
+    } catch (err) {
+        console.error("OCR recognition error:", err);
+        showToast("Error al leer la pegatina: " + (err.message || err));
+        retryOcrScan();
+    }
+}
+
+/**
+ * Handles image uploaded from file gallery for OCR
+ */
+function handleOcrFileUpload(file) {
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = async () => {
+            const processedDataUrl = preprocessImageToCanvas(img);
+            stopOcrCameraStream();
+
+            const camSection = document.getElementById("ocr-camera-section");
+            const procSection = document.getElementById("ocr-processing-section");
+            const resSection = document.getElementById("ocr-results-section");
+
+            if (camSection) camSection.style.display = "none";
+            if (procSection) procSection.style.display = "flex";
+            if (resSection) resSection.style.display = "none";
+
+            try {
+                const { parsed, rawText } = await runOcrOnImageSource(processedDataUrl);
+                renderOcrResults(parsed, processedDataUrl, rawText);
+            } catch (err) {
+                console.error("OCR file recognition error:", err);
+                showToast("Error al procesar la imagen: " + (err.message || err));
+                retryOcrScan();
+            }
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+/**
+ * Runs Tesseract.js recognition on image source with UI progress
+ */
+async function runOcrOnImageSource(imageSource) {
+    const statusText = document.getElementById("ocr-processing-status-text");
+    const progressBar = document.getElementById("ocr-progress-bar");
+    
+    if (statusText) statusText.textContent = "Iniciando motor de reconocimiento OCR...";
+    if (progressBar) progressBar.style.width = "20%";
+
+    try {
+        if (typeof Tesseract === "undefined") {
+            throw new Error("El motor OCR Tesseract.js no está cargado.");
+        }
+
+        if (statusText) statusText.textContent = "Leyendo caracteres y patrones de la pegatina...";
+        if (progressBar) progressBar.style.width = "40%";
+
+        const worker = await Tesseract.createWorker('eng', 1, {
+            logger: (m) => {
+                if (m.status === "recognizing text" && typeof m.progress === "number") {
+                    const pct = Math.round(40 + (m.progress * 50));
+                    if (progressBar) progressBar.style.width = `${pct}%`;
+                    if (statusText) statusText.textContent = `Leyendo caracteres: ${Math.round(m.progress * 100)}%`;
+                }
+            }
+        });
+
+        const ret = await worker.recognize(imageSource);
+        await worker.terminate();
+
+        if (progressBar) progressBar.style.width = "95%";
+        if (statusText) statusText.textContent = "Identificando marca, modelo y número de serie...";
+
+        const rawText = ret && ret.data ? ret.data.text : "";
+        const parsed = parseSecurityLabelOCR(rawText);
+
+        if (progressBar) progressBar.style.width = "100%";
+        return { parsed, rawText };
+
+    } catch (err) {
+        console.error("Tesseract OCR worker error:", err);
+        throw err;
+    }
+}
+
+/**
+ * Smart Security Equipment OCR Parser v1.22.02
+ * Analyzes raw OCR text from equipment stickers and extracts:
+ * - Brand (Hikvision, Dahua, Ajax, Paradox, DSC, Safire, Honeywell, Seagate, Ubiquiti...)
+ * - Model (DS-2CD..., IPC-HFW..., Hub 2, MG5050, PC1864, WD40PURZ, SkyHawk...)
+ * - Serial Number (S/N, SN, Serial No, etc.)
+ * - MAC Address (if present)
+ * - Category (CCTV, Intrusion, Fire, Sensors, Network, Storage, Access, Power)
+ */
+function parseSecurityLabelOCR(rawText) {
+    if (!rawText || typeof rawText !== "string") {
+        return { brand: "", model: "", sn: "", mac: "", category: "cctv", notes: "" };
+    }
+
+    const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const fullText = rawText.replace(/\r?\n/g, " ");
+
+    let detectedBrand = "";
+    let detectedModel = "";
+    let detectedSn = "";
+    let detectedMac = "";
+    let detectedCategory = "cctv";
+
+    // 1. KNOWN BRANDS DICTIONARY
+    const BRANDS = [
+        { name: "Hikvision", regex: /\b(hikvision|hilook|ezviz)\b/i, defaultCategory: "cctv" },
+        { name: "Dahua", regex: /\b(dahua|imou)\b/i, defaultCategory: "cctv" },
+        { name: "Safire", regex: /\b(safire|safire smart)\b/i, defaultCategory: "cctv" },
+        { name: "Uniview", regex: /\b(uniview|unv)\b/i, defaultCategory: "cctv" },
+        { name: "Ajax", regex: /\b(ajax|ajax systems)\b/i, defaultCategory: "intrusion" },
+        { name: "Paradox", regex: /\b(paradox|spectra|magellan|digiplex|evo)\b/i, defaultCategory: "intrusion" },
+        { name: "DSC", regex: /\b(dsc|powerseries|neo|tyco)\b/i, defaultCategory: "intrusion" },
+        { name: "Risco", regex: /\b(risco|lightsys|prosys|rokonet)\b/i, defaultCategory: "intrusion" },
+        { name: "Honeywell", regex: /\b(honeywell|ademco|galaxy)\b/i, defaultCategory: "intrusion" },
+        { name: "Pyronix", regex: /\b(pyronix|enforcer)\b/i, defaultCategory: "intrusion" },
+        { name: "Texecom", regex: /\b(texecom|premier elite)\b/i, defaultCategory: "intrusion" },
+        { name: "Vesta", regex: /\b(vesta|climax)\b/i, defaultCategory: "intrusion" },
+        { name: "Optex", regex: /\b(optex)\b/i, defaultCategory: "sensors" },
+        { name: "Bosch", regex: /\b(bosch)\b/i, defaultCategory: "cctv" },
+        { name: "Ksenia", regex: /\b(ksenia|lares)\b/i, defaultCategory: "intrusion" },
+        { name: "Detnov", regex: /\b(detnov)\b/i, defaultCategory: "fire" },
+        { name: "Cofem", regex: /\b(cofem)\b/i, defaultCategory: "fire" },
+        { name: "Aguilera", regex: /\b(aguilera)\b/i, defaultCategory: "fire" },
+        { name: "Western Digital", regex: /\b(western digital|wd purple|wd red|wd blue|wd)\b/i, defaultCategory: "cctv" },
+        { name: "Seagate", regex: /\b(seagate|skyhawk|ironwolf|barracuda)\b/i, defaultCategory: "cctv" },
+        { name: "Ubiquiti", regex: /\b(ubiquiti|unifi|edgerouter|edgeswitch)\b/i, defaultCategory: "network" },
+        { name: "TP-Link", regex: /\b(tp-link|tplink|omada)\b/i, defaultCategory: "network" },
+        { name: "MikroTik", regex: /\b(mikrotik|routerboard)\b/i, defaultCategory: "network" },
+        { name: "Salto", regex: /\b(salto|salto systems)\b/i, defaultCategory: "access" },
+        { name: "Kantech", regex: /\b(kantech)\b/i, defaultCategory: "access" },
+        { name: "ZKTeco", regex: /\b(zkteco|zk)\b/i, defaultCategory: "access" },
+        { name: "CDVI", regex: /\b(cdvi|atelis)\b/i, defaultCategory: "access" },
+        { name: "Trikdis", regex: /\b(trikdis)\b/i, defaultCategory: "network" }
+    ];
+
+    for (const b of BRANDS) {
+        if (b.regex.test(fullText)) {
+            detectedBrand = b.name;
+            detectedCategory = b.defaultCategory;
+            break;
+        }
+    }
+
+    // 2. DETECT MAC ADDRESS
+    const macMatch = fullText.match(/\b([0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2})\b/) ||
+                     fullText.match(/MAC\s*[:=\s]\s*([0-9A-Fa-f]{12})/i);
+    if (macMatch) {
+        detectedMac = macMatch[1].toUpperCase();
+    }
+
+    // 3. DETECT SERIAL NUMBER (S/N)
+    // Priority A: Explicit Prefix
+    const snRegexList = [
+        /(?:S\/N|S\.N\.|SN|SERIAL\s*NO|SERIAL\s*NUMBER|Nº\s*SERIE|N\/S|SERIAL)\s*[:=\s#]\s*([A-Z0-9\-_]{6,26})/i,
+        /\bSN\s*([A-Z0-9]{8,24})\b/i,
+        /\b(?:S\/N)\s*([A-Z0-9]{6,24})\b/i
+    ];
+
+    for (const reg of snRegexList) {
+        const match = fullText.match(reg);
+        if (match && match[1]) {
+            detectedSn = match[1].trim().toUpperCase();
+            break;
+        }
+    }
+
+    // Priority B: Search line by line for S/N labels
+    if (!detectedSn) {
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (/^(?:S\/N|SN|SERIAL|N\/S)/i.test(line)) {
+                const parts = line.split(/[:=\s]+/);
+                if (parts.length > 1 && parts[1].length >= 5) {
+                    detectedSn = parts[1].trim().toUpperCase();
+                    break;
+                } else if (i + 1 < lines.length && /^[A-Z0-9]{6,24}$/i.test(lines[i + 1])) {
+                    detectedSn = lines[i + 1].trim().toUpperCase();
+                    break;
+                }
+            }
+        }
+    }
+
+    // 4. DETECT MODEL
+    // Specific Brand Model Patterns:
+    const MODEL_PATTERNS = [
+        // Hikvision / Safire / Uniview CCTV
+        /\b(DS-[0-9A-Z]{3,8}-[0-9A-Z\/\-_]+)\b/i,
+        /\b(SF-[0-9A-Z]{3,8}-[0-9A-Z\/\-_]+)\b/i,
+        /\b(IPC-[0-9A-Z\-]{4,20})\b/i,
+        /\b(HWI-[0-9A-Z\-]+)\b/i,
+        /\b(NVR-[0-9A-Z\-]+)\b/i,
+        /\b(DVR-[0-9A-Z\-]+)\b/i,
+        /\b(HFW[0-9A-Z\-]+)\b/i,
+        /\b(HDW[0-9A-Z\-]+)\b/i,
+        /\b(XVR[0-9A-Z\-]+)\b/i,
+        // Ajax Models
+        /\b(Hub\s*2\s*Plus|Hub\s*2\s*\(4G\)|Hub\s*2|Hub\s*Plus|Hub\s*Hybrid|Hub)\b/i,
+        /\b(MotionProtect\s*Plus|MotionProtect\s*Fibra|MotionProtect\s*Curtain|MotionProtect\s*Outdoor|MotionProtect)\b/i,
+        /\b(DoorProtect\s*Plus|DoorProtect\s*Fibra|DoorProtect)\b/i,
+        /\b(CombiProtect|GlassProtect|MotionCam\s*Outdoor|MotionCam\s*PhOD|MotionCam|DualCurtain\s*Outdoor)\b/i,
+        /\b(StreetSiren\s*DoubleDeck|StreetSiren|HomeSiren|KeyPad\s*TouchScreen|KeyPad\s*Plus|KeyPad|KeyPad\s*Fibra)\b/i,
+        /\b(FireProtect\s*2|FireProtect\s*Plus|FireProtect|LeaksProtect|LifeQuality|Relay|WallSwitch|Socket|Transmitter|MultiTransmitter)\b/i,
+        // Paradox Models
+        /\b(MG5050\+?|MG5000|SP4000|SP5500|SP6000|SP7000|EVO192|EVOHD)\b/i,
+        /\b(K32LCD\+?|K32\+?|K10V|TM50|TM70|NV5|NV780MX|NVX80|DG85|DG75|DG65|DG55)\b/i,
+        /\b(IP150\+?|PCS265\+?|ZX8|PGM4|PS45|RTX3)\b/i,
+        // DSC Models
+        /\b(PC1864|PC1832|PC1616|HS2064|HS2032|HS2016|PK5500|HS2LCD|TL280|PG8914|PG8904)\b/i,
+        // Western Digital & Seagate
+        /\b(WD[0-9]{1,2}PUR[A-Z0-9]*|WD[0-9]{1,2}EFRX|WD[0-9]{1,2}EZAZ)\b/i,
+        /\b(ST[0-9]{3,5}VX[0-9]{3}|SkyHawk\s*[0-9]+TB|IronWolf\s*[0-9]+TB)\b/i,
+        // Ubiquiti Networks
+        /\b(UAP-AC-[A-Z0-9\-]+|U6-[A-Z0-9\-]+|USW-[A-Z0-9\-]+|ER-[A-Z0-9\-]+|UDM-[A-Z0-9\-]+)\b/i
+    ];
+
+    for (const pat of MODEL_PATTERNS) {
+        const m = fullText.match(pat);
+        if (m && m[1]) {
+            detectedModel = m[1].trim();
+            break;
+        }
+    }
+
+    // Generic Model Key search: "MODEL: XXX", "MODEL NO: XXX", "MOD: XXX", "M/N: XXX"
+    if (!detectedModel) {
+        const modelKeyRegex = /(?:MODEL|MODELO|MOD\.|M\/N|P\/N|TYPE|TYP)\s*[:=\s]\s*([A-Z0-9\-_./]{3,24})/i;
+        const mKey = fullText.match(modelKeyRegex);
+        if (mKey && mKey[1]) {
+            detectedModel = mKey[1].trim();
+        }
+    }
+
+    // Heuristic Category fine-tuning based on Model
+    if (detectedModel) {
+        const mUpper = detectedModel.toUpperCase();
+        if (/DS-|SF-|IPC-|NVR|DVR|HFW|HDW|XVR|HWI|CAMERA|CAM/i.test(mUpper)) {
+            detectedCategory = "cctv";
+            if (!detectedBrand && /DS-/i.test(mUpper)) detectedBrand = "Hikvision";
+            if (!detectedBrand && /SF-/i.test(mUpper)) detectedBrand = "Safire";
+            if (!detectedBrand && /IPC-|HFW|HDW/i.test(mUpper)) detectedBrand = "Dahua";
+        } else if (/HUB|MG[0-9]|SP[0-9]|EVO|PC18|HS20|LIGHTSYS|GALAXY/i.test(mUpper)) {
+            detectedCategory = "intrusion";
+            if (!detectedBrand && /HUB/i.test(mUpper)) detectedBrand = "Ajax";
+            if (!detectedBrand && /MG|SP|EVO|K32/i.test(mUpper)) detectedBrand = "Paradox";
+            if (!detectedBrand && /PC18|HS20/i.test(mUpper)) detectedBrand = "DSC";
+        } else if (/MOTION|DOOR|COMBI|GLASS|NV5|NV780|DG85|PIR|RADAR|DETECTOR|SENSOR/i.test(mUpper)) {
+            detectedCategory = "sensors";
+        } else if (/FIRE|SMOKE|DETNOV|COFEM|HUMO|INCENDIO/i.test(mUpper)) {
+            detectedCategory = "fire";
+        } else if (/WD|PURPLE|SKYHAWK|SEAGATE|ST[0-9]|TB|GB|DISCO/i.test(mUpper)) {
+            detectedCategory = "cctv";
+        } else if (/UAP|U6|USW|ROUTER|SWITCH|WIFI|UBIQUITI|MIKROTIK/i.test(mUpper)) {
+            detectedCategory = "network";
+        }
+    }
+
+    return {
+        brand: detectedBrand || "",
+        model: detectedModel || "",
+        sn: detectedSn || "",
+        mac: detectedMac || "",
+        category: detectedCategory || "cctv",
+        notes: detectedMac ? `MAC: ${detectedMac}` : ""
+    };
+}
+
+/**
+ * Displays OCR Extracted results in UI for review and verification
+ */
+function renderOcrResults(detected, previewDataUrl, rawText) {
+    const procSection = document.getElementById("ocr-processing-section");
+    const resSection = document.getElementById("ocr-results-section");
+
+    if (procSection) procSection.style.display = "none";
+    if (resSection) resSection.style.display = "flex";
+
+    const previewImg = document.getElementById("ocr-captured-preview-img");
+    const brandInput = document.getElementById("ocr-result-brand");
+    const modelInput = document.getElementById("ocr-result-model");
+    const snInput = document.getElementById("ocr-result-sn");
+    const catSelect = document.getElementById("ocr-result-category");
+    const extraInput = document.getElementById("ocr-result-extra");
+    const rawPreview = document.getElementById("ocr-raw-text-preview");
+
+    if (previewImg) previewImg.src = previewDataUrl;
+    if (brandInput) brandInput.value = detected.brand || "";
+    if (modelInput) modelInput.value = detected.model || "";
+    if (snInput) snInput.value = detected.sn || "";
+    if (catSelect) catSelect.value = detected.category || "cctv";
+    if (extraInput) extraInput.value = detected.notes || (detected.mac ? `MAC: ${detected.mac}` : "");
+    if (rawPreview) rawPreview.textContent = rawText || "No se detectaron caracteres legibles.";
+
+    state.ocrScanner.lastCapturedDataUrl = previewDataUrl;
+    state.ocrScanner.lastDetectedData = detected;
+    state.ocrScanner.lastRawText = rawText;
+
+    playSound("beep");
+}
+
+/**
+ * Applies the reviewed OCR data to the target form (Warehouse Item or Batch Entry)
+ */
+function applyOcrData() {
+    const brand = document.getElementById("ocr-result-brand") ? document.getElementById("ocr-result-brand").value.trim() : "";
+    const model = document.getElementById("ocr-result-model") ? document.getElementById("ocr-result-model").value.trim() : "";
+    const sn = document.getElementById("ocr-result-sn") ? document.getElementById("ocr-result-sn").value.trim() : "";
+    const category = document.getElementById("ocr-result-category") ? document.getElementById("ocr-result-category").value : "cctv";
+    const extra = document.getElementById("ocr-result-extra") ? document.getElementById("ocr-result-extra").value.trim() : "";
+
+    if (state.ocrScanner.targetMode === "batch") {
+        const batchBrand = document.getElementById("batch-brand");
+        const batchModel = document.getElementById("batch-model");
+        const batchCat = document.getElementById("batch-category");
+        if (batchBrand && brand) batchBrand.value = brand;
+        if (batchModel && model) batchModel.value = model;
+        if (batchCat && category) batchCat.value = category;
+
+        if (sn) {
+            if (!state.warehouse.batchPendingSns) state.warehouse.batchPendingSns = [];
+            if (!state.warehouse.batchPendingSns.includes(sn)) {
+                state.warehouse.batchPendingSns.push(sn);
+                renderBatchPendingSns();
+                showToast(`Nº Serie ${sn} añadido al lote.`);
+            } else {
+                showToast("El Nº de Serie ya estaba en la lista.");
+            }
+        }
+    } else {
+        // Formulario de Artículo Individual
+        const formBrand = document.getElementById("warehouse-item-brand");
+        const formModel = document.getElementById("warehouse-item-model");
+        const formSn = document.getElementById("warehouse-item-sn");
+        const formCat = document.getElementById("warehouse-item-category");
+        const formNotes = document.getElementById("warehouse-item-notes");
+
+        if (formBrand && brand) formBrand.value = brand;
+        if (formModel && model) formModel.value = model;
+        if (formSn && sn) formSn.value = sn;
+        if (formCat && category) formCat.value = category;
+        if (formNotes && extra) {
+            formNotes.value = formNotes.value ? (formNotes.value + " | " + extra) : extra;
+        }
+
+        // Volcar foto de la pegatina a la previsualización del artículo
+        if (state.ocrScanner.lastCapturedDataUrl) {
+            const previewWrap = document.getElementById("warehouse-item-photo-preview");
+            if (previewWrap) {
+                const img = previewWrap.querySelector("img");
+                if (img) img.src = state.ocrScanner.lastCapturedDataUrl;
+                previewWrap.style.display = "block";
+            }
+        }
+
+        showToast("¡Datos de la pegatina volcados al formulario!");
+    }
+
+    closeOcrLabelScanner();
+}
+
+/**
+ * Retries OCR scan by resetting to live camera
+ */
+function retryOcrScan() {
+    const camSection = document.getElementById("ocr-camera-section");
+    const procSection = document.getElementById("ocr-processing-section");
+    const resSection = document.getElementById("ocr-results-section");
+
+    if (camSection) camSection.style.display = "flex";
+    if (procSection) procSection.style.display = "none";
+    if (resSection) resSection.style.display = "none";
+
+    startOcrCameraStream();
+}
+
 
 
 

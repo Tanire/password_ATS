@@ -8,12 +8,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ATS Seguridad">
-    <link rel="icon" type="image/png" href="icon-512.png?v=1.22.01">
-    <link rel="shortcut icon" href="icon-512.png?v=1.22.01">
-    <link rel="apple-touch-icon" href="icon-512.png?v=1.22.01">
-    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png?v=1.22.01">
-    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=1.22.01">
-    <link rel="manifest" href="manifest.json?v=1.22.01">
+    <link rel="icon" type="image/png" href="icon-512.png?v=1.22.02">
+    <link rel="shortcut icon" href="icon-512.png?v=1.22.02">
+    <link rel="apple-touch-icon" href="icon-512.png?v=1.22.02">
+    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png?v=1.22.02">
+    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=1.22.02">
+    <link rel="manifest" href="manifest.json?v=1.22.02">
     
     <!-- Instant synchronous device detection before DOM and styles render -->
     <script>
@@ -48,7 +48,7 @@
     <!-- HTML5 QR / Barcode Scanner (ZXing based) v1.22.01 -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <!-- Main Style Sheet -->
-    <link rel="stylesheet" href="style.css?v=1.22.01">
+    <link rel="stylesheet" href="style.css?v=1.22.02">
     <!-- html2pdf.js library for clean client-side PDF generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <!-- jsPDF library for commercial reports -->
@@ -2999,6 +2999,16 @@
                     <form id="form-warehouse-item" class="anim-fade" style="padding-bottom: 80px; max-width: 650px; margin: 0 auto;">
                         <input type="hidden" id="warehouse-item-id">
 
+                        <!-- Acciones Rápidas de Escaneo v1.22.02 -->
+                        <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+                            <button type="button" id="btn-scan-item-ocr" class="btn-premium" style="flex: 1.3; margin: 0; background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 10px 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px;" title="Reconocer Marca, Modelo y S/N con foto de la pegatina">
+                                <i class="bx bx-camera" style="font-size: 1.15rem;"></i> 📸 Escanear Pegatina OCR
+                            </button>
+                            <button type="button" id="btn-scan-item-barcode-top" class="btn-premium btn-secondary" style="flex: 1; margin: 0; padding: 10px 12px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 6px;" title="Lector de código de barras o QR">
+                                <i class="bx bx-barcode-reader" style="font-size: 1.1rem;"></i> Código Barras
+                            </button>
+                        </div>
+
                         <!-- Nº de Serie con botón de Escáner Cámara -->
                         <div class="form-group">
                             <label style="display: flex; justify-content: space-between; align-items: center;">
@@ -3538,8 +3548,11 @@
                     </label>
                     <div style="display: flex; gap: 8px; margin-top: 4px;">
                         <input type="text" id="batch-input-sn" class="input-control" placeholder="Pistolea o escribe el S/N y pulsa Enter..." style="font-family: monospace;">
-                        <button type="button" id="btn-batch-scan-camera" class="btn-premium" style="width: auto; padding: 0 14px; background: var(--accent-gradient); display: flex; align-items: center; gap: 4px; white-space: nowrap;">
-                            <i class="bx bx-barcode-reader"></i> Cámara
+                        <button type="button" id="btn-batch-scan-ocr" class="btn-premium" style="width: auto; padding: 0 12px; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: flex; align-items: center; gap: 4px; white-space: nowrap;" title="Escanear pegatina con foto (OCR)">
+                            <i class="bx bx-camera"></i> Foto OCR
+                        </button>
+                        <button type="button" id="btn-batch-scan-camera" class="btn-premium" style="width: auto; padding: 0 12px; background: var(--accent-gradient); display: flex; align-items: center; gap: 4px; white-space: nowrap;" title="Lector de código de barras continuo">
+                            <i class="bx bx-barcode-reader"></i> Código Barras
                         </button>
                     </div>
                 </div>
@@ -3650,9 +3663,146 @@
         </div>
     </div>
 
+    <!-- MODAL ESCÁNER OCR DE PEGATINAS / ETIQUETAS v1.22.02 -->
+    <div id="modal-ocr-label-scanner" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.88); backdrop-filter: blur(8px); z-index: 1550; align-items: center; justify-content: center; padding: 16px;">
+        <div class="glass-card" style="width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto; padding: 20px; border: 1px solid var(--border-glass); border-radius: var(--radius-lg); animation: slideUp 0.3s ease-out; display: flex; flex-direction: column; gap: 14px; background: rgba(18, 20, 30, 0.96);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-glass); padding-bottom: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="background: linear-gradient(135deg, #818cf8, #c084fc); width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #fff;">
+                        <i class="bx bx-scan"></i>
+                    </div>
+                    <div>
+                        <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin: 0;">Escáner OCR de Pegatina</h3>
+                        <span style="font-size: 0.72rem; color: var(--text-secondary);">Reconoce Marca, Modelo y Nº Serie con una foto</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-icon" id="btn-close-ocr-modal" style="padding: 4px;"><i class="bx bx-x" style="font-size: 1.4rem;"></i></button>
+            </div>
+
+            <!-- FASE 1: CAPTURA DE CÁMARA O SUBIDA DE FOTO -->
+            <div id="ocr-camera-section" style="display: flex; flex-direction: column; gap: 10px;">
+                <!-- Viewport con cámara en vivo -->
+                <div class="ocr-viewport-wrapper">
+                    <video id="ocr-video-feed" autoplay playsinline muted></video>
+                    <div class="ocr-guide-overlay">
+                        <div class="scanner-corner top-left"></div>
+                        <div class="scanner-corner top-right"></div>
+                        <div class="scanner-corner bottom-left"></div>
+                        <div class="scanner-corner bottom-right"></div>
+                        <div class="ocr-laser-line"></div>
+                        <div class="ocr-guide-text">Encuadra la pegatina de especificaciones</div>
+                    </div>
+                </div>
+
+                <!-- Selector de Cámara y Linterna -->
+                <div style="display: flex; gap: 8px; align-items: center; justify-content: space-between;">
+                    <select id="ocr-camera-select" class="input-control" style="flex: 1; padding: 6px 10px; font-size: 0.78rem;">
+                        <option value="">Detectando cámara...</option>
+                    </select>
+                    <button type="button" id="btn-ocr-torch" class="btn-premium btn-secondary" style="width: auto; padding: 6px 12px; font-size: 0.8rem; display: none; align-items: center; gap: 4px;" title="Activar Linterna">
+                        <i class="bx bx-bulb"></i> Linterna
+                    </button>
+                </div>
+
+                <!-- Botones de Captura -->
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" id="btn-ocr-capture-photo" class="btn-premium" style="flex: 1.5; margin: 0; background: linear-gradient(135deg, #6366f1, #8b5cf6); font-weight: 700; padding: 10px 14px;">
+                        <i class="bx bx-camera"></i> CAPTURAR Y ANALIZAR
+                    </button>
+                    <input type="file" id="input-ocr-file-upload" accept="image/*" style="display: none;">
+                    <button type="button" id="btn-ocr-upload-file" class="btn-premium btn-secondary" style="flex: 1; margin: 0; font-size: 0.8rem;">
+                        <i class="bx bx-image-add"></i> Desde Galería
+                    </button>
+                </div>
+            </div>
+
+            <!-- FASE 2: PROCESANDO OCR (SPINNER / ANIMACIÓN) -->
+            <div id="ocr-processing-section" class="ocr-processing-box" style="display: none;">
+                <div class="ocr-radar-spinner"></div>
+                <div style="font-weight: 700; font-size: 0.95rem; color: #c7d2fe;">Analizando Pegatina con OCR...</div>
+                <div id="ocr-processing-status-text" style="font-size: 0.75rem; color: var(--text-secondary);">Procesando imagen y buscando Marca, Modelo y S/N...</div>
+                <div style="width: 100%; max-width: 280px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; margin-top: 4px;">
+                    <div id="ocr-progress-bar" style="width: 25%; height: 100%; background: var(--accent-gradient); transition: width 0.3s ease;"></div>
+                </div>
+            </div>
+
+            <!-- FASE 3: RESULTADOS DETECTADOS Y CONFIRMACIÓN -->
+            <div id="ocr-results-section" style="display: none; flex-direction: column; gap: 12px;">
+                <!-- Previsualización de la foto recortada -->
+                <div style="display: flex; gap: 12px; align-items: center; background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 10px;">
+                    <img id="ocr-captured-preview-img" src="" style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2);">
+                    <div style="flex: 1; font-size: 0.8rem; line-height: 1.4;">
+                        <div style="font-weight: 700; color: #34d399; display: flex; align-items: center; gap: 4px;">
+                            <i class="bx bx-check-circle"></i> Lectura Completada
+                        </div>
+                        <div style="color: var(--text-secondary); font-size: 0.75rem;">Verifica los datos detectados antes de aplicarlos:</div>
+                    </div>
+                </div>
+
+                <!-- Campos Detectados Editables -->
+                <div style="display: flex; flex-direction: column; gap: 10px; background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 12px;">
+                    <div class="form-row" style="display: flex; gap: 10px;">
+                        <div class="form-group" style="flex: 1; margin: 0;">
+                            <label style="font-size: 0.75rem; color: #60a5fa;"><i class="bx bx-tag"></i> Marca Detectada</label>
+                            <input type="text" id="ocr-result-brand" class="input-control" placeholder="Marca...">
+                        </div>
+                        <div class="form-group" style="flex: 1.2; margin: 0;">
+                            <label style="font-size: 0.75rem; color: #34d399;"><i class="bx bx-barcode"></i> Modelo Detectado</label>
+                            <input type="text" id="ocr-result-model" class="input-control" placeholder="Modelo...">
+                        </div>
+                    </div>
+
+                    <div class="form-row" style="display: flex; gap: 10px;">
+                        <div class="form-group" style="flex: 1.2; margin: 0;">
+                            <label style="font-size: 0.75rem; color: #fbbf24;"><i class="bx bx-hash"></i> Nº de Serie (S/N)</label>
+                            <input type="text" id="ocr-result-sn" class="input-control" placeholder="Nº Serie..." style="font-family: monospace; font-weight: 600;">
+                        </div>
+                        <div class="form-group" style="flex: 1; margin: 0;">
+                            <label style="font-size: 0.75rem; color: var(--text-secondary);">Categoría Sugerida</label>
+                            <select id="ocr-result-category" class="input-control">
+                                <option value="cctv">📹 CCTV / Cámaras y Grabadores</option>
+                                <option value="intrusion">🚨 Intrusión / Centrales y Teclados</option>
+                                <option value="sensors">👁️ Detectores y Sensores</option>
+                                <option value="fire">🔥 Detección de Incendio</option>
+                                <option value="network">🌐 Redes / Switches / Wi-Fi</option>
+                                <option value="power">🔋 Baterías y Fuentes</option>
+                                <option value="access">🔑 Control de Accesos</option>
+                                <option value="other">🛠️ Varios / Repuestos</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin: 0;">
+                        <label style="font-size: 0.75rem; color: var(--text-secondary);">MAC / Detalles Adicionales</label>
+                        <input type="text" id="ocr-result-extra" class="input-control" placeholder="MAC address, notas adicionales...">
+                    </div>
+
+                    <!-- Acordeón Texto Raw Leído -->
+                    <details style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px;">
+                        <summary style="cursor: pointer; color: var(--accent); user-select: none;">Ver texto completo leído por OCR</summary>
+                        <pre id="ocr-raw-text-preview" style="background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; overflow-x: auto; max-height: 80px; white-space: pre-wrap; font-family: monospace; margin-top: 6px; font-size: 0.7rem; color: #cbd5e1;"></pre>
+                    </details>
+                </div>
+
+                <!-- Botones de Acción -->
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" id="btn-ocr-retry" class="btn-premium btn-secondary" style="flex: 0.8; margin: 0; font-size: 0.8rem;">
+                        <i class="bx bx-refresh"></i> Repetir
+                    </button>
+                    <button type="button" id="btn-ocr-apply" class="btn-premium" style="flex: 1.5; margin: 0; background: var(--accent-gradient); font-weight: 700;">
+                        <i class="bx bx-check-circle"></i> APLICAR DATOS
+                    </button>
+                </div>
+            </div>
+
+            <!-- Canvas invisible para preprocesamiento -->
+            <canvas id="ocr-processing-canvas" style="display: none;"></canvas>
+        </div>
+    </div>
+
     <!-- Crypto, GitHub API, and App Controller Logic -->
-    <script src="crypto.js?v=1.22.01"></script>
-    <script src="github.js?v=1.22.01"></script>
-    <script src="app.js?v=1.22.01"></script>
+    <script src="crypto.js?v=1.22.02"></script>
+    <script src="github.js?v=1.22.02"></script>
+    <script src="app.js?v=1.22.02"></script>
 </body>
 </html>
