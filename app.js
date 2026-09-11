@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.21.03",
+        version: "1.22.01",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -20,6 +20,8 @@ const state = {
         vehicle_incidents: [], // Vehicle breakdown incidents v1.21.01
         vehicle_maintenances: [], // Maintenance & ITV logs v1.21.01
         vehicle_mileages: [], // Odometer logs v1.21.01
+        warehouse: [],     // Warehouse items (Marca, Modelo, Nº Serie, etc.) v1.22.01
+        warehouse_movements: [], // History of transfers & status changes v1.22.01
         fleet_settings: {
             responsible_name: "Responsable de Flota",
             responsible_phone: "",
@@ -40,6 +42,16 @@ const state = {
     usersMetadata: {},   // Wrapped keys metadata
     currentUser: null,   // Current active user
     isProcessingQueue: false, // Prevent double processing of offline queue
+    
+    // Warehouse module state v1.22.01
+    warehouse: {
+        filterStatus: "all",
+        filterCategory: "all",
+        searchQuery: "",
+        activeItemId: null,
+        torchOn: false,
+        batchPendingSns: []
+    },
     
     // Fleet module state v1.21.01
     fleet: {
@@ -131,7 +143,7 @@ const state = {
 
 // Personalización de Interfaz v1.19.01
 const DEFAULT_LAYOUTS = {
-    dashboard_order: ["passwords", "subscribers", "manuals", "expenses", "commercial", "vacations", "routes", "sims", "vehicles", "audit"],
+    dashboard_order: ["passwords", "subscribers", "manuals", "expenses", "commercial", "vacations", "routes", "sims", "vehicles", "warehouse", "audit"],
     dashboard_visible: {
         passwords: true,
         subscribers: true,
@@ -142,6 +154,7 @@ const DEFAULT_LAYOUTS = {
         routes: true,
         sims: true,
         vehicles: true,
+        warehouse: true,
         audit: true
     },
     nav_order: ["dashboard", "subscribers", "expenses-submenu", "vacations", "settings"]
@@ -158,6 +171,7 @@ const NAV_ITEMS_METADATA = {
     routes: { icon: "bx-navigation", title: "Rutas", screen: "routes" },
     sims: { icon: "bx-card", title: "SIMs", screen: "sims" },
     vehicles: { icon: "bx-car", title: "Vehículos", screen: "vehicles" },
+    warehouse: { icon: "bx-package", title: "Almacén", screen: "warehouse" },
     settings: { icon: "bx-cog", title: "Ajustes", screen: "settings" }
 };
 
@@ -306,6 +320,171 @@ function setupEventListeners() {
     document.getElementById("search-sims").addEventListener("input", debounce(renderSimCards));
     document.getElementById("menu-audit").addEventListener("click", () => switchScreen("audit"));
     document.getElementById("btn-back-audit").addEventListener("click", () => switchScreen("dashboard"));
+
+    // Warehouse & Barcode Scanner Module Listeners (v1.22.01)
+    const menuWarehouse = document.getElementById("menu-warehouse");
+    if (menuWarehouse) menuWarehouse.addEventListener("click", () => switchScreen("warehouse"));
+
+    const btnBackWarehouse = document.getElementById("btn-back-warehouse");
+    if (btnBackWarehouse) btnBackWarehouse.addEventListener("click", () => switchScreen("dashboard"));
+
+    const btnBackFormWarehouse = document.getElementById("btn-back-form-warehouse");
+    if (btnBackFormWarehouse) btnBackFormWarehouse.addEventListener("click", () => switchScreen("warehouse"));
+
+    const btnNewWarehouseItem = document.getElementById("btn-new-warehouse-item");
+    if (btnNewWarehouseItem) btnNewWarehouseItem.addEventListener("click", () => openWarehouseItemForm(null));
+
+    const formWarehouseItem = document.getElementById("form-warehouse-item");
+    if (formWarehouseItem) formWarehouseItem.addEventListener("submit", saveWarehouseItem);
+
+    const btnScanItemSn = document.getElementById("btn-scan-item-sn");
+    if (btnScanItemSn) btnScanItemSn.addEventListener("click", () => startBarcodeScanner('item-form'));
+
+    const btnWarehouseScanSearch = document.getElementById("btn-warehouse-scan-search");
+    if (btnWarehouseScanSearch) btnWarehouseScanSearch.addEventListener("click", () => startBarcodeScanner('search'));
+
+    const btnWarehouseBatch = document.getElementById("btn-warehouse-batch");
+    if (btnWarehouseBatch) btnWarehouseBatch.addEventListener("click", openWarehouseBatchModal);
+
+    const btnWarehouseExport = document.getElementById("btn-warehouse-export");
+    if (btnWarehouseExport) btnWarehouseExport.addEventListener("click", openWarehouseExcelModal);
+
+    const searchWarehouse = document.getElementById("search-warehouse");
+    if (searchWarehouse) searchWarehouse.addEventListener("input", debounce(renderWarehouseItems, 200));
+
+    // Scanner modal controls
+    const btnCloseScannerModal = document.getElementById("btn-close-scanner-modal");
+    if (btnCloseScannerModal) btnCloseScannerModal.addEventListener("click", stopBarcodeScanner);
+
+    const btnCancelScannerModal = document.getElementById("btn-cancel-scanner-modal");
+    if (btnCancelScannerModal) btnCancelScannerModal.addEventListener("click", stopBarcodeScanner);
+
+    const btnScannerTorch = document.getElementById("btn-scanner-torch");
+    if (btnScannerTorch) btnScannerTorch.addEventListener("click", toggleScannerTorch);
+
+    const scannerCamSelect = document.getElementById("scanner-camera-select");
+    if (scannerCamSelect) {
+        scannerCamSelect.addEventListener("change", (e) => {
+            if (e.target.value) startCameraStream(e.target.value);
+        });
+    }
+
+    const btnScannerToggleManual = document.getElementById("btn-scanner-toggle-manual");
+    if (btnScannerToggleManual) {
+        btnScannerToggleManual.addEventListener("click", () => {
+            const container = document.getElementById("scanner-manual-fallback");
+            if (container) {
+                const isHidden = container.style.display === "none" || !container.style.display;
+                container.style.display = isHidden ? "flex" : "none";
+                if (isHidden) {
+                    const input = document.getElementById("scanner-manual-input");
+                    if (input) input.focus();
+                }
+            }
+        });
+    }
+
+    const btnScannerManualConfirm = document.getElementById("btn-scanner-manual-confirm");
+    if (btnScannerManualConfirm) {
+        btnScannerManualConfirm.addEventListener("click", () => {
+            const input = document.getElementById("scanner-manual-input");
+            if (input && input.value.trim()) {
+                handleScannedCode(input.value.trim());
+            }
+        });
+    }
+
+    const scannerManualInput = document.getElementById("scanner-manual-input");
+    if (scannerManualInput) {
+        scannerManualInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                if (scannerManualInput.value.trim()) handleScannedCode(scannerManualInput.value.trim());
+            }
+        });
+    }
+
+    // Category chips filter listeners
+    const categoryChips = document.querySelectorAll("#warehouse-category-chips .category-chip");
+    categoryChips.forEach(chip => {
+        chip.addEventListener("click", () => {
+            categoryChips.forEach(c => c.classList.remove("active"));
+            chip.classList.add("active");
+            state.warehouse.filterCategory = chip.dataset.cat || "all";
+            renderWarehouseItems();
+        });
+    });
+
+    // Status filter buttons listeners
+    const statusFilters = document.querySelectorAll("#warehouse-status-filters .btn-filter");
+    statusFilters.forEach(btn => {
+        btn.addEventListener("click", () => {
+            statusFilters.forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            state.warehouse.filterStatus = btn.dataset.status || "all";
+            renderWarehouseItems();
+        });
+    });
+
+    // Warehouse photo upload preview
+    const warehousePhotoFile = document.getElementById("warehouse-item-photo-file");
+    if (warehousePhotoFile) {
+        warehousePhotoFile.addEventListener("change", (e) => handleFilePreview(e, "warehouse-item-photo-preview"));
+    }
+
+    // Batch Modal events
+    const btnCloseBatchModal = document.getElementById("btn-close-batch-modal");
+    if (btnCloseBatchModal) btnCloseBatchModal.addEventListener("click", closeWarehouseBatchModal);
+
+    const btnCancelBatch = document.getElementById("btn-cancel-batch");
+    if (btnCancelBatch) btnCancelBatch.addEventListener("click", closeWarehouseBatchModal);
+
+    const btnBatchScanCamera = document.getElementById("btn-batch-scan-camera");
+    if (btnBatchScanCamera) btnBatchScanCamera.addEventListener("click", () => startBarcodeScanner('batch'));
+
+    const batchInputSn = document.getElementById("batch-input-sn");
+    if (batchInputSn) {
+        batchInputSn.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                const val = batchInputSn.value.trim();
+                if (val) {
+                    addSerialNumberToBatch(val);
+                    batchInputSn.value = "";
+                }
+            }
+        });
+    }
+
+    const formWarehouseBatch = document.getElementById("form-warehouse-batch");
+    if (formWarehouseBatch) formWarehouseBatch.addEventListener("submit", saveWarehouseBatch);
+
+    // Quick Assign Modal events
+    const btnCloseQuickAssign = document.getElementById("btn-close-quick-assign-modal");
+    if (btnCloseQuickAssign) btnCloseQuickAssign.addEventListener("click", closeQuickAssignModal);
+
+    const btnCancelQuickAssign = document.getElementById("btn-cancel-quick-assign");
+    if (btnCancelQuickAssign) btnCancelQuickAssign.addEventListener("click", closeQuickAssignModal);
+
+    const formQuickAssign = document.getElementById("form-warehouse-quick-assign");
+    if (formQuickAssign) formQuickAssign.addEventListener("submit", saveQuickAssign);
+
+    // Excel Modal events
+    const btnCloseExcelModal = document.getElementById("btn-close-warehouse-excel-modal");
+    if (btnCloseExcelModal) btnCloseExcelModal.addEventListener("click", closeWarehouseExcelModal);
+
+    const btnCancelExcelModal = document.getElementById("btn-cancel-warehouse-excel");
+    if (btnCancelExcelModal) btnCancelExcelModal.addEventListener("click", closeWarehouseExcelModal);
+
+    const btnActionExportXlsx = document.getElementById("btn-action-export-warehouse-xlsx");
+    if (btnActionExportXlsx) btnActionExportXlsx.addEventListener("click", exportWarehouseToXlsx);
+
+    const btnActionImportXlsx = document.getElementById("btn-action-import-warehouse-xlsx");
+    const inputWarehouseExcel = document.getElementById("input-warehouse-excel-file");
+    if (btnActionImportXlsx && inputWarehouseExcel) {
+        btnActionImportXlsx.addEventListener("click", () => inputWarehouseExcel.click());
+        inputWarehouseExcel.addEventListener("change", handleWarehouseExcelImport);
+    }
 
     // Fleet & Vehicles Module Listeners (v1.21.01)
     const menuVehicles = document.getElementById("menu-vehicles");
@@ -1201,6 +1380,9 @@ function switchScreen(screenId) {
     }
     if (screenId === "vehicles") {
         renderVehiclesList();
+    }
+    if (screenId === "warehouse") {
+        renderWarehouseItems();
     }
     if (screenId === "vehicle-detail" && state.fleet.activeVehicleId) {
         renderVehicleDetail(state.fleet.activeVehicleId);
@@ -3270,6 +3452,7 @@ function applyUserPrivileges(user) {
             routes: document.getElementById("menu-routes"),
             sims: document.getElementById("menu-sims"),
             vehicles: document.getElementById("menu-vehicles"),
+            warehouse: document.getElementById("menu-warehouse"),
             audit: document.getElementById("menu-audit")
         };
 
@@ -3289,6 +3472,7 @@ function applyUserPrivileges(user) {
                     (key === "routes" && (scopes.includes("routes") || user.role === "admin")) ||
                     (key === "sims" && (scopes.includes("subscribers") || user.role === "admin")) ||
                     (key === "vehicles") ||
+                    (key === "warehouse") ||
                     (key === "audit" && (user.role === "admin" || user.role === "responsable_tecnico"))
                 );
 
@@ -12366,6 +12550,1003 @@ function viewFullscreenImage(src) {
 function openImageViewer(src) {
     viewFullscreenImage(src);
 }
+
+// ============================================================================
+// BARCODE SCANNER CONTROLLER (v1.22.01)
+// ============================================================================
+
+let currentScannerInstance = null;
+let currentScannerCallback = null;
+let currentScannerMode = null; // 'item-form', 'search', 'batch'
+
+// Crisp Web Audio API beep sound (zero external asset dependency)
+function playScannerBeep() {
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(1400, ctx.currentTime); // 1.4 kHz crisp beep
+        gain.gain.setValueAtTime(0.25, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.12);
+    } catch (e) {
+        console.warn("Audio beep error:", e);
+    }
+    if (navigator.vibrate) {
+        try { navigator.vibrate(100); } catch (e) {}
+    }
+}
+
+// Start camera barcode scanner modal
+async function startBarcodeScanner(mode = 'item-form', callback = null) {
+    currentScannerMode = mode;
+    currentScannerCallback = callback;
+    
+    const modal = document.getElementById("modal-barcode-scanner");
+    const manualContainer = document.getElementById("scanner-manual-fallback");
+    const manualInput = document.getElementById("scanner-manual-input");
+    const title = document.getElementById("barcode-scanner-title");
+    const statusMsg = document.getElementById("scanner-status-message");
+    const torchBtn = document.getElementById("btn-scanner-torch");
+    const camSelect = document.getElementById("scanner-camera-select");
+
+    if (modal) modal.style.display = "flex";
+    if (manualContainer) manualContainer.style.display = "none";
+    if (manualInput) manualInput.value = "";
+    if (torchBtn) torchBtn.style.display = "none";
+
+    if (mode === 'search') {
+        if (title) title.textContent = "Buscar por Código de Barras";
+        if (statusMsg) statusMsg.textContent = "Apunta al código de barras para localizar el equipo en el almacén.";
+    } else if (mode === 'batch') {
+        if (title) title.textContent = "Lector Continuo de Lote";
+        if (statusMsg) statusMsg.textContent = "Escanea el código de barras del siguiente equipo para añadirlo al lote.";
+    } else {
+        if (title) title.textContent = "Escanear Nº de Serie (S/N)";
+        if (statusMsg) statusMsg.textContent = "Apunta con la cámara al código de barras o código QR de la etiqueta.";
+    }
+
+    if (typeof Html5Qrcode === "undefined") {
+        showToast("Cargando motor de escaneo... Utiliza entrada manual si es necesario");
+        if (manualContainer) manualContainer.style.display = "flex";
+        return;
+    }
+
+    try {
+        if (currentScannerInstance) {
+            try { await currentScannerInstance.stop(); } catch(e) {}
+            currentScannerInstance = null;
+        }
+
+        const html5QrCode = new Html5Qrcode("reader");
+        currentScannerInstance = html5QrCode;
+
+        const cameras = await Html5Qrcode.getCameras();
+        if (!cameras || cameras.length === 0) {
+            showToast("No se detectaron cámaras en el dispositivo");
+            if (manualContainer) manualContainer.style.display = "flex";
+            return;
+        }
+
+        if (camSelect) {
+            camSelect.innerHTML = cameras.map((c, i) => `<option value="${c.id}">${c.label || `Cámara ${i+1}`}</option>`).join("");
+            // Prefer back/rear camera
+            const backCam = cameras.find(c => /back|rear|trasera|environment/i.test(c.label));
+            if (backCam) camSelect.value = backCam.id;
+        }
+
+        const selectedCamId = camSelect && camSelect.value ? camSelect.value : cameras[0].id;
+        await startCameraStream(selectedCamId);
+
+    } catch (err) {
+        console.error("Error starting barcode scanner:", err);
+        showToast("No se pudo iniciar la cámara: " + (err.message || err));
+        if (manualContainer) manualContainer.style.display = "flex";
+    }
+}
+
+async function startCameraStream(cameraId) {
+    if (!currentScannerInstance) return;
+
+    const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+        playScannerBeep();
+        const cleanCode = decodedText.trim();
+        handleScannedCode(cleanCode);
+    };
+
+    const config = {
+        fps: 15,
+        qrbox: { width: 260, height: 180 },
+        aspectRatio: 1.333333
+    };
+
+    try {
+        await currentScannerInstance.start(
+            cameraId,
+            config,
+            qrCodeSuccessCallback,
+            (errorMessage) => { /* ignore per-frame parse failures */ }
+        );
+
+        // Check if torch/flash is supported
+        checkTorchSupport();
+
+    } catch (err) {
+        console.error("Camera stream error, trying fallback facingMode:", err);
+        const fallbackConfig = { facingMode: "environment" };
+        try {
+            await currentScannerInstance.start(
+                fallbackConfig,
+                config,
+                qrCodeSuccessCallback,
+                (errorMessage) => {}
+            );
+            checkTorchSupport();
+        } catch(fallbackErr) {
+            console.error("Fallback camera start failed:", fallbackErr);
+            showToast("Error de acceso a la cámara");
+            const manualContainer = document.getElementById("scanner-manual-fallback");
+            if (manualContainer) manualContainer.style.display = "flex";
+        }
+    }
+}
+
+async function checkTorchSupport() {
+    const torchBtn = document.getElementById("btn-scanner-torch");
+    if (!torchBtn || !currentScannerInstance) return;
+    try {
+        const capabilities = currentScannerInstance.getRunningTrackCapabilities();
+        if (capabilities && capabilities.torch) {
+            torchBtn.style.display = "inline-flex";
+        }
+    } catch(e) {}
+}
+
+async function toggleScannerTorch() {
+    if (!currentScannerInstance) return;
+    try {
+        state.warehouse.torchOn = !state.warehouse.torchOn;
+        await currentScannerInstance.applyVideoConstraints({
+            advanced: [{ torch: state.warehouse.torchOn }]
+        });
+        const torchBtn = document.getElementById("btn-scanner-torch");
+        if (torchBtn) {
+            torchBtn.innerHTML = state.warehouse.torchOn ? '<i class="bx bxs-bulb"></i> Apagar' : '<i class="bx bx-bulb"></i> Linterna';
+        }
+    } catch(e) {
+        console.warn("Torch error:", e);
+    }
+}
+
+async function stopBarcodeScanner() {
+    if (currentScannerInstance) {
+        try {
+            await currentScannerInstance.stop();
+        } catch(e) {
+            console.warn("Error stopping camera:", e);
+        }
+        currentScannerInstance = null;
+    }
+    state.warehouse.torchOn = false;
+    const modal = document.getElementById("modal-barcode-scanner");
+    if (modal) modal.style.display = "none";
+}
+
+function handleScannedCode(code) {
+    if (!code) return;
+
+    if (currentScannerMode === 'search') {
+        stopBarcodeScanner();
+        // Look up item in warehouse
+        const items = state.vault.warehouse || [];
+        const match = items.find(it => (it.serial_number || "").toUpperCase() === code.toUpperCase());
+        if (match) {
+            showToast(`¡Equipo encontrado: ${match.brand} ${match.model}!`);
+            const searchInput = document.getElementById("search-warehouse");
+            if (searchInput) searchInput.value = code;
+            state.warehouse.searchQuery = code;
+            renderWarehouseItems();
+        } else {
+            if (confirm(`Nº de Serie "${code}" no está registrado en el almacén.\n¿Deseas darlo de alta ahora?`)) {
+                openWarehouseItemForm(null, code);
+            }
+        }
+    } else if (currentScannerMode === 'batch') {
+        // In batch mode, add to pending list and notify
+        addSerialNumberToBatch(code);
+        showToast(`Añadido al lote: ${code}`);
+    } else if (currentScannerCallback) {
+        stopBarcodeScanner();
+        currentScannerCallback(code);
+    } else {
+        stopBarcodeScanner();
+        const snInput = document.getElementById("warehouse-item-sn");
+        if (snInput) {
+            snInput.value = code;
+            showToast(`Nº de Serie escaneado: ${code}`);
+        }
+    }
+}
+
+// ============================================================================
+// WAREHOUSE CONTROLLER (ALMACÉN Y STOCK) (v1.22.01)
+// ============================================================================
+
+// Helper: Format category label and icon
+function getWarehouseCategoryMeta(cat) {
+    const categories = {
+        cctv: { label: "CCTV / Cámaras", icon: "📹" },
+        intrusion: { label: "Intrusión / Centrales", icon: "🚨" },
+        sensors: { label: "Detectores / Sensores", icon: "👁️" },
+        fire: { label: "Detección Incendio", icon: "🔥" },
+        network: { label: "Redes / Switches", icon: "🌐" },
+        power: { label: "Baterías / Fuentes", icon: "🔋" },
+        access: { label: "Control Accesos", icon: "🔑" },
+        other: { label: "Varios / Repuestos", icon: "🛠️" }
+    };
+    return categories[cat] || { label: "Material Varios", icon: "📦" };
+}
+
+// Helper: Format status label and badge class
+function getWarehouseStatusMeta(status) {
+    const statuses = {
+        office: { label: "En Oficina", class: "office", icon: "🟢" },
+        tech: { label: "Con Técnico", class: "tech", icon: "🔵" },
+        reserved: { label: "Reservado", class: "reserved", icon: "🟡" },
+        rma: { label: "En RMA / Taller", class: "rma", icon: "🟠" },
+        installed: { label: "Instalado", class: "installed", icon: "🔴" },
+        discarded: { label: "Baja / Defectuoso", class: "discarded", icon: "⚫" }
+    };
+    return statuses[status] || { label: "En Stock", class: "office", icon: "🟢" };
+}
+
+// Render Warehouse items list with KPIs and filters
+function renderWarehouseItems() {
+    if (!state.vault) return;
+    if (!state.vault.warehouse) state.vault.warehouse = [];
+    if (!state.vault.warehouse_movements) state.vault.warehouse_movements = [];
+
+    const items = state.vault.warehouse;
+    const container = document.getElementById("warehouse-list-container");
+    const searchInput = document.getElementById("search-warehouse");
+    const query = (searchInput ? searchInput.value : state.warehouse.searchQuery || "").trim().toLowerCase();
+
+    // 1. Calculate and update KPIs
+    const totalCount = items.length;
+    const officeCount = items.filter(i => (i.status || 'office') === 'office').length;
+    const techCount = items.filter(i => i.status === 'tech').length;
+    const rmaCount = items.filter(i => i.status === 'rma').length;
+
+    const elTotal = document.getElementById("kpi-warehouse-total");
+    if (elTotal) elTotal.textContent = totalCount;
+    const elOffice = document.getElementById("kpi-warehouse-office");
+    if (elOffice) elOffice.textContent = officeCount;
+    const elTech = document.getElementById("kpi-warehouse-tech");
+    if (elTech) elTech.textContent = techCount;
+    const elRma = document.getElementById("kpi-warehouse-rma");
+    if (elRma) elRma.textContent = rmaCount;
+
+    // Update Dashboard Badge
+    const badge = document.getElementById("warehouse-badge");
+    if (badge) {
+        badge.textContent = officeCount;
+        badge.style.display = officeCount > 0 ? "flex" : "none";
+    }
+
+    // 2. Filter items
+    const filtered = items.filter(item => {
+        // Status filter
+        if (state.warehouse.filterStatus !== "all") {
+            const itemStatus = item.status || "office";
+            if (itemStatus !== state.warehouse.filterStatus) return false;
+        }
+
+        // Category filter
+        if (state.warehouse.filterCategory !== "all") {
+            const itemCategory = item.category || "other";
+            if (itemCategory !== state.warehouse.filterCategory) return false;
+        }
+
+        // Search text
+        if (query) {
+            const sn = (item.serial_number || "").toLowerCase();
+            const brand = (item.brand || "").toLowerCase();
+            const model = (item.model || "").toLowerCase();
+            const assigned = (item.assigned_to || "").toLowerCase();
+            const location = (item.location || "").toLowerCase();
+            const notes = (item.notes || "").toLowerCase();
+
+            const matches = sn.includes(query) ||
+                            brand.includes(query) ||
+                            model.includes(query) ||
+                            assigned.includes(query) ||
+                            location.includes(query) ||
+                            notes.includes(query);
+            if (!matches) return false;
+        }
+
+        return true;
+    });
+
+    if (!container) return;
+    container.innerHTML = "";
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary); background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-lg);" class="anim-fade">
+                <div style="font-size: 2.8rem; margin-bottom: 10px;">📦</div>
+                <h3 style="font-size: 1.1rem; color: var(--text-primary); margin-bottom: 6px;">No hay artículos en este filtro</h3>
+                <p style="font-size: 0.82rem; margin: 0;">Pulsa el botón "+" o "Lote" para registrar material en el almacén.</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Sort: newest entry first
+    filtered.sort((a, b) => (b.entry_date || "").localeCompare(a.entry_date || ""));
+
+    filtered.forEach(item => {
+        const catMeta = getWarehouseCategoryMeta(item.category);
+        const statusMeta = getWarehouseStatusMeta(item.status);
+        const entryDateStr = item.entry_date ? formatSpanishDate(item.entry_date) : "—";
+        const hasPhoto = !!item.photo;
+
+        const card = document.createElement("div");
+        card.className = "glass-card anim-fade";
+        card.style.cssText = "padding: 14px; border: 1px solid var(--border-glass); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 10px; background: rgba(30, 41, 59, 0.45); transition: transform 0.2s ease, border-color 0.2s ease;";
+
+        card.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;">
+                    <div style="background: rgba(99, 102, 241, 0.15); width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; border: 1px solid rgba(99, 102, 241, 0.3);">
+                        ${catMeta.icon}
+                    </div>
+                    <div style="min-width: 0; flex: 1;">
+                        <div style="font-size: 0.72rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px;">${escapeHtml(item.brand || "—")}</div>
+                        <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin: 2px 0 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(item.model || "—")}</h4>
+                    </div>
+                </div>
+                <span class="warehouse-status-badge ${statusMeta.class}">
+                    ${statusMeta.icon} ${statusMeta.label}
+                </span>
+            </div>
+
+            <!-- S/N Badge con botón de copiar rápido -->
+            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.25); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 6px 10px;">
+                <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+                    <span style="font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">S/N:</span>
+                    <span class="warehouse-sn-badge" title="Haz clic para copiar" data-sn="${escapeHtml(item.serial_number || '')}">
+                        <i class="bx bx-barcode" style="font-size: 1rem;"></i>
+                        <span>${escapeHtml(item.serial_number || 'SIN S/N')}</span>
+                    </span>
+                </div>
+                <button type="button" class="btn-icon btn-copy-sn" data-sn="${escapeHtml(item.serial_number || '')}" style="padding: 3px; font-size: 1rem; color: var(--text-secondary);" title="Copiar Nº de Serie">
+                    <i class="bx bx-copy"></i>
+                </button>
+            </div>
+
+            <!-- Ubicación y Asignación -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.76rem; color: var(--text-secondary); border-bottom: 1px solid var(--border-glass); padding-bottom: 8px;">
+                <div>
+                    <span style="color: var(--text-secondary);">🏢 Ubicación:</span>
+                    <strong style="color: var(--text-primary); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(item.location || 'Oficina Central')}</strong>
+                </div>
+                <div>
+                    <span style="color: var(--text-secondary);">👤 Asignado a:</span>
+                    <strong style="color: var(--text-primary); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(item.assigned_to || 'Almacén')}</strong>
+                </div>
+            </div>
+
+            <!-- Fechas y Observaciones -->
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: var(--text-secondary);">
+                <span>Entrada: <strong style="color: var(--text-primary);">${entryDateStr}</strong></span>
+                ${item.price ? `<span>Valor: <strong style="color: var(--success);">${parseFloat(item.price).toFixed(2)} €</strong></span>` : ''}
+            </div>
+
+            ${item.notes ? `
+                <div style="font-size: 0.74rem; color: var(--text-secondary); background: rgba(255,255,255,0.03); border-radius: var(--radius-sm); padding: 6px 8px; font-style: italic;">
+                    "${escapeHtml(item.notes)}"
+                </div>
+            ` : ''}
+
+            <!-- Botones de Acción -->
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 2px;">
+                <button type="button" class="btn-premium btn-quick-assign-item" data-id="${item.id}" style="padding: 5px 10px; font-size: 0.75rem; font-weight: 600; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); display: flex; align-items: center; gap: 4px; margin: 0;">
+                    <i class="bx bx-transfer-alt"></i> Traspasar / Asignar
+                </button>
+                <div style="display: flex; gap: 6px;">
+                    ${hasPhoto ? `
+                        <button type="button" class="btn-icon btn-view-photo" data-photo="${item.photo}" style="color: var(--accent);" title="Ver fotografía"><i class="bx bx-image"></i></button>
+                    ` : ''}
+                    <button type="button" class="btn-icon btn-edit-item" data-id="${item.id}" title="Editar"><i class="bx bx-edit"></i></button>
+                    <button type="button" class="btn-icon btn-delete-item" data-id="${item.id}" style="color: var(--danger);" title="Eliminar"><i class="bx bx-trash"></i></button>
+                </div>
+            </div>
+        `;
+
+        // Click on SN badge or copy button
+        const snBadge = card.querySelector(".warehouse-sn-badge");
+        const btnCopy = card.querySelector(".btn-copy-sn");
+        const copyHandler = (e) => {
+            e.stopPropagation();
+            const sn = item.serial_number;
+            if (sn) {
+                navigator.clipboard.writeText(sn).then(() => {
+                    showToast(`S/N copiado: ${sn}`);
+                }).catch(() => {
+                    showToast(`S/N: ${sn}`);
+                });
+            }
+        };
+        if (snBadge) snBadge.addEventListener("click", copyHandler);
+        if (btnCopy) btnCopy.addEventListener("click", copyHandler);
+
+        // View photo
+        const btnPhoto = card.querySelector(".btn-view-photo");
+        if (btnPhoto) {
+            btnPhoto.addEventListener("click", () => viewFullscreenImage(item.photo));
+        }
+
+        // Quick assign
+        const btnQuick = card.querySelector(".btn-quick-assign-item");
+        if (btnQuick) {
+            btnQuick.addEventListener("click", () => openQuickAssignModal(item.id));
+        }
+
+        // Edit
+        const btnEdit = card.querySelector(".btn-edit-item");
+        if (btnEdit) {
+            btnEdit.addEventListener("click", () => openWarehouseItemForm(item.id));
+        }
+
+        // Delete
+        const btnDelete = card.querySelector(".btn-delete-item");
+        if (btnDelete) {
+            btnDelete.addEventListener("click", () => deleteWarehouseItem(item.id));
+        }
+
+        container.appendChild(card);
+    });
+}
+
+// Open Warehouse Item Form (Add / Edit)
+function openWarehouseItemForm(id = null, prefilledSn = "") {
+    const title = document.getElementById("warehouse-form-title");
+    const form = document.getElementById("form-warehouse-item");
+    if (!form) return;
+
+    form.reset();
+    document.getElementById("warehouse-item-id").value = id || "";
+    document.getElementById("warehouse-item-photo-preview").style.display = "none";
+    document.getElementById("warehouse-item-photo-file").removeAttribute("data-base64");
+
+    // Populate users datalist for assignment
+    const usersDatalist = document.getElementById("warehouse-users-datalist");
+    if (usersDatalist) {
+        const users = (state.vault.users || []).map(u => u.fullName || u.username);
+        const vehicles = (state.vault.vehicles || []).map(v => `${v.plate} (${v.brand_model || 'Vehículo'})`);
+        const allSuggestions = Array.from(new Set([...users, ...vehicles, "Oficina Central", "Almacén Principal"]));
+        usersDatalist.innerHTML = allSuggestions.map(s => `<option value="${escapeHtml(s)}">`).join("");
+    }
+
+    if (id) {
+        title.textContent = "Editar Artículo en Almacén";
+        const item = (state.vault.warehouse || []).find(i => i.id === id);
+        if (item) {
+            document.getElementById("warehouse-item-sn").value = item.serial_number || "";
+            document.getElementById("warehouse-item-brand").value = item.brand || "";
+            document.getElementById("warehouse-item-model").value = item.model || "";
+            document.getElementById("warehouse-item-category").value = item.category || "other";
+            document.getElementById("warehouse-item-status").value = item.status || "office";
+            document.getElementById("warehouse-item-location").value = item.location || "";
+            document.getElementById("warehouse-item-assigned").value = item.assigned_to || "";
+            document.getElementById("warehouse-item-entry-date").value = item.entry_date || "";
+            document.getElementById("warehouse-item-exit-date").value = item.exit_date || "";
+            document.getElementById("warehouse-item-price").value = item.price || "";
+            document.getElementById("warehouse-item-notes").value = item.notes || "";
+
+            if (item.photo) {
+                const preview = document.getElementById("warehouse-item-photo-preview");
+                const img = preview.querySelector("img");
+                img.src = item.photo;
+                preview.style.display = "block";
+                document.getElementById("warehouse-item-photo-file").dataset.base64 = item.photo;
+            }
+        }
+    } else {
+        title.textContent = "Nuevo Artículo en Almacén";
+        document.getElementById("warehouse-item-sn").value = prefilledSn || "";
+        document.getElementById("warehouse-item-entry-date").value = new Date().toISOString().split('T')[0];
+        document.getElementById("warehouse-item-category").value = "cctv";
+        document.getElementById("warehouse-item-status").value = "office";
+        document.getElementById("warehouse-item-location").value = "Oficina Central";
+    }
+
+    switchScreen("form-warehouse-item");
+}
+
+// Save Warehouse Item Entry
+async function saveWarehouseItem(e) {
+    e.preventDefault();
+    const id = document.getElementById("warehouse-item-id").value;
+    const serial_number = document.getElementById("warehouse-item-sn").value.trim().toUpperCase();
+    const brand = document.getElementById("warehouse-item-brand").value.trim();
+    const model = document.getElementById("warehouse-item-model").value.trim();
+    const category = document.getElementById("warehouse-item-category").value;
+    const status = document.getElementById("warehouse-item-status").value;
+    const location = document.getElementById("warehouse-item-location").value.trim();
+    const assigned_to = document.getElementById("warehouse-item-assigned").value.trim();
+    const entry_date = document.getElementById("warehouse-item-entry-date").value;
+    const exit_date = document.getElementById("warehouse-item-exit-date").value;
+    const price = parseFloat(document.getElementById("warehouse-item-price").value) || 0;
+    const notes = document.getElementById("warehouse-item-notes").value.trim();
+    const photo = document.getElementById("warehouse-item-photo-file").dataset.base64 || "";
+
+    if (!serial_number || !brand || !model) {
+        showToast("Por favor, rellena los campos obligatorios: S/N, Marca y Modelo");
+        return;
+    }
+
+    if (!state.vault.warehouse) state.vault.warehouse = [];
+    if (!state.vault.warehouse_movements) state.vault.warehouse_movements = [];
+
+    // Duplicate check for new items
+    if (!id) {
+        const existing = state.vault.warehouse.find(i => (i.serial_number || "").toUpperCase() === serial_number);
+        if (existing) {
+            if (!confirm(`Ya existe un equipo registrado con el S/N "${serial_number}" (${existing.brand} ${existing.model}).\n¿Deseas registrarlo de todas formas?`)) {
+                return;
+            }
+        }
+    }
+
+    const userName = state.currentUser ? (state.currentUser.fullName || state.currentUser.username) : "Admin";
+
+    if (id) {
+        const idx = state.vault.warehouse.findIndex(i => i.id === id);
+        if (idx !== -1) {
+            const oldStatus = state.vault.warehouse[idx].status;
+            const oldAssigned = state.vault.warehouse[idx].assigned_to;
+
+            state.vault.warehouse[idx] = {
+                ...state.vault.warehouse[idx],
+                serial_number, brand, model, category, status, location, assigned_to,
+                entry_date, exit_date, price, notes, photo,
+                updated_at: new Date().toISOString(),
+                updated_by: userName
+            };
+
+            // Log movement if status or assignment changed
+            if (oldStatus !== status || oldAssigned !== assigned_to) {
+                state.vault.warehouse_movements.push({
+                    id: Date.now() + "_" + Math.random().toString(36).substr(2, 6),
+                    item_id: id,
+                    serial_number,
+                    action: "Modificación de estado",
+                    from_status: oldStatus,
+                    to_status: status,
+                    assigned_to,
+                    date: new Date().toISOString(),
+                    user: userName
+                });
+            }
+        }
+    } else {
+        const newItemId = Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+        state.vault.warehouse.push({
+            id: newItemId,
+            serial_number, brand, model, category, status, location, assigned_to,
+            entry_date, exit_date, price, notes, photo,
+            created_at: new Date().toISOString(),
+            created_by: userName
+        });
+
+        // Log entry
+        state.vault.warehouse_movements.push({
+            id: Date.now() + "_" + Math.random().toString(36).substr(2, 6),
+            item_id: newItemId,
+            serial_number,
+            action: "Alta en Almacén",
+            to_status: status,
+            assigned_to,
+            date: new Date().toISOString(),
+            user: userName
+        });
+    }
+
+    showToast("Artículo guardado correctamente en Almacén");
+    switchScreen("warehouse");
+    await syncWithCloud();
+}
+
+// Delete Warehouse Item
+async function deleteWarehouseItem(id) {
+    const item = (state.vault.warehouse || []).find(i => i.id === id);
+    if (!item) return;
+
+    if (!confirm(`¿Seguro que deseas eliminar el equipo "${item.brand} ${item.model}" (S/N: ${item.serial_number}) del almacén?`)) {
+        return;
+    }
+
+    state.vault.warehouse = (state.vault.warehouse || []).filter(i => i.id !== id);
+
+    // Log deletion
+    const userName = state.currentUser ? (state.currentUser.fullName || state.currentUser.username) : "Admin";
+    if (!state.vault.warehouse_movements) state.vault.warehouse_movements = [];
+    state.vault.warehouse_movements.push({
+        id: Date.now() + "_" + Math.random().toString(36).substr(2, 6),
+        item_id: id,
+        serial_number: item.serial_number,
+        action: "Baja / Eliminación",
+        date: new Date().toISOString(),
+        user: userName
+    });
+
+    showToast("Artículo eliminado del almacén");
+    renderWarehouseItems();
+    await syncWithCloud();
+}
+
+// Quick Assign / Status Transfer Modal
+function openQuickAssignModal(id) {
+    const item = (state.vault.warehouse || []).find(i => i.id === id);
+    if (!item) return;
+
+    const modal = document.getElementById("modal-warehouse-quick-assign");
+    const details = document.getElementById("quick-assign-item-details");
+    const idInput = document.getElementById("quick-assign-item-id");
+    const statusSelect = document.getElementById("quick-assign-status");
+    const assignedInput = document.getElementById("quick-assign-assigned");
+    const notesInput = document.getElementById("quick-assign-notes");
+
+    idInput.value = item.id;
+    statusSelect.value = item.status || "office";
+    assignedInput.value = item.assigned_to || "";
+    notesInput.value = "";
+
+    const catMeta = getWarehouseCategoryMeta(item.category);
+    const statusMeta = getWarehouseStatusMeta(item.status);
+
+    details.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.2rem;">${catMeta.icon}</span>
+            <div>
+                <strong>${escapeHtml(item.brand)} ${escapeHtml(item.model)}</strong>
+                <div style="font-size: 0.74rem; color: var(--text-secondary); font-family: monospace;">S/N: ${escapeHtml(item.serial_number)}</div>
+            </div>
+        </div>
+        <div style="margin-top: 6px; font-size: 0.74rem; color: var(--text-secondary);">
+            Estado Actual: <span class="warehouse-status-badge ${statusMeta.class}" style="padding: 2px 6px; font-size: 0.68rem;">${statusMeta.label}</span>
+            ${item.assigned_to ? ` • Asignado a: <strong style="color: var(--text-primary);">${escapeHtml(item.assigned_to)}</strong>` : ''}
+        </div>
+    `;
+
+    if (modal) modal.style.display = "flex";
+}
+
+function closeQuickAssignModal() {
+    const modal = document.getElementById("modal-warehouse-quick-assign");
+    if (modal) modal.style.display = "none";
+}
+
+async function saveQuickAssign(e) {
+    e.preventDefault();
+    const id = document.getElementById("quick-assign-item-id").value;
+    const newStatus = document.getElementById("quick-assign-status").value;
+    const newAssigned = document.getElementById("quick-assign-assigned").value.trim();
+    const moveNotes = document.getElementById("quick-assign-notes").value.trim();
+
+    const idx = (state.vault.warehouse || []).findIndex(i => i.id === id);
+    if (idx === -1) return;
+
+    const item = state.vault.warehouse[idx];
+    const oldStatus = item.status;
+    const oldAssigned = item.assigned_to;
+
+    state.vault.warehouse[idx].status = newStatus;
+    state.vault.warehouse[idx].assigned_to = newAssigned;
+    if (moveNotes) {
+        state.vault.warehouse[idx].notes = (item.notes ? (item.notes + " | ") : "") + moveNotes;
+    }
+    state.vault.warehouse[idx].updated_at = new Date().toISOString();
+
+    // Log movement
+    const userName = state.currentUser ? (state.currentUser.fullName || state.currentUser.username) : "Admin";
+    if (!state.vault.warehouse_movements) state.vault.warehouse_movements = [];
+    state.vault.warehouse_movements.push({
+        id: Date.now() + "_" + Math.random().toString(36).substr(2, 6),
+        item_id: id,
+        serial_number: item.serial_number,
+        action: "Traspaso rápido de estado",
+        from_status: oldStatus,
+        to_status: newStatus,
+        assigned_to: newAssigned,
+        notes: moveNotes,
+        date: new Date().toISOString(),
+        user: userName
+    });
+
+    closeQuickAssignModal();
+    showToast("Traspaso de material realizado con éxito");
+    renderWarehouseItems();
+    await syncWithCloud();
+}
+
+// Batch / Lote Modal Controller
+function openWarehouseBatchModal() {
+    state.warehouse.batchPendingSns = [];
+    const modal = document.getElementById("modal-warehouse-batch-entry");
+    const form = document.getElementById("form-warehouse-batch");
+    if (form) form.reset();
+    renderBatchSnsTags();
+    if (modal) modal.style.display = "flex";
+}
+
+function closeWarehouseBatchModal() {
+    const modal = document.getElementById("modal-warehouse-batch-entry");
+    if (modal) modal.style.display = "none";
+}
+
+function addSerialNumberToBatch(sn) {
+    if (!sn) return;
+    const cleanSn = sn.trim().toUpperCase();
+    if (!cleanSn) return;
+
+    if (state.warehouse.batchPendingSns.includes(cleanSn)) {
+        showToast(`El S/N "${cleanSn}" ya está en el lote`);
+        return;
+    }
+
+    state.warehouse.batchPendingSns.push(cleanSn);
+    renderBatchSnsTags();
+}
+
+function removeSerialNumberFromBatch(index) {
+    state.warehouse.batchPendingSns.splice(index, 1);
+    renderBatchSnsTags();
+}
+
+function renderBatchSnsTags() {
+    const container = document.getElementById("batch-sns-tags-container");
+    const countEl = document.getElementById("batch-count");
+    if (countEl) countEl.textContent = state.warehouse.batchPendingSns.length;
+
+    if (!container) return;
+    container.innerHTML = "";
+
+    if (state.warehouse.batchPendingSns.length === 0) {
+        container.innerHTML = `<span style="font-size: 0.75rem; color: var(--text-secondary); align-self: center;">No hay números de serie añadidos todavía.</span>`;
+        return;
+    }
+
+    state.warehouse.batchPendingSns.forEach((sn, idx) => {
+        const tag = document.createElement("span");
+        tag.className = "batch-sn-tag";
+        tag.innerHTML = `
+            <span>${escapeHtml(sn)}</span>
+            <span class="remove-btn" data-idx="${idx}">&times;</span>
+        `;
+        tag.querySelector(".remove-btn").addEventListener("click", () => removeSerialNumberFromBatch(idx));
+        container.appendChild(tag);
+    });
+}
+
+async function saveWarehouseBatch(e) {
+    e.preventDefault();
+    const brand = document.getElementById("batch-brand").value.trim();
+    const model = document.getElementById("batch-model").value.trim();
+    const category = document.getElementById("batch-category").value;
+    const location = document.getElementById("batch-location").value.trim() || "Oficina Central";
+
+    if (!brand || !model) {
+        showToast("Introduce Marca y Modelo para el lote");
+        return;
+    }
+
+    if (state.warehouse.batchPendingSns.length === 0) {
+        showToast("Añade al menos un número de serie al lote");
+        return;
+    }
+
+    if (!state.vault.warehouse) state.vault.warehouse = [];
+    if (!state.vault.warehouse_movements) state.vault.warehouse_movements = [];
+
+    const userName = state.currentUser ? (state.currentUser.fullName || state.currentUser.username) : "Admin";
+    const today = new Date().toISOString().split('T')[0];
+
+    state.warehouse.batchPendingSns.forEach(sn => {
+        const newItemId = Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+        state.vault.warehouse.push({
+            id: newItemId,
+            serial_number: sn,
+            brand: brand,
+            model: model,
+            category: category,
+            status: "office",
+            location: location,
+            assigned_to: "Almacén Principal",
+            entry_date: today,
+            notes: `Recepción por lote (${state.warehouse.batchPendingSns.length} unidades)`,
+            created_at: new Date().toISOString(),
+            created_by: userName
+        });
+
+        state.vault.warehouse_movements.push({
+            id: Date.now() + "_" + Math.random().toString(36).substr(2, 6),
+            item_id: newItemId,
+            serial_number: sn,
+            action: "Alta por Lote",
+            to_status: "office",
+            date: new Date().toISOString(),
+            user: userName
+        });
+    });
+
+    closeWarehouseBatchModal();
+    showToast(`¡Lote guardado! Se han registrado ${state.warehouse.batchPendingSns.length} artículos en almacén.`);
+    renderWarehouseItems();
+    await syncWithCloud();
+}
+
+// Excel Export / Import Modal
+function openWarehouseExcelModal() {
+    const modal = document.getElementById("modal-warehouse-excel-export-import");
+    if (modal) modal.style.display = "flex";
+}
+
+function closeWarehouseExcelModal() {
+    const modal = document.getElementById("modal-warehouse-excel-export-import");
+    if (modal) modal.style.display = "none";
+}
+
+// Export warehouse inventory to XLSX
+function exportWarehouseToXlsx() {
+    if (typeof XLSX === "undefined") {
+        showToast("Librería SheetJS no disponible");
+        return;
+    }
+
+    const items = state.vault.warehouse || [];
+    if (items.length === 0) {
+        showToast("No hay artículos en el almacén para exportar");
+        return;
+    }
+
+    const data = items.map(i => {
+        const cat = getWarehouseCategoryMeta(i.category);
+        const st = getWarehouseStatusMeta(i.status);
+        return {
+            "Nº Serie": i.serial_number || "",
+            "Marca": i.brand || "",
+            "Modelo": i.model || "",
+            "Categoría": cat.label || i.category || "",
+            "Estado": st.label || i.status || "",
+            "Ubicación": i.location || "",
+            "Asignado a": i.assigned_to || "",
+            "Fecha Entrada": i.entry_date || "",
+            "Fecha Salida": i.exit_date || "",
+            "Coste (€)": i.price || 0,
+            "Observaciones": i.notes || ""
+        };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Almacen_Stock");
+
+    const dateStr = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(workbook, `ATS_Inventario_Almacen_${dateStr}.xlsx`);
+    showToast("Inventario exportado a Excel correctamente");
+    closeWarehouseExcelModal();
+}
+
+// Import warehouse inventory from XLSX / CSV
+function handleWarehouseExcelImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (typeof XLSX === "undefined") {
+        showToast("Librería SheetJS no disponible");
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+        try {
+            const data = new Uint8Array(evt.target.result);
+            const workbook = XLSX.read(data, { type: "array" });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const rows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+            if (!rows || rows.length === 0) {
+                showToast("El archivo Excel está vacío");
+                return;
+            }
+
+            if (!state.vault.warehouse) state.vault.warehouse = [];
+            if (!state.vault.warehouse_movements) state.vault.warehouse_movements = [];
+
+            let addedCount = 0;
+            const userName = state.currentUser ? (state.currentUser.fullName || state.currentUser.username) : "Admin";
+            const today = new Date().toISOString().split('T')[0];
+
+            rows.forEach(row => {
+                // Find fields regardless of casing or variations
+                const getVal = (keys) => {
+                    for (const k of Object.keys(row)) {
+                        const cleanK = k.toString().toLowerCase().trim();
+                        for (const target of keys) {
+                            if (cleanK.includes(target)) return row[k];
+                        }
+                    }
+                    return "";
+                };
+
+                const sn = (getVal(["serie", "serial", "s/n", "sn"]) || "").toString().trim().toUpperCase();
+                const brand = (getVal(["marca", "brand"]) || "").toString().trim();
+                const model = (getVal(["modelo", "model"]) || "").toString().trim();
+                const category = (getVal(["categoria", "cat", "familia"]) || "").toString().trim().toLowerCase();
+                const status = (getVal(["estado", "status"]) || "").toString().trim().toLowerCase();
+                const location = (getVal(["ubicacion", "estanteria", "lugar"]) || "").toString().trim();
+                const assigned = (getVal(["asignado", "tecnico", "furgo"]) || "").toString().trim();
+                const price = parseFloat(getVal(["coste", "precio", "valor"]) || 0) || 0;
+                const notes = (getVal(["observaciones", "notas", "comentarios"]) || "").toString().trim();
+
+                if (sn || (brand && model)) {
+                    const mappedCat = category.includes("cctv") || category.includes("camara") ? "cctv"
+                                    : category.includes("intru") || category.includes("alarma") ? "intrusion"
+                                    : category.includes("sensor") || category.includes("detector") ? "sensors"
+                                    : category.includes("incend") || category.includes("fuego") ? "fire"
+                                    : category.includes("red") || category.includes("switch") ? "network"
+                                    : category.includes("bat") || category.includes("fuente") ? "power"
+                                    : category.includes("acceso") ? "access" : "other";
+
+                    const mappedStatus = status.includes("tec") || status.includes("furgo") ? "tech"
+                                       : status.includes("res") ? "reserved"
+                                       : status.includes("rma") || status.includes("taller") ? "rma"
+                                       : status.includes("inst") ? "installed"
+                                       : status.includes("baja") ? "discarded" : "office";
+
+                    const newItemId = Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+                    state.vault.warehouse.push({
+                        id: newItemId,
+                        serial_number: sn || `SN-${Date.now().toString().slice(-6)}`,
+                        brand: brand || "Varios",
+                        model: model || "Material",
+                        category: mappedCat,
+                        status: mappedStatus,
+                        location: location || "Oficina Central",
+                        assigned_to: assigned || "Almacén",
+                        entry_date: today,
+                        price: price,
+                        notes: notes,
+                        created_at: new Date().toISOString(),
+                        created_by: userName
+                    });
+                    addedCount++;
+                }
+            });
+
+            closeWarehouseExcelModal();
+            showToast(`¡Importación completada! Se añadieron ${addedCount} artículos.`);
+            renderWarehouseItems();
+            await syncWithCloud();
+
+        } catch (err) {
+            console.error("Error importing warehouse excel:", err);
+            showToast("Error al leer el archivo Excel: " + (err.message || err));
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
 
 
 

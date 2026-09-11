@@ -8,12 +8,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ATS Seguridad">
-    <link rel="icon" type="image/png" href="icon-512.png?v=1.21.03">
-    <link rel="shortcut icon" href="icon-512.png?v=1.21.03">
-    <link rel="apple-touch-icon" href="icon-512.png?v=1.21.03">
-    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png?v=1.21.03">
-    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=1.21.03">
-    <link rel="manifest" href="manifest.json?v=1.21.03">
+    <link rel="icon" type="image/png" href="icon-512.png?v=1.22.01">
+    <link rel="shortcut icon" href="icon-512.png?v=1.22.01">
+    <link rel="apple-touch-icon" href="icon-512.png?v=1.22.01">
+    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png?v=1.22.01">
+    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=1.22.01">
+    <link rel="manifest" href="manifest.json?v=1.22.01">
     
     <!-- Instant synchronous device detection before DOM and styles render -->
     <script>
@@ -45,8 +45,10 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- SheetJS for Excel import/export -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- HTML5 QR / Barcode Scanner (ZXing based) v1.22.01 -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <!-- Main Style Sheet -->
-    <link rel="stylesheet" href="style.css?v=1.21.03">
+    <link rel="stylesheet" href="style.css?v=1.22.01">
     <!-- html2pdf.js library for clean client-side PDF generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <!-- jsPDF library for commercial reports -->
@@ -70,10 +72,14 @@
                 <div style="text-align: center;">
                     <div style="font-size: 2.2rem; margin-bottom: 8px;">🚀</div>
                     <h2 style="font-size: 1.3rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">¡Aplicación Actualizada!</h2>
-                    <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3);">Versión 1.21.03</span>
+                    <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3);">Versión 1.22.01</span>
                 </div>
                 
                 <div style="border-top: 1px solid var(--border-glass); border-bottom: 1px solid var(--border-glass); padding: 14px 0; max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; line-height: 1.4; color: var(--text-primary);">
+                    <div>
+                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">📦 v1.22.01 - Módulo de Almacén y Control de Stock con Lector de Códigos de Barras</strong>
+                        <p style="margin: 0; color: var(--text-secondary);">Nuevo módulo integral de Almacén y Gestión de Stock (Oficina, Furgonetas y Técnicos). Lector interactivo de códigos de barras (1D: Code 128, EAN, UPC) y QR en tiempo real con la cámara, recepción rápida de material por lotes, control de asignaciones a técnicos, traspasos de estado (En Stock, Con Técnico, RMA, Instalado), trazabilidad y exportación/importación a Excel.</p>
+                    </div>
                     <div>
                         <strong style="color: var(--accent); display: block; margin-bottom: 3px;">📱 v1.21.03 - Detección Automática Móvil/PC e Importación Histórica de Repostajes (Excel)</strong>
                         <p style="margin: 0; color: var(--text-secondary);">Detección inteligente de dispositivo (Móvil vs PC / Escritorio) con adaptación de diseño y selector manual en Ajustes. Nuevo módulo para Administrador de importación masiva de repostajes históricos mediante Excel (.xlsx/.csv) con cálculo automático de consumos, kilometrajes y flotas, e icono de alta tecnología renovado.</p>
@@ -142,7 +148,7 @@
         <div id="screen-login" class="screen active">
             <div class="login-box anim-fade">
                 <div class="login-logo-container" style="text-align: center; margin-bottom: 20px;">
-                    <img src="logo.png?v=1.21.03" alt="ALTA TECNOLOGIA PARA LA SEGURIDAD Logo" style="max-width: 240px; max-height: 95px; width: auto; height: auto; object-fit: contain; display: inline-block; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
+                    <img src="logo.png?v=1.22.01" alt="ALTA TECNOLOGIA PARA LA SEGURIDAD Logo" style="max-width: 240px; max-height: 95px; width: auto; height: auto; object-fit: contain; display: inline-block; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
                 </div>
                 <h2 style="font-size: 1.1rem; line-height: 1.3;">ALTA TECNOLOGIA PARA LA SEGURIDAD</h2>
                 <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--accent); margin-top: 5px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1.5px;">APP SISTEMAS</h3>
@@ -155,7 +161,7 @@
                     <input type="password" id="login-password" class="input-control" placeholder="Contraseña" required>
                 </div>
                 <div style="margin-top: 20px; font-size: 0.8rem; color: var(--text-secondary); text-align: center;">
-                    Versión 1.21.03 - By JMSYSTEMAS
+                    Versión 1.22.01 - By JMSYSTEMAS
                 </div>
                 <button id="btn-login" class="btn-premium">
                     <i class="bx bx-key"></i> DESBLOQUEAR
@@ -169,7 +175,7 @@
             <!-- App Header -->
             <header>
                 <div class="header-logo">
-                    <img src="logo.png?v=1.21.03" alt="Logo" style="height: 32px; width: auto; object-fit: contain; border-radius: 4px;">
+                    <img src="logo.png?v=1.22.01" alt="Logo" style="height: 32px; width: auto; object-fit: contain; border-radius: 4px;">
                     <h1 id="lbl-company-name">ALTA TECNOLOGIA PARA LA SEGURIDAD</h1>
                 </div>
                 <div class="header-actions" style="display: flex; align-items: center; gap: 8px;">
@@ -233,13 +239,18 @@
                             <span class="card-title">Vehículos</span>
                             <span id="vehicle-fleet-badge" class="badge-notification" style="display: none; position: absolute; top: -5px; right: -5px; background: var(--danger); color: #fff; border-radius: 50%; width: 20px; height: 20px; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg-secondary);">0</span>
                         </div>
+                        <div class="menu-card" id="menu-warehouse" style="position: relative;">
+                            <span class="card-icon" style="color: #6366f1;">📦</span>
+                            <span class="card-title">Almacén</span>
+                            <span id="warehouse-badge" class="badge-notification" style="display: none; position: absolute; top: -5px; right: -5px; background: #6366f1; color: #fff; border-radius: 50%; width: 20px; height: 20px; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg-secondary);">0</span>
+                        </div>
                         <div class="menu-card" id="menu-audit" style="display: none;">
                             <span class="card-icon" style="color: #06b6d4;">📊</span>
                             <span class="card-title">Auditoría</span>
                         </div>
                     </div>
                     <div style="text-align: center; margin-top: 40px; font-size: 0.8rem; color: var(--text-secondary);" class="dashboard-footer">
-                        Versión 1.21.03 - JMSYSTEMAS
+                        Versión 1.22.01 - JMSYSTEMAS
                     </div>
                 </div>
 
@@ -2882,6 +2893,232 @@
                     </form>
                 </div>
 
+                <!-- SCREEN: WAREHOUSE (ALMACÉN Y STOCK) v1.22.01 -->
+                <div id="screen-warehouse" class="screen">
+                    <div class="list-header" style="margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button class="btn-icon" id="btn-back-warehouse"><i class="bx bx-arrow-back"></i></button>
+                            <h2 style="margin: 0; font-size: 1.25rem;"><i class="bx bx-package" style="color: #6366f1;"></i> Almacén y Stock</h2>
+                        </div>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            <button class="btn-premium" id="btn-warehouse-scan-search" style="background: rgba(99, 102, 241, 0.2); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.4); padding: 6px 11px; font-size: 0.78rem; font-weight: 700; display: flex; align-items: center; gap: 5px;" title="Escanear código de barras con la cámara para buscar o verificar un equipo">
+                                <i class="bx bx-barcode-reader" style="font-size: 1.1rem;"></i> Escanear
+                            </button>
+                            <button class="btn-premium btn-secondary" id="btn-warehouse-batch" style="padding: 6px 10px; font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; gap: 4px;" title="Recepción rápida de múltiples unidades del mismo modelo por lote">
+                                <i class="bx bx-layer-plus"></i> Lote
+                            </button>
+                            <button class="btn-premium btn-secondary" id="btn-warehouse-export" style="padding: 6px 10px; font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; gap: 4px;" title="Exportar o importar inventario en Excel">
+                                <i class="bx bx-spreadsheet"></i> Excel
+                            </button>
+                            <button class="btn-add-circle" id="btn-new-warehouse-item" title="Nuevo Artículo en Almacén">+</button>
+                        </div>
+                    </div>
+
+                    <!-- KPIs / Dashboard Resumen de Almacén -->
+                    <div class="warehouse-kpis-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 12px;">
+                        <div style="background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 10px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase;">Total Equipos</div>
+                            <div id="kpi-warehouse-total" style="font-size: 1.3rem; font-weight: 700; color: #818cf8; margin-top: 2px;">0</div>
+                        </div>
+                        <div style="background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 10px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase;">En Oficina (Stock)</div>
+                            <div id="kpi-warehouse-office" style="font-size: 1.3rem; font-weight: 700; color: #10b981; margin-top: 2px;">0</div>
+                        </div>
+                        <div style="background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 10px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase;">Con Técnicos / Furgo</div>
+                            <div id="kpi-warehouse-tech" style="font-size: 1.3rem; font-weight: 700; color: #3b82f6; margin-top: 2px;">0</div>
+                        </div>
+                        <div style="background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 10px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase;">En RMA / Taller</div>
+                            <div id="kpi-warehouse-rma" style="font-size: 1.3rem; font-weight: 700; color: #ef4444; margin-top: 2px;">0</div>
+                        </div>
+                    </div>
+
+                    <!-- Buscador Predictivo -->
+                    <div class="search-container" style="margin-bottom: 10px;">
+                        <i class="bx bx-search search-icon"></i>
+                        <input type="text" id="search-warehouse" class="search-input" placeholder="Buscar por marca, modelo, Nº de serie, técnico o ubicación...">
+                    </div>
+
+                    <!-- Filtros por Categoría (Chips horizontales) -->
+                    <div class="category-chips-scroll" id="warehouse-category-chips" style="margin-bottom: 10px;">
+                        <div class="category-chip active" data-cat="all">Todos</div>
+                        <div class="category-chip" data-cat="cctv">📹 CCTV</div>
+                        <div class="category-chip" data-cat="intrusion">🚨 Intrusión</div>
+                        <div class="category-chip" data-cat="sensors">👁️ Sensores</div>
+                        <div class="category-chip" data-cat="fire">🔥 Incendio</div>
+                        <div class="category-chip" data-cat="network">🌐 Redes</div>
+                        <div class="category-chip" data-cat="power">🔋 Baterías / Fuentes</div>
+                        <div class="category-chip" data-cat="access">🔑 Control Accesos</div>
+                        <div class="category-chip" data-cat="other">🛠️ Varios</div>
+                    </div>
+
+                    <!-- Filtros por Estado -->
+                    <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 10px; scrollbar-width: none;" id="warehouse-status-filters">
+                        <button type="button" class="btn-filter active" data-status="all" style="padding: 4px 10px; font-size: 0.75rem;">Todos</button>
+                        <button type="button" class="btn-filter" data-status="office" style="padding: 4px 10px; font-size: 0.75rem;">🟢 En Oficina</button>
+                        <button type="button" class="btn-filter" data-status="tech" style="padding: 4px 10px; font-size: 0.75rem;">🔵 Con Técnico</button>
+                        <button type="button" class="btn-filter" data-status="reserved" style="padding: 4px 10px; font-size: 0.75rem;">🟡 Reservados</button>
+                        <button type="button" class="btn-filter" data-status="rma" style="padding: 4px 10px; font-size: 0.75rem;">🟠 En RMA</button>
+                        <button type="button" class="btn-filter" data-status="installed" style="padding: 4px 10px; font-size: 0.75rem;">🔴 Instalados</button>
+                    </div>
+
+                    <!-- Listado de Artículos -->
+                    <div id="warehouse-list-container" class="items-list" style="padding-bottom: 80px;">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- SCREEN: FORM WAREHOUSE ITEM (ALTA / EDICIÓN) v1.22.01 -->
+                <div id="screen-form-warehouse-item" class="screen">
+                    <div class="list-header">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button class="btn-icon" id="btn-back-form-warehouse"><i class="bx bx-arrow-back"></i></button>
+                            <h2 id="warehouse-form-title" style="margin: 0; font-size: 1.2rem;">Nuevo Artículo</h2>
+                        </div>
+                    </div>
+
+                    <form id="form-warehouse-item" class="anim-fade" style="padding-bottom: 80px; max-width: 650px; margin: 0 auto;">
+                        <input type="hidden" id="warehouse-item-id">
+
+                        <!-- Nº de Serie con botón de Escáner Cámara -->
+                        <div class="form-group">
+                            <label style="display: flex; justify-content: space-between; align-items: center;">
+                                <span><strong style="color: var(--accent);">*</strong> Nº de Serie (S/N)</span>
+                                <span style="font-size: 0.72rem; color: var(--text-secondary);">Código de barras o QR</span>
+                            </label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="warehouse-item-sn" class="input-control" placeholder="Ej. 1234567890ABC..." required style="font-family: monospace; font-weight: 600;">
+                                <button type="button" id="btn-scan-item-sn" class="btn-premium" style="width: auto; background: var(--accent-gradient); padding: 0 16px; display: flex; align-items: center; gap: 6px; white-space: nowrap;" title="Escanear con cámara">
+                                    <i class="bx bx-barcode-reader" style="font-size: 1.2rem;"></i> Escanear
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-row" style="display: flex; gap: 12px;">
+                            <!-- Marca con Datalist predictivo -->
+                            <div class="form-group" style="flex: 1;">
+                                <label><strong style="color: var(--accent);">*</strong> Marca</label>
+                                <input type="text" id="warehouse-item-brand" list="warehouse-brands-datalist" class="input-control" placeholder="Ej. Hikvision, Ajax, Dahua..." required>
+                                <datalist id="warehouse-brands-datalist">
+                                    <option value="Hikvision">
+                                    <option value="Dahua">
+                                    <option value="Ajax">
+                                    <option value="Paradox">
+                                    <option value="DSC">
+                                    <option value="Honeywell">
+                                    <option value="Pyronix">
+                                    <option value="Ubiquiti">
+                                    <option value="Tp-Link">
+                                    <option value="MikroTik">
+                                    <option value="Western Digital">
+                                    <option value="Seagate">
+                                    <option value="Bosch">
+                                    <option value="Kantech">
+                                    <option value="Salto">
+                                    <option value="Detnov">
+                                    <option value="Cofem">
+                                    <option value="Ksenia">
+                                    <option value="Optex">
+                                    <option value="Trikdis">
+                                </datalist>
+                            </div>
+
+                            <!-- Modelo -->
+                            <div class="form-group" style="flex: 1.2;">
+                                <label><strong style="color: var(--accent);">*</strong> Modelo</label>
+                                <input type="text" id="warehouse-item-model" class="input-control" placeholder="Ej. DS-7208HQHI-K1, Hub 2 Plus..." required>
+                            </div>
+                        </div>
+
+                        <div class="form-row" style="display: flex; gap: 12px;">
+                            <!-- Categoría -->
+                            <div class="form-group" style="flex: 1;">
+                                <label>Categoría</label>
+                                <select id="warehouse-item-category" class="input-control">
+                                    <option value="cctv">📹 CCTV / Grabadores y Cámaras</option>
+                                    <option value="intrusion">🚨 Intrusión / Centrales y Teclados</option>
+                                    <option value="sensors">👁️ Detectores y Sensores</option>
+                                    <option value="fire">🔥 Detección de Incendio</option>
+                                    <option value="network">🌐 Redes / Switches / Wi-Fi</option>
+                                    <option value="power">🔋 Baterías y Fuentes</option>
+                                    <option value="access">🔑 Control de Accesos</option>
+                                    <option value="other">🛠️ Varios / Repuestos</option>
+                                </select>
+                            </div>
+
+                            <!-- Estado -->
+                            <div class="form-group" style="flex: 1;">
+                                <label>Estado / Situación</label>
+                                <select id="warehouse-item-status" class="input-control">
+                                    <option value="office">🟢 En Stock (Oficina)</option>
+                                    <option value="tech">🔵 Asignado a Técnico / Furgoneta</option>
+                                    <option value="reserved">🟡 Reservado para Instalación</option>
+                                    <option value="rma">🟠 En Reparación / RMA</option>
+                                    <option value="installed">🔴 Instalado en Cliente (Salida)</option>
+                                    <option value="discarded">⚫ Baja / Defectuoso</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row" style="display: flex; gap: 12px;">
+                            <!-- Ubicación Almacén -->
+                            <div class="form-group" style="flex: 1;">
+                                <label>Ubicación en Oficina</label>
+                                <input type="text" id="warehouse-item-location" class="input-control" placeholder="Ej. Estantería A - Balda 2, Armario...">
+                            </div>
+
+                            <!-- Asignado a -->
+                            <div class="form-group" style="flex: 1;">
+                                <label>Asignado a (Técnico / Furgo / Cliente)</label>
+                                <input type="text" id="warehouse-item-assigned" list="warehouse-users-datalist" class="input-control" placeholder="Ej. Juan Gómez, Furgo 1234-BBB...">
+                                <datalist id="warehouse-users-datalist">
+                                    <!-- Populated dynamically with users -->
+                                </datalist>
+                            </div>
+                        </div>
+
+                        <div class="form-row" style="display: flex; gap: 12px;">
+                            <!-- Fecha de Entrada -->
+                            <div class="form-group" style="flex: 1;">
+                                <label>Fecha de Entrada</label>
+                                <input type="date" id="warehouse-item-entry-date" class="input-control">
+                            </div>
+
+                            <!-- Fecha de Asignación / Salida -->
+                            <div class="form-group" style="flex: 1;">
+                                <label>Fecha Salida / Asignación</label>
+                                <input type="date" id="warehouse-item-exit-date" class="input-control">
+                            </div>
+
+                            <!-- Coste (€) -->
+                            <div class="form-group" style="flex: 0.8;">
+                                <label>Coste (€ Opcional)</label>
+                                <input type="number" step="0.01" id="warehouse-item-price" class="input-control" placeholder="0.00">
+                            </div>
+                        </div>
+
+                        <!-- Observaciones -->
+                        <div class="form-group">
+                            <label>Observaciones / Detalles</label>
+                            <textarea id="warehouse-item-notes" class="input-control" rows="2" placeholder="Accesorios que incluye, caja original, motivo de avería si es RMA..."></textarea>
+                        </div>
+
+                        <!-- Foto del Equipo / Etiqueta -->
+                        <div class="form-group">
+                            <label>Foto de la Caja / Etiqueta (Opcional)</label>
+                            <input type="file" id="warehouse-item-photo-file" class="input-control" accept="image/*" capture="environment">
+                            <div id="warehouse-item-photo-preview" style="margin-top: 10px; display: none; text-align: center;">
+                                <img src="" style="max-width: 100%; max-height: 160px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass);">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-premium" style="margin-top: 10px;">
+                            <i class="bx bx-save"></i> GUARDAR EN ALMACÉN
+                        </button>
+                    </form>
+                </div>
+
     <!-- Bottom Navigation Bar -->
     <nav>
         <div class="nav-item active" data-screen="dashboard">
@@ -3171,9 +3408,233 @@
         </div>
     </div>
 
+    <!-- MODAL ESCÁNER DE CÓDIGOS DE BARRAS v1.22.01 -->
+    <div id="modal-barcode-scanner" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 1500; align-items: center; justify-content: center; padding: 16px;">
+        <div class="glass-card" style="width: 100%; max-width: 480px; padding: 20px; border: 1px solid var(--border-glass); border-radius: var(--radius-lg); animation: slideUp 0.3s ease-out; display: flex; flex-direction: column; gap: 14px; background: rgba(18, 20, 30, 0.95);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-glass); padding-bottom: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="bx bx-barcode-reader" style="font-size: 1.4rem; color: #6366f1;"></i>
+                    <h3 id="barcode-scanner-title" style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin: 0;">Lector de Código de Barras</h3>
+                </div>
+                <button type="button" class="btn-icon" id="btn-close-scanner-modal" style="padding: 4px;"><i class="bx bx-x" style="font-size: 1.4rem;"></i></button>
+            </div>
+
+            <!-- Viewport de la Cámara con Visor y Láser -->
+            <div class="scanner-viewport-wrapper">
+                <div id="scanner-reader-container" style="width: 100%; height: 100%;">
+                    <div id="reader"></div>
+                </div>
+                <div class="scanner-corner top-left"></div>
+                <div class="scanner-corner top-right"></div>
+                <div class="scanner-corner bottom-left"></div>
+                <div class="scanner-corner bottom-right"></div>
+                <div class="scanner-laser"></div>
+            </div>
+
+            <!-- Controles del Escáner (Cámara y Linterna) -->
+            <div style="display: flex; gap: 8px; align-items: center; justify-content: space-between;">
+                <select id="scanner-camera-select" class="input-control" style="flex: 1; padding: 6px 10px; font-size: 0.78rem;">
+                    <option value="">Cargando cámaras...</option>
+                </select>
+                <button type="button" id="btn-scanner-torch" class="btn-premium btn-secondary" style="width: auto; padding: 6px 12px; font-size: 0.8rem; display: none; align-items: center; gap: 4px;" title="Activar/Desactivar Linterna">
+                    <i class="bx bx-bulb"></i> Linterna
+                </button>
+            </div>
+
+            <div id="scanner-status-message" style="font-size: 0.78rem; color: var(--text-secondary); text-align: center; line-height: 1.3;">
+                Apunta con la cámara al código de barras o código QR de la etiqueta para leer el Nº de Serie.
+            </div>
+
+            <!-- Entrada Manual de Emergencia si la etiqueta está rota -->
+            <div id="scanner-manual-fallback" style="display: none; flex-direction: column; gap: 8px; border-top: 1px solid var(--border-glass); padding-top: 10px;">
+                <label style="font-size: 0.75rem; color: var(--text-secondary);">Introducir Nº Serie manualmente:</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="scanner-manual-input" class="input-control" placeholder="Escribe el S/N..." style="font-family: monospace;">
+                    <button type="button" id="btn-scanner-manual-confirm" class="btn-premium" style="width: auto; padding: 0 14px;">OK</button>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-top: 2px;">
+                <button type="button" id="btn-scanner-toggle-manual" class="btn-premium btn-secondary" style="flex: 1; margin: 0; font-size: 0.78rem;">
+                    <i class="bx bx-edit"></i> Entrada Manual
+                </button>
+                <button type="button" id="btn-cancel-scanner-modal" class="btn-premium btn-secondary" style="flex: 1; margin: 0; font-size: 0.78rem;">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL RECEPCIÓN POR LOTE / BATCH EN ALMACÉN v1.22.01 -->
+    <div id="modal-warehouse-batch-entry" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(6px); z-index: 1400; align-items: center; justify-content: center; padding: 16px;">
+        <div class="glass-card" style="width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; padding: 22px; border: 1px solid var(--border-glass); border-radius: var(--radius-lg); animation: slideUp 0.3s ease-out; display: flex; flex-direction: column; gap: 14px; background: rgba(18, 20, 30, 0.95);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-glass); padding-bottom: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="background: var(--accent-gradient); width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+                        ⚡
+                    </div>
+                    <div>
+                        <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin: 0;">Recepción Rápida por Lote</h3>
+                        <span style="font-size: 0.72rem; color: var(--text-secondary);">Da de alta múltiples unidades del mismo modelo</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-icon" id="btn-close-batch-modal" style="padding: 4px;"><i class="bx bx-x" style="font-size: 1.4rem;"></i></button>
+            </div>
+
+            <form id="form-warehouse-batch" style="display: flex; flex-direction: column; gap: 12px;">
+                <div class="form-row" style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex: 1; margin: 0;">
+                        <label>Marca Común</label>
+                        <input type="text" id="batch-brand" list="warehouse-brands-datalist" class="input-control" placeholder="Ej. Ajax, Hikvision..." required>
+                    </div>
+                    <div class="form-group" style="flex: 1.2; margin: 0;">
+                        <label>Modelo Común</label>
+                        <input type="text" id="batch-model" class="input-control" placeholder="Ej. MotionProtect Plus..." required>
+                    </div>
+                </div>
+
+                <div class="form-row" style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex: 1; margin: 0;">
+                        <label>Categoría</label>
+                        <select id="batch-category" class="input-control">
+                            <option value="sensors">👁️ Detectores y Sensores</option>
+                            <option value="cctv">📹 CCTV / Grabadores y Cámaras</option>
+                            <option value="intrusion">🚨 Intrusión / Centrales y Teclados</option>
+                            <option value="fire">🔥 Detección de Incendio</option>
+                            <option value="network">🌐 Redes / Switches / Wi-Fi</option>
+                            <option value="power">🔋 Baterías y Fuentes</option>
+                            <option value="access">🔑 Control de Accesos</option>
+                            <option value="other">🛠️ Varios / Repuestos</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1; margin: 0;">
+                        <label>Ubicación Almacén</label>
+                        <input type="text" id="batch-location" class="input-control" placeholder="Ej. Estantería B - Caja 3">
+                    </div>
+                </div>
+
+                <!-- Input de S/N con escáner continuo y lista -->
+                <div class="form-group" style="margin: 0;">
+                    <label style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Números de Serie Escaneados (<span id="batch-count">0</span> unidades):</span>
+                    </label>
+                    <div style="display: flex; gap: 8px; margin-top: 4px;">
+                        <input type="text" id="batch-input-sn" class="input-control" placeholder="Pistolea o escribe el S/N y pulsa Enter..." style="font-family: monospace;">
+                        <button type="button" id="btn-batch-scan-camera" class="btn-premium" style="width: auto; padding: 0 14px; background: var(--accent-gradient); display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                            <i class="bx bx-barcode-reader"></i> Cámara
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tags de Números de Serie añadidos -->
+                <div id="batch-sns-tags-container" style="display: flex; flex-wrap: wrap; gap: 6px; min-height: 50px; max-height: 120px; overflow-y: auto; background: rgba(0,0,0,0.3); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 8px;">
+                    <span style="font-size: 0.75rem; color: var(--text-secondary); align-self: center;">No hay números de serie añadidos todavía.</span>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 6px;">
+                    <button type="button" id="btn-cancel-batch" class="btn-premium btn-secondary" style="flex: 1; margin: 0;">Cancelar</button>
+                    <button type="submit" class="btn-premium" id="btn-submit-batch" style="flex: 1.5; margin: 0; background: var(--accent-gradient);">
+                        <i class="bx bx-check-double"></i> GUARDAR LOTE
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL TRASPASO / CAMBIO RÁPIDO DE ESTADO v1.22.01 -->
+    <div id="modal-warehouse-quick-assign" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 1350; align-items: center; justify-content: center; padding: 16px;">
+        <div class="glass-card" style="width: 100%; max-width: 440px; padding: 22px; border: 1px solid var(--border-glass); border-radius: var(--radius-lg); animation: slideUp 0.3s ease-out; display: flex; flex-direction: column; gap: 14px; background: rgba(18, 20, 30, 0.95);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-glass); padding-bottom: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="bx bx-transfer-alt" style="font-size: 1.3rem; color: var(--accent);"></i>
+                    <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin: 0;">Traspaso de Material</h3>
+                </div>
+                <button type="button" class="btn-icon" id="btn-close-quick-assign-modal" style="padding: 4px;"><i class="bx bx-x" style="font-size: 1.4rem;"></i></button>
+            </div>
+
+            <div id="quick-assign-item-details" style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 10px; font-size: 0.8rem; line-height: 1.4;">
+                <!-- Populated dynamically -->
+            </div>
+
+            <form id="form-warehouse-quick-assign" style="display: flex; flex-direction: column; gap: 12px;">
+                <input type="hidden" id="quick-assign-item-id">
+                <div class="form-group" style="margin: 0;">
+                    <label>Nuevo Estado / Situación</label>
+                    <select id="quick-assign-status" class="input-control" required>
+                        <option value="office">🟢 En Stock (Oficina)</option>
+                        <option value="tech">🔵 Asignar a Técnico / Furgoneta</option>
+                        <option value="reserved">🟡 Reservar para Instalación</option>
+                        <option value="rma">🟠 Enviar a Reparación / RMA</option>
+                        <option value="installed">🔴 Instalado en Cliente (Salida)</option>
+                        <option value="discarded">⚫ Dar de Baja / Defectuoso</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="quick-assign-assigned-group" style="margin: 0;">
+                    <label>Destino (Técnico / Furgoneta / Cliente)</label>
+                    <input type="text" id="quick-assign-assigned" list="warehouse-users-datalist" class="input-control" placeholder="Ej. Juan Gómez, Furgo 1234-BBB...">
+                </div>
+
+                <div class="form-group" style="margin: 0;">
+                    <label>Nota del Movimiento</label>
+                    <input type="text" id="quick-assign-notes" class="input-control" placeholder="Ej. Entregado para instalación en Abonado 123...">
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 6px;">
+                    <button type="button" id="btn-cancel-quick-assign" class="btn-premium btn-secondary" style="flex: 1; margin: 0;">Cancelar</button>
+                    <button type="submit" class="btn-premium" style="flex: 1.2; margin: 0; background: var(--accent-gradient);">Actualizar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL OPCIONES EXCEL DE ALMACÉN (EXPORTAR / IMPORTAR) v1.22.01 -->
+    <div id="modal-warehouse-excel-export-import" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 1350; align-items: center; justify-content: center; padding: 16px;">
+        <div class="glass-card" style="width: 100%; max-width: 480px; padding: 22px; border: 1px solid var(--border-glass); border-radius: var(--radius-lg); animation: slideUp 0.3s ease-out; display: flex; flex-direction: column; gap: 14px; background: rgba(18, 20, 30, 0.95);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-glass); padding-bottom: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="bx bx-spreadsheet" style="font-size: 1.3rem; color: #10b981;"></i>
+                    <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin: 0;">Gestión de Excel de Almacén</h3>
+                </div>
+                <button type="button" class="btn-icon" id="btn-close-warehouse-excel-modal" style="padding: 4px;"><i class="bx bx-x" style="font-size: 1.4rem;"></i></button>
+            </div>
+
+            <!-- Opción 1: Exportar Inventario Actual -->
+            <div style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                    <i class="bx bx-download" style="color: var(--accent);"></i> Exportar Inventario Completo
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                    Descarga un archivo .xlsx con todos los artículos, marcas, modelos, números de serie, estados y técnicos asignados.
+                </div>
+                <button type="button" id="btn-action-export-warehouse-xlsx" class="btn-premium" style="margin-top: 4px; background: var(--accent-gradient);">
+                    <i class="bx bx-download"></i> DESCARGAR EXCEL (.XLSX)
+                </button>
+            </div>
+
+            <!-- Opción 2: Importar Inventario desde Excel -->
+            <div style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                    <i class="bx bx-upload" style="color: #10b981;"></i> Importar Stock desde Excel
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                    Carga masiva de artículos. Columnas reconocidas: <code>Marca</code>, <code>Modelo</code>, <code>Nº Serie</code>, <code>Categoría</code>, <code>Estado</code>, <code>Ubicación</code>.
+                </div>
+                <input type="file" id="input-warehouse-excel-file" accept=".xlsx, .xls, .csv" style="display: none;">
+                <button type="button" id="btn-action-import-warehouse-xlsx" class="btn-premium btn-secondary" style="margin-top: 4px;">
+                    <i class="bx bx-folder-open"></i> SELECCIONAR ARCHIVO EXCEL
+                </button>
+            </div>
+
+            <button type="button" id="btn-cancel-warehouse-excel" class="btn-premium btn-secondary" style="width: 100%; margin: 0;">
+                Cerrar
+            </button>
+        </div>
+    </div>
+
     <!-- Crypto, GitHub API, and App Controller Logic -->
-    <script src="crypto.js?v=1.21.03"></script>
-    <script src="github.js?v=1.21.03"></script>
-    <script src="app.js?v=1.21.03"></script>
+    <script src="crypto.js?v=1.22.01"></script>
+    <script src="github.js?v=1.22.01"></script>
+    <script src="app.js?v=1.22.01"></script>
 </body>
 </html>

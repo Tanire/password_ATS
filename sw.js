@@ -2,7 +2,7 @@
  * Service Worker for Offline Cache
  */
 
-const CACHE_NAME = "ats-tec-cache-v1.21.03-pwa-v2";
+const CACHE_NAME = "ats-tec-cache-v1.22.01-pwa-v1";
 const ASSETS = [
     "index.html",
     "style.css",
@@ -28,7 +28,8 @@ const ASSETS = [
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-    "https://cdn.jsdelivr.net/npm/tesseract.js@5.0.5/dist/tesseract.min.js"
+    "https://cdn.jsdelivr.net/npm/tesseract.js@5.0.5/dist/tesseract.min.js",
+    "https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"
 ];
 
 // Install: Cache resources

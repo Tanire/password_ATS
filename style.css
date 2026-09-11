@@ -2212,3 +2212,255 @@ body.device-mobile nav {
     height: 70px !important;
 }
 
+/* ==========================================================================
+   WAREHOUSE & BARCODE SCANNER MODULE (v1.22.01)
+   ========================================================================== */
+
+/* Warehouse Status Badges */
+.warehouse-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
+.warehouse-status-badge.office {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.warehouse-status-badge.tech {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+.warehouse-status-badge.reserved {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.warehouse-status-badge.rma {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.warehouse-status-badge.installed {
+    background: rgba(139, 92, 246, 0.15);
+    color: #8b5cf6;
+    border: 1px solid rgba(139, 92, 246, 0.35);
+}
+
+.warehouse-status-badge.discarded {
+    background: rgba(100, 116, 139, 0.15);
+    color: #94a3b8;
+    border: 1px solid rgba(100, 116, 139, 0.35);
+}
+
+/* Warehouse S/N monospace badge */
+.warehouse-sn-badge {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.8rem;
+    font-weight: 700;
+    background: rgba(0, 0, 0, 0.35);
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-glass);
+    color: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.warehouse-sn-badge:hover {
+    border-color: var(--accent);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+/* Barcode Scanner Modal & Viewfinder */
+.scanner-viewport-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 440px;
+    height: 300px;
+    margin: 0 auto;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: #000;
+    box-shadow: 0 0 25px rgba(0, 0, 0, 0.8), inset 0 0 15px rgba(0, 0, 0, 0.8);
+    border: 2px solid rgba(99, 102, 241, 0.4);
+}
+
+#reader {
+    width: 100% !important;
+    height: 100% !important;
+    border: none !important;
+}
+
+#reader video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+}
+
+#reader __scan_region {
+    border: none !important;
+}
+
+/* High-tech Scanning Laser Animation */
+.scanner-laser {
+    position: absolute;
+    top: 0;
+    left: 5%;
+    width: 90%;
+    height: 3px;
+    background: linear-gradient(90deg, rgba(239, 68, 68, 0) 0%, #ef4444 50%, rgba(239, 68, 68, 0) 100%);
+    box-shadow: 0 0 12px #ef4444, 0 0 20px rgba(239, 68, 68, 0.6);
+    border-radius: 2px;
+    animation: scanLaserAnim 2.2s infinite ease-in-out;
+    pointer-events: none;
+    z-index: 10;
+}
+
+@keyframes scanLaserAnim {
+    0% {
+        top: 8%;
+        opacity: 0.8;
+    }
+    50% {
+        top: 88%;
+        opacity: 1;
+    }
+    100% {
+        top: 8%;
+        opacity: 0.8;
+    }
+}
+
+/* Viewfinder Target Corners */
+.scanner-corner {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border: 3px solid #6366f1;
+    z-index: 11;
+    pointer-events: none;
+}
+
+.scanner-corner.top-left {
+    top: 12px;
+    left: 12px;
+    border-right: none;
+    border-bottom: none;
+    border-top-left-radius: 6px;
+}
+
+.scanner-corner.top-right {
+    top: 12px;
+    right: 12px;
+    border-left: none;
+    border-bottom: none;
+    border-top-right-radius: 6px;
+}
+
+.scanner-corner.bottom-left {
+    bottom: 12px;
+    left: 12px;
+    border-right: none;
+    border-top: none;
+    border-bottom-left-radius: 6px;
+}
+
+.scanner-corner.bottom-right {
+    bottom: 12px;
+    right: 12px;
+    border-left: none;
+    border-top: none;
+    border-bottom-right-radius: 6px;
+}
+
+/* Category Filter Chips */
+.category-chips-scroll {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scrollbar-width: thin;
+}
+
+.category-chip {
+    padding: 6px 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-glass);
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.category-chip:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+}
+
+.category-chip.active {
+    background: var(--accent-gradient);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* Batch serial number pills */
+.batch-sn-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    color: #c7d2fe;
+    padding: 4px 10px;
+    border-radius: 14px;
+    font-size: 0.8rem;
+    font-family: monospace;
+}
+
+.batch-sn-tag .remove-btn {
+    cursor: pointer;
+    color: #ef4444;
+    font-weight: bold;
+}
+
+/* PC Responsive Grid for Warehouse */
+body.device-pc #warehouse-list-container {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)) !important;
+    gap: 16px !important;
+}
+
+body.device-pc .warehouse-kpis-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 12px !important;
+}
+
+html[data-device="mobile"] #warehouse-list-container,
+body.device-mobile #warehouse-list-container {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+}
+
+
