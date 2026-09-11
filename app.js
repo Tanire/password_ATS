@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.22.02",
+        version: "1.22.03",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -948,25 +948,12 @@ function setupEventListeners() {
         }
     });
 
-    // Settings save
-    els.btnSaveSettings.addEventListener("click", saveSettingsAction);
-    els.btnLogout.addEventListener("click", lockVault);
+    // Settings save & Logout
+    if (els.btnSaveSettings) els.btnSaveSettings.addEventListener("click", saveSettingsAction);
+    if (els.btnLogout) els.btnLogout.addEventListener("click", lockVault);
 
-    // Acordeón de Personalización v1.19.03
-    const accHeader = document.getElementById("accordion-personalization");
-    const accContent = document.getElementById("personalization-content");
-    if (accHeader && accContent) {
-        accHeader.addEventListener("click", () => {
-            accHeader.classList.toggle("active");
-            if (accContent.style.maxHeight && accContent.style.maxHeight !== "0px") {
-                accContent.style.maxHeight = "0px";
-                accContent.style.margin = "0px";
-            } else {
-                accContent.style.maxHeight = accContent.scrollHeight + "px";
-                accContent.style.margin = "0px 0px 16px 0px";
-            }
-        });
-    }
+    // Acordeones Clasificados de Ajustes v1.22.03
+    initSettingsAccordions();
 
     // Acordeón Agregar Cliente Manualmente v1.20.07
     const accManualHeader = document.getElementById("accordion-add-client-manual");
@@ -1511,6 +1498,17 @@ function switchScreen(screenId) {
             els.setDeviceMode.value = state.currentUser?.preferences?.device_mode || localStorage.getItem(STORAGE_KEYS.DEVICE_MODE) || "auto";
         }
         renderInterfaceCustomizer();
+
+        // Si ninguna pestaña está abierta al entrar, abrir "Mi Perfil" por defecto
+        const activeHeaders = document.querySelectorAll("#screen-settings .settings-accordion-header.active");
+        if (activeHeaders.length === 0) {
+            const profHeader = document.getElementById("accordion-profile");
+            const profBody = document.getElementById("acc-content-profile");
+            const profItem = document.getElementById("acc-item-profile");
+            if (profHeader && profBody) {
+                openSettingsAccordionItem(profHeader, profBody, profItem);
+            }
+        }
     }
 }
 
@@ -1655,7 +1653,7 @@ async function handleUnlock() {
             ];
             const adminWrapped = await encryptData(vaultKey, vaultKey);
             state.usersMetadata["admin"] = adminWrapped;
-            state.vault.version = "1.22.01";
+            state.vault.version = "1.22.03";
             state.vault.company_name = "ALTA TECNOLOGIA PARA LA SEGURIDAD";
         }
         
@@ -14286,6 +14284,104 @@ function retryOcrScan() {
 
     startOcrCameraStream();
 }
+
+/**
+ * ==========================================================================
+ * SETTINGS ACCORDIONS & CLASSIFIED TABS CONTROLLER (v1.22.03)
+ * ==========================================================================
+ */
+
+/**
+ * Opens a specific settings accordion tab smoothly
+ */
+function openSettingsAccordionItem(header, body, item) {
+    if (!header || !body) return;
+    header.classList.add("active");
+    if (item) item.classList.add("is-open");
+    body.classList.add("open");
+    body.style.maxHeight = (body.scrollHeight + 80) + "px";
+    setTimeout(() => {
+        if (header.classList.contains("active")) {
+            body.style.maxHeight = "none";
+        }
+    }, 360);
+}
+
+/**
+ * Closes a specific settings accordion tab smoothly
+ */
+function closeSettingsAccordionItem(header, body, item) {
+    if (!header || !body) return;
+    if (body.style.maxHeight === "none") {
+        body.style.maxHeight = body.scrollHeight + "px";
+        body.offsetHeight; // force reflow
+    }
+    header.classList.remove("active");
+    if (item) item.classList.remove("is-open");
+    body.classList.remove("open");
+    body.style.maxHeight = "0px";
+}
+
+/**
+ * Toggles a settings accordion tab open/closed
+ */
+function toggleSettingsAccordionItem(header, body, item) {
+    if (!header || !body) return;
+    const isOpen = header.classList.contains("active");
+    if (isOpen) {
+        closeSettingsAccordionItem(header, body, item);
+    } else {
+        openSettingsAccordionItem(header, body, item);
+    }
+}
+
+/**
+ * Initializes all event handlers for the classified settings accordion system
+ */
+function initSettingsAccordions() {
+    const headers = document.querySelectorAll("#screen-settings .settings-accordion-header");
+    headers.forEach(header => {
+        header.addEventListener("click", () => {
+            const item = header.closest(".settings-accordion-item");
+            const body = item ? item.querySelector(".settings-accordion-body") : null;
+            if (body) {
+                toggleSettingsAccordionItem(header, body, item);
+            }
+        });
+    });
+
+    const btnExpandAll = document.getElementById("btn-settings-expand-all");
+    const btnCollapseAll = document.getElementById("btn-settings-collapse-all");
+
+    if (btnExpandAll) {
+        btnExpandAll.addEventListener("click", () => {
+            const items = document.querySelectorAll("#screen-settings .settings-accordion-item");
+            items.forEach(item => {
+                const adminPanel = item.closest("#admin-user-panel");
+                if (adminPanel && adminPanel.style.display === "none") return;
+                const header = item.querySelector(".settings-accordion-header");
+                const body = item.querySelector(".settings-accordion-body");
+                if (header && body && !header.classList.contains("active")) {
+                    openSettingsAccordionItem(header, body, item);
+                }
+            });
+        });
+    }
+
+    if (btnCollapseAll) {
+        btnCollapseAll.addEventListener("click", () => {
+            const items = document.querySelectorAll("#screen-settings .settings-accordion-item");
+            items.forEach(item => {
+                const header = item.querySelector(".settings-accordion-header");
+                const body = item.querySelector(".settings-accordion-body");
+                if (header && body && header.classList.contains("active")) {
+                    closeSettingsAccordionItem(header, body, item);
+                }
+            });
+        });
+    }
+}
+
 
 
 

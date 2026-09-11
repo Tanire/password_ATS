@@ -8,12 +8,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ATS Seguridad">
-    <link rel="icon" type="image/png" href="icon-512.png?v=1.22.02">
-    <link rel="shortcut icon" href="icon-512.png?v=1.22.02">
-    <link rel="apple-touch-icon" href="icon-512.png?v=1.22.02">
-    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png?v=1.22.02">
-    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=1.22.02">
-    <link rel="manifest" href="manifest.json?v=1.22.02">
+    <link rel="icon" type="image/png" href="icon-512.png?v=1.22.03">
+    <link rel="shortcut icon" href="icon-512.png?v=1.22.03">
+    <link rel="apple-touch-icon" href="icon-512.png?v=1.22.03">
+    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png?v=1.22.03">
+    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=1.22.03">
+    <link rel="manifest" href="manifest.json?v=1.22.03">
     
     <!-- Instant synchronous device detection before DOM and styles render -->
     <script>
@@ -48,7 +48,7 @@
     <!-- HTML5 QR / Barcode Scanner (ZXing based) v1.22.01 -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <!-- Main Style Sheet -->
-    <link rel="stylesheet" href="style.css?v=1.22.02">
+    <link rel="stylesheet" href="style.css?v=1.22.03">
     <!-- html2pdf.js library for clean client-side PDF generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <!-- jsPDF library for commercial reports -->
@@ -72,10 +72,18 @@
                 <div style="text-align: center;">
                     <div style="font-size: 2.2rem; margin-bottom: 8px;">🚀</div>
                     <h2 style="font-size: 1.3rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">¡Aplicación Actualizada!</h2>
-                    <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3);">Versión 1.22.01</span>
+                    <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3);">Versión 1.22.03</span>
                 </div>
                 
                 <div style="border-top: 1px solid var(--border-glass); border-bottom: 1px solid var(--border-glass); padding: 14px 0; max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; line-height: 1.4; color: var(--text-primary);">
+                    <div>
+                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">⚙️ v1.22.03 - Menú de Ajustes Optimizado y Pestañas Desplegables Clasificadas</strong>
+                        <p style="margin: 0; color: var(--text-secondary);">Rediseño integral del menú de Configuración con navegación por pestañas desplegables agrupadas por categorías (Mi Perfil y Seguridad, Apariencia y Visualización, Personalización de Menús, Administración de Usuarios y Permisos, Clientes de Rutas, Flota y Repostajes, e Información del Sistema). Interfaz mucho más limpia, moderna y organizada con controles de expansión rápida.</p>
+                    </div>
+                    <div>
+                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">📸 v1.22.02 - Escáner OCR de Pegatinas y Fichas Técnicas de Seguridad (Offline)</strong>
+                        <p style="margin: 0; color: var(--text-secondary);">Reconocimiento óptico inteligente de caracteres 100% local con Tesseract.js para extraer Marca, Modelo, S/N, MAC y Categoría sugerida a partir de una foto o captura en vivo de la pegatina del equipo en el módulo de Almacén.</p>
+                    </div>
                     <div>
                         <strong style="color: var(--accent); display: block; margin-bottom: 3px;">📦 v1.22.01 - Módulo de Almacén y Control de Stock con Lector de Códigos de Barras</strong>
                         <p style="margin: 0; color: var(--text-secondary);">Nuevo módulo integral de Almacén y Gestión de Stock (Oficina, Furgonetas y Técnicos). Lector interactivo de códigos de barras (1D: Code 128, EAN, UPC) y QR en tiempo real con la cámara, recepción rápida de material por lotes, control de asignaciones a técnicos, traspasos de estado (En Stock, Con Técnico, RMA, Instalado), trazabilidad y exportación/importación a Excel.</p>
@@ -644,207 +652,374 @@
 
                 <!-- K. SETTINGS SCREEN -->
                 <div id="screen-settings" class="screen">
-                    <div class="list-header">
+                    <div class="list-header" style="margin-bottom: 12px;">
                         <h2>Configuración</h2>
                     </div>
                     
-                    <div class="user-profile anim-fade">
-                        <div class="user-avatar">
-                            <i class="bx bx-cog"></i>
+                    <!-- Top User Profile & Status Banner -->
+                    <div class="settings-header-banner anim-fade">
+                        <div class="settings-profile-info">
+                            <div class="settings-avatar-glow">
+                                <i class="bx bx-user-circle"></i>
+                            </div>
+                            <div>
+                                <div style="font-weight: 700; font-size: 1.05rem; color: var(--text-primary);" id="set-current-username">ADMINISTRADOR</div>
+                                <div style="font-size: 0.8rem; color: var(--accent); font-weight: 600;" id="set-current-user-role">Rol: Administrador</div>
+                            </div>
                         </div>
-                        <div>
-                            <div style="font-weight: 600; font-size: 1rem;" id="set-current-username">Administrador</div>
-                            <div style="font-size: 0.8rem; color: var(--text-secondary);" id="set-current-user-role">JMSystems - Tanire</div>
+                        <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.72rem; padding: 4px 10px; border-radius: 20px;">
+                            <i class="bx bx-check-circle" style="vertical-align: middle;"></i> Activo
+                        </span>
+                    </div>
+
+                    <!-- Quick Accordion Toggle Actions -->
+                    <div class="settings-quick-actions anim-fade">
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <i class="bx bx-category"></i> Categorías de Ajustes
+                        </span>
+                        <div style="display: flex; gap: 6px;">
+                            <button type="button" id="btn-settings-expand-all" class="settings-action-pill" title="Desplegar todas las pestañas">
+                                <i class="bx bx-expand-vertical"></i> Expandir Todo
+                            </button>
+                            <button type="button" id="btn-settings-collapse-all" class="settings-action-pill" title="Plegar todas las pestañas">
+                                <i class="bx bx-collapse-vertical"></i> Plegar Todo
+                            </button>
                         </div>
                     </div>
 
-                    <div class="anim-fade" style="padding-bottom: 80px;">
-                        <!-- SECCIÓN DESPLEGABLE: PERSONALIZACIÓN v1.19.03 -->
-                        <div class="accordion-header" id="accordion-personalization" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 12px 16px; background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); margin-top: 15px; margin-bottom: 12px; transition: var(--transition-smooth); user-select: none;">
-                            <h3 style="font-size: 0.95rem; margin: 0; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
-                                <i class="bx bx-slider-alt" style="color: var(--accent);"></i> Personalización
-                            </h3>
-                            <i class="bx bx-chevron-down accordion-arrow" style="font-size: 1.2rem; transition: transform var(--transition-smooth); color: var(--text-secondary);"></i>
-                        </div>
-                        
-                        <div class="accordion-content" id="personalization-content" style="max-height: 0; overflow: hidden; transition: max-height 0.4s ease-out, margin 0.3s ease-out; margin-bottom: 0;">
-                            <div class="glass-card" style="padding: 16px; margin-bottom: 16px; border: 1px solid var(--border-glass); border-radius: var(--radius-lg); display: flex; flex-direction: column; gap: 16px;">
-                                
-                                <!-- Subsección A: Apariencia -->
-                                <div>
-                                    <h4 style="font-size: 0.85rem; color: var(--accent); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;"><i class="bx bx-palette"></i> Apariencia</h4>
-                                    <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 12px;">
-                                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                                            <label>Tema de Color</label>
-                                            <select id="set-theme" class="input-control" style="padding: 10px 14px; font-size: 0.85rem;">
-                                                <option value="default">Oscuro Cyber</option>
-                                                <option value="blue">Azul Océano</option>
-                                                <option value="purple">Morado Nebulosa</option>
-                                                <option value="green">Verde Matrix</option>
-                                            </select>
+                    <div class="anim-fade" style="padding-bottom: 85px;">
+                        <div class="settings-accordion-group">
+
+                            <!-- PESTAÑA 1: MI PERFIL Y SEGURIDAD -->
+                            <div class="settings-accordion-item" id="acc-item-profile">
+                                <div class="settings-accordion-header" id="accordion-profile">
+                                    <div class="settings-header-left">
+                                        <div class="settings-header-icon">
+                                            <i class="bx bx-id-card"></i>
                                         </div>
-                                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                                            <label><i class="bx bx-devices"></i> Modo de Dispositivo</label>
-                                            <select id="set-device-mode" class="input-control" style="padding: 10px 14px; font-size: 0.85rem;">
-                                                <option value="auto">🤖 Automático (Móvil/PC)</option>
-                                                <option value="mobile">📱 Móvil (Táctil)</option>
-                                                <option value="pc">💻 PC / Escritorio</option>
-                                            </select>
+                                        <div class="settings-header-titles">
+                                            <h3 class="settings-header-title">Mi Perfil y Seguridad</h3>
+                                            <p class="settings-header-subtitle">Datos técnicos, vehículo asignado y clave</p>
                                         </div>
                                     </div>
-                                    <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 5px;">
-                                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                                            <label>Estilo de Interfaz</label>
-                                            <select id="set-ui-style" class="input-control" style="padding: 10px 14px; font-size: 0.85rem;">
-                                                <option value="glass">Cristal (Glassmorphism)</option>
-                                                <option value="flat">Plano Sólido (Flat)</option>
-                                            </select>
+                                    <div class="settings-header-right">
+                                        <span class="settings-cat-badge">Mi Cuenta</span>
+                                        <i class="bx bx-chevron-down settings-chevron"></i>
+                                    </div>
+                                </div>
+                                <div class="settings-accordion-body" id="acc-content-profile">
+                                    <div class="settings-accordion-inner">
+                                        <!-- Profile summary card -->
+                                        <div id="profile-summary-card" style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                                <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Ficha del Técnico</span>
+                                                <button type="button" id="btn-edit-my-profile" class="btn-icon" title="Editar mi perfil" style="font-size: 0.8rem; padding: 4px 10px; border-radius: 6px; display: flex; align-items: center; gap: 5px;">
+                                                    <i class="bx bx-edit-alt"></i> <span style="font-size: 0.78rem;">Editar</span>
+                                                </button>
+                                            </div>
+                                            <div style="font-size: 0.88rem; line-height: 1.8; color: var(--text-primary);">
+                                                <div><span style="color: var(--text-secondary); width: 85px; display: inline-block;">Nombre:</span> <span id="prof-summary-name" style="font-weight: 600;">—</span></div>
+                                                <div><span style="color: var(--text-secondary); width: 85px; display: inline-block;">Zona:</span> <span id="prof-summary-zona">—</span></div>
+                                                <div><span style="color: var(--text-secondary); width: 85px; display: inline-block;">Delegación:</span> <span id="prof-summary-delegacion">—</span></div>
+                                                <div><span style="color: var(--text-secondary); width: 85px; display: inline-block;">Vehículo:</span> <span id="prof-summary-vehiculo">—</span></div>
+                                                <div><span style="color: var(--text-secondary); width: 85px; display: inline-block;">Tarjeta:</span> <span id="prof-summary-tarjeta">—</span></div>
+                                                <div><span style="color: var(--text-secondary); width: 85px; display: inline-block;">Contrato:</span> <span id="prof-summary-contrato">—</span></div>
+                                            </div>
                                         </div>
-                                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                                            <label>Efectos de Sonido</label>
-                                            <select id="set-sounds" class="input-control" style="padding: 10px 14px; font-size: 0.85rem;">
-                                                <option value="on">Activados</option>
-                                                <option value="off">Desactivados</option>
-                                            </select>
+
+                                        <div class="form-group" style="margin-bottom: 0;">
+                                            <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;"><i class="bx bx-lock-alt"></i> Cambiar mi Contraseña</label>
+                                            <div class="input-with-action">
+                                                <input type="password" id="set-new-password" class="input-control" placeholder="Nueva contraseña de acceso" autocomplete="new-password">
+                                                <button type="button" class="btn-icon" id="btn-change-my-pass" title="Actualizar Contraseña"><i class="bx bx-check-shield"></i></button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
+                            </div>
 
-                                <hr style="border: 0; border-top: 1px solid var(--border-glass); margin: 4px 0;">
-
-                                <!-- Subsección B: Personalizar Interfaz -->
-                                <div>
-                                    <h4 style="font-size: 0.85rem; color: var(--accent); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;"><i class="bx bx-customize"></i> Personalizar Interfaz</h4>
-                                    <div style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
-                                        Ordena los accesos rápidos de la pantalla principal (Dashboard) y de la barra inferior (Menú Rápido) a tu comodidad.
+                            <!-- PESTAÑA 2: APARIENCIA Y VISUALIZACIÓN -->
+                            <div class="settings-accordion-item" id="acc-item-appearance">
+                                <div class="settings-accordion-header" id="accordion-appearance">
+                                    <div class="settings-header-left">
+                                        <div class="settings-header-icon">
+                                            <i class="bx bx-palette"></i>
+                                        </div>
+                                        <div class="settings-header-titles">
+                                            <h3 class="settings-header-title">Apariencia y Visualización</h3>
+                                            <p class="settings-header-subtitle">Tema de color, estilo cristal, dispositivo y sonidos</p>
+                                        </div>
                                     </div>
-                                    
-                                    <h5 style="font-size: 0.8rem; color: var(--text-primary); margin-bottom: 6px; font-weight: 600;">1. Orden de la Pantalla Principal (Dashboard)</h5>
-                                    <div id="customize-dashboard-list" class="layout-list" style="margin-bottom: 15px;">
-                                        <!-- Populated dynamically in app.js -->
-                                    </div>
-                                    
-                                    <h5 style="font-size: 0.8rem; color: var(--text-primary); margin-bottom: 6px; font-weight: 600;">2. Orden de la Barra Inferior (Menú Rápido)</h5>
-                                    <div id="customize-nav-list" class="layout-list">
-                                        <!-- Populated dynamically in app.js -->
+                                    <div class="settings-header-right">
+                                        <span class="settings-cat-badge">Diseño</span>
+                                        <i class="bx bx-chevron-down settings-chevron"></i>
                                     </div>
                                 </div>
-                                
-                                <button id="btn-save-layout" type="button" class="btn-premium" style="width: 100%; margin-top: 5px; background: var(--accent-gradient);">
-                                    <i class="bx bx-check-double"></i> APLICAR DISEÑO PERSONALIZADO
-                                </button>
-                            </div>
-                        </div>
-                        <input type="hidden" id="set-company-name" value="ALTA TECNOLOGIA PARA LA SEGURIDAD">
+                                <div class="settings-accordion-body" id="acc-content-appearance">
+                                    <div class="settings-accordion-inner">
+                                        <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 5px;">
+                                            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                                <label>Tema de Color</label>
+                                                <select id="set-theme" class="input-control" style="padding: 10px 14px; font-size: 0.85rem;">
+                                                    <option value="default">Oscuro Cyber</option>
+                                                    <option value="blue">Azul Océano</option>
+                                                    <option value="purple">Morado Nebulosa</option>
+                                                    <option value="green">Verde Matrix</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                                <label><i class="bx bx-devices"></i> Modo de Dispositivo</label>
+                                                <select id="set-device-mode" class="input-control" style="padding: 10px 14px; font-size: 0.85rem;">
+                                                    <option value="auto">🤖 Automático (Móvil/PC)</option>
+                                                    <option value="mobile">📱 Móvil (Táctil)</option>
+                                                    <option value="pc">💻 PC / Escritorio</option>
+                                                </select>
+                                            </div>
+                                        </div>
 
-                        <!-- Profile summary card (read-only, populated from user object) -->
-                        <div id="profile-summary-card" style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 6px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Perfil Técnico</span>
-                                <button type="button" id="btn-edit-my-profile" class="btn-icon" title="Editar mi perfil" style="font-size: 0.8rem; padding: 4px 10px; border-radius: 6px; display: flex; align-items: center; gap: 5px;">
-                                    <i class="bx bx-edit-alt"></i> <span style="font-size: 0.78rem;">Editar</span>
-                                </button>
-                            </div>
-                            <div style="font-size: 0.88rem; line-height: 1.8; color: var(--text-primary);">
-                                <div><span style="color: var(--text-secondary); width: 80px; display: inline-block;">Nombre:</span> <span id="prof-summary-name" style="font-weight: 600;">—</span></div>
-                                <div><span style="color: var(--text-secondary); width: 80px; display: inline-block;">Zona:</span> <span id="prof-summary-zona">—</span></div>
-                                <div><span style="color: var(--text-secondary); width: 80px; display: inline-block;">Delegación:</span> <span id="prof-summary-delegacion">—</span></div>
-                                <div><span style="color: var(--text-secondary); width: 80px; display: inline-block;">Vehículo:</span> <span id="prof-summary-vehiculo">—</span></div>
-                                <div><span style="color: var(--text-secondary); width: 80px; display: inline-block;">Tarjeta:</span> <span id="prof-summary-tarjeta">—</span></div>
-                                <div><span style="color: var(--text-secondary); width: 80px; display: inline-block;">Contrato:</span> <span id="prof-summary-contrato">—</span></div>
-                            </div>
-                        </div>
+                                        <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 5px;">
+                                            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                                <label>Estilo de Interfaz</label>
+                                                <select id="set-ui-style" class="input-control" style="padding: 10px 14px; font-size: 0.85rem;">
+                                                    <option value="glass">Cristal (Glassmorphism)</option>
+                                                    <option value="flat">Plano Sólido (Flat)</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                                <label>Efectos de Sonido</label>
+                                                <select id="set-sounds" class="input-control" style="padding: 10px 14px; font-size: 0.85rem;">
+                                                    <option value="on">Activados</option>
+                                                    <option value="off">Desactivados</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <input type="hidden" id="set-company-name" value="ALTA TECNOLOGIA PARA LA SEGURIDAD">
 
-                        <button id="btn-save-settings" class="btn-premium" style="margin-top: 4px;">
-                            <i class="bx bx-save"></i> GUARDAR AJUSTES
-                        </button>
-                        
-                        <h3 style="font-size: 0.95rem; margin-top: 25px; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Seguridad</h3>
-                        <div class="form-group">
-                            <label>Cambiar mi Contraseña</label>
-                            <div class="input-with-action">
-                                <input type="password" id="set-new-password" class="input-control" placeholder="Nueva contraseña de acceso" autocomplete="new-password">
-                                <button type="button" class="btn-icon" id="btn-change-my-pass" title="Actualizar Contraseña"><i class="bx bx-check-shield"></i></button>
-                            </div>
-                        </div>
-                        
-                        <!-- Admin User Management Panel (hidden by default) -->
-                        <div id="admin-user-panel" style="display: none; margin-top: 25px; padding-top: 25px; border-top: 1px solid var(--border-glass);" class="anim-fade">
-                            <h3 style="font-size: 0.95rem; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Administración de Usuarios</h3>
-                            <div class="users-list-container" id="admin-users-list" style="margin-bottom: 15px; display: flex; flex-direction: column; gap: 8px;">
-                                <!-- Populated dynamically -->
-                            </div>
-                            <button id="btn-add-user" type="button" class="btn-premium btn-secondary" style="margin-bottom: 20px;">
-                                <i class="bx bx-user-plus"></i> NUEVO USUARIO
-                            </button>
-
-                            <h3 style="font-size: 0.95rem; margin-top: 25px; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; border-top: 1px solid var(--border-glass); padding-top: 20px;">Clientes de Rutas</h3>
-                            <button id="btn-go-to-clients-db" type="button" class="btn-premium btn-secondary" style="margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                                <i class="bx bx-folder"></i> GESTIONAR BASE DE DATOS DE CLIENTES
-                            </button>
-
-                            <h3 style="font-size: 0.95rem; margin-top: 25px; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; border-top: 1px solid var(--border-glass); padding-top: 20px;">Control de Flota</h3>
-                            <button id="btn-open-fleet-settings" type="button" class="btn-premium btn-secondary" style="margin-bottom: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                                <i class="bx bx-car"></i> CONFIGURAR RESPONSABLE DE FLOTA
-                            </button>
-
-                            <!-- IMPORT HISTÓRICO DE REPOSTAJES (v1.21.03) -->
-                            <div class="glass-card" style="padding: 16px; margin-top: 16px; margin-bottom: 20px; border: 1px solid var(--border-glass); border-radius: var(--radius-md); background: rgba(18, 19, 26, 0.75);">
-                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                                    <i class="bx bx-gas-pump" style="color: var(--accent); font-size: 1.25rem;"></i>
-                                    <h4 style="margin: 0; font-size: 0.9rem; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">Importar Histórico de Repostajes</h4>
+                                        <button id="btn-save-settings" class="btn-premium" style="margin-top: 6px; width: 100%;">
+                                            <i class="bx bx-save"></i> GUARDAR AJUSTES DE APARIENCIA
+                                        </button>
+                                    </div>
                                 </div>
-                                <div style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
-                                    Sube un archivo Excel (<code>.xlsx</code>, <code>.xls</code>) o <code>.csv</code> con repostajes antiguos para calcular consumos medios, costes por kilómetro y registrar vehículos en la flota.
+                            </div>
+
+                            <!-- PESTAÑA 3: PERSONALIZACIÓN DE MENÚS (DASHBOARD & BARRA INFERIOR) -->
+                            <div class="settings-accordion-item" id="acc-item-customization">
+                                <div class="settings-accordion-header" id="accordion-personalization">
+                                    <div class="settings-header-left">
+                                        <div class="settings-header-icon">
+                                            <i class="bx bx-slider-alt"></i>
+                                        </div>
+                                        <div class="settings-header-titles">
+                                            <h3 class="settings-header-title">Personalización de Accesos</h3>
+                                            <p class="settings-header-subtitle">Organizar accesos del Dashboard y barra inferior</p>
+                                        </div>
+                                    </div>
+                                    <div class="settings-header-right">
+                                        <span class="settings-cat-badge">Accesos</span>
+                                        <i class="bx bx-chevron-down settings-chevron"></i>
+                                    </div>
                                 </div>
-                                
-                                <!-- Expected Excel Columns Format Box -->
-                                <div style="overflow-x: auto; margin-bottom: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass); background: rgba(0,0,0,0.25);">
-                                    <table style="width: 100%; font-size: 0.7rem; border-collapse: collapse; text-align: left; min-width: 520px;">
-                                        <thead>
-                                            <tr style="background: rgba(59, 130, 246, 0.15); color: var(--accent); font-weight: 700;">
-                                                <th style="padding: 6px 8px; border-bottom: 1px solid var(--border-glass);">1. FECHA</th>
-                                                <th style="padding: 6px 8px; border-bottom: 1px solid var(--border-glass);">2. UBICACION</th>
-                                                <th style="padding: 6px 8px; border-bottom: 1px solid var(--border-glass);">3. VEHICULO / MATRICULA</th>
-                                                <th style="padding: 6px 8px; border-bottom: 1px solid var(--border-glass);">4. KILOMETROS</th>
-                                                <th style="padding: 6px 8px; border-bottom: 1px solid var(--border-glass);">5. TIPO DE GASTO</th>
-                                                <th style="padding: 6px 8px; border-bottom: 1px solid var(--border-glass);">6. COSTE</th>
-                                                <th style="padding: 6px 8px; border-bottom: 1px solid var(--border-glass);">7. concepto</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr style="color: var(--text-secondary);">
-                                                <td style="padding: 6px 8px;">2023-05-14</td>
-                                                <td style="padding: 6px 8px;">Repsol Madrid</td>
-                                                <td style="padding: 6px 8px;">1234ABC</td>
-                                                <td style="padding: 6px 8px;">125430</td>
-                                                <td style="padding: 6px 8px;">Combustible</td>
-                                                <td style="padding: 6px 8px;">55.40 €</td>
-                                                <td style="padding: 6px 8px;">Diesel Plus 38L</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                                <div class="settings-accordion-body" id="personalization-content">
+                                    <div class="settings-accordion-inner">
+                                        <div style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 4px; line-height: 1.4;">
+                                            Ordena los accesos rápidos de la pantalla principal (Dashboard) y de la barra inferior (Menú Rápido) a tu comodidad.
+                                        </div>
+                                        
+                                        <h5 style="font-size: 0.8rem; color: var(--text-primary); margin-bottom: 6px; font-weight: 600;">1. Orden de la Pantalla Principal (Dashboard)</h5>
+                                        <div id="customize-dashboard-list" class="layout-list" style="margin-bottom: 10px;">
+                                            <!-- Populated dynamically in app.js -->
+                                        </div>
+                                        
+                                        <h5 style="font-size: 0.8rem; color: var(--text-primary); margin-bottom: 6px; font-weight: 600;">2. Orden de la Barra Inferior (Menú Rápido)</h5>
+                                        <div id="customize-nav-list" class="layout-list">
+                                            <!-- Populated dynamically in app.js -->
+                                        </div>
+                                        
+                                        <button id="btn-save-layout" type="button" class="btn-premium" style="width: 100%; margin-top: 5px; background: var(--accent-gradient);">
+                                            <i class="bx bx-check-double"></i> APLICAR DISEÑO PERSONALIZADO
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- CONTENEDOR DE ADMINISTRACIÓN (Solo Admin y Resp. Técnico) -->
+                            <div id="admin-user-panel" style="display: none; display: flex; flex-direction: column; gap: 12px;">
+
+                                <!-- PESTAÑA 4: USUARIOS Y PERMISOS -->
+                                <div class="settings-accordion-item admin-theme" id="acc-item-users">
+                                    <div class="settings-accordion-header" id="accordion-users">
+                                        <div class="settings-header-left">
+                                            <div class="settings-header-icon admin-icon">
+                                                <i class="bx bx-shield-quarter"></i>
+                                            </div>
+                                            <div class="settings-header-titles">
+                                                <h3 class="settings-header-title">Usuarios y Permisos</h3>
+                                                <p class="settings-header-subtitle">Gestión de técnicos, roles y accesos a módulos</p>
+                                            </div>
+                                        </div>
+                                        <div class="settings-header-right">
+                                            <span class="settings-cat-badge admin-badge">ADMIN</span>
+                                            <i class="bx bx-chevron-down settings-chevron"></i>
+                                        </div>
+                                    </div>
+                                    <div class="settings-accordion-body" id="acc-content-users">
+                                        <div class="settings-accordion-inner">
+                                            <div class="users-list-container" id="admin-users-list" style="display: flex; flex-direction: column; gap: 8px;">
+                                                <!-- Populated dynamically -->
+                                            </div>
+                                            <button id="btn-add-user" type="button" class="btn-premium" style="width: 100%; margin-top: 4px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #000; font-weight: 700;">
+                                                <i class="bx bx-user-plus"></i> CREAR NUEVO USUARIO
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                                    <button id="btn-download-refuels-template" type="button" class="btn-premium btn-secondary" style="flex: 1; min-width: 140px; padding: 10px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                                        <i class="bx bx-download"></i> Descargar Plantilla
-                                    </button>
-                                    <label for="input-import-refuels-excel" class="btn-premium" style="flex: 1; min-width: 140px; padding: 10px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; margin: 0; text-align: center; background: var(--accent-gradient);">
-                                        <i class="bx bx-upload"></i> Subir Excel / CSV
-                                    </label>
-                                    <input type="file" id="input-import-refuels-excel" accept=".xlsx, .xls, .csv" style="display: none;">
+                                <!-- PESTAÑA 5: CLIENTES Y RUTAS -->
+                                <div class="settings-accordion-item admin-theme" id="acc-item-routes-admin">
+                                    <div class="settings-accordion-header" id="accordion-routes-admin">
+                                        <div class="settings-header-left">
+                                            <div class="settings-header-icon admin-icon">
+                                                <i class="bx bx-map-pin"></i>
+                                            </div>
+                                            <div class="settings-header-titles">
+                                                <h3 class="settings-header-title">Clientes de Rutas</h3>
+                                                <p class="settings-header-subtitle">Base de datos de clientes, ubicaciones y geocodificación</p>
+                                            </div>
+                                        </div>
+                                        <div class="settings-header-right">
+                                            <span class="settings-cat-badge admin-badge">ADMIN</span>
+                                            <i class="bx bx-chevron-down settings-chevron"></i>
+                                        </div>
+                                    </div>
+                                    <div class="settings-accordion-body" id="acc-content-routes-admin">
+                                        <div class="settings-accordion-inner">
+                                            <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;">
+                                                Administra y actualiza la lista centralizada de clientes de mantenimiento, asignación de sistemas y coordenadas GPS para el optimizador de rutas.
+                                            </div>
+                                            <button id="btn-go-to-clients-db" type="button" class="btn-premium btn-secondary" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                                <i class="bx bx-folder"></i> GESTIONAR BASE DE DATOS DE CLIENTES
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div id="refuels-import-status" style="font-size: 0.78rem; color: var(--accent); margin-top: 8px; display: none; font-weight: 600;"></div>
+
+                                <!-- PESTAÑA 6: CONTROL DE FLOTA Y REPOSTAJES -->
+                                <div class="settings-accordion-item admin-theme" id="acc-item-fleet">
+                                    <div class="settings-accordion-header" id="accordion-fleet">
+                                        <div class="settings-header-left">
+                                            <div class="settings-header-icon admin-icon">
+                                                <i class="bx bx-car"></i>
+                                            </div>
+                                            <div class="settings-header-titles">
+                                                <h3 class="settings-header-title">Control de Flota y Repostajes</h3>
+                                                <p class="settings-header-subtitle">Responsable de flota e importación histórica Excel</p>
+                                            </div>
+                                        </div>
+                                        <div class="settings-header-right">
+                                            <span class="settings-cat-badge admin-badge">ADMIN</span>
+                                            <i class="bx bx-chevron-down settings-chevron"></i>
+                                        </div>
+                                    </div>
+                                    <div class="settings-accordion-body" id="acc-content-fleet">
+                                        <div class="settings-accordion-inner">
+                                            <button id="btn-open-fleet-settings" type="button" class="btn-premium btn-secondary" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                                <i class="bx bx-user-check"></i> CONFIGURAR RESPONSABLE DE FLOTA
+                                            </button>
+
+                                            <!-- IMPORT HISTÓRICO DE REPOSTAJES (v1.21.03) -->
+                                            <div class="glass-card" style="padding: 16px; border: 1px solid var(--border-glass); border-radius: var(--radius-md); background: rgba(18, 19, 26, 0.75);">
+                                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                                    <i class="bx bx-gas-pump" style="color: var(--accent); font-size: 1.25rem;"></i>
+                                                    <h4 style="margin: 0; font-size: 0.9rem; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">Importar Histórico de Repostajes</h4>
+                                                </div>
+                                                <div style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
+                                                    Sube un archivo Excel (<code>.xlsx</code>, <code>.xls</code>) o <code>.csv</code> con repostajes antiguos para calcular consumos medios, costes por kilómetro y registrar vehículos en la flota.
+                                                </div>
+                                                
+                                                <!-- Expected Excel Columns Format Box -->
+                                                <div style="overflow-x: auto; margin-bottom: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass); background: rgba(0,0,0,0.25);">
+                                                    <table style="width: 100%; font-size: 0.7rem; border-collapse: collapse; text-align: left; min-width: 520px;">
+                                                        <thead>
+                                                            <tr style="background: rgba(59, 130, 246, 0.15); color: var(--accent); font-weight: 700;">
+                                                                <th style="padding: 6px 8px; border-bottom: 1px solid var(--border-glass);">1. FECHA</th>
+                                                                <th style="padding: 6px 8px; border-bottom: 1px solid var(--border-glass);">2. UBICACION</th>
+                                                                <th style="padding: 6px 8px; border-bottom: 1px solid var(--border-glass);">3. VEHICULO / MATRICULA</th>
+                                                                <th style="padding: 6px 8px; border-bottom: 1px solid var(--border-glass);">4. KILOMETROS</th>
+                                                                <th style="padding: 6px 8px; border-bottom: 1px solid var(--border-glass);">5. TIPO DE GASTO</th>
+                                                                <th style="padding: 6px 8px; border-bottom: 1px solid var(--border-glass);">6. COSTE</th>
+                                                                <th style="padding: 6px 8px; border-bottom: 1px solid var(--border-glass);">7. CONCEPTO</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr style="color: var(--text-secondary);">
+                                                                <td style="padding: 6px 8px;">2023-05-14</td>
+                                                                <td style="padding: 6px 8px;">Repsol Madrid</td>
+                                                                <td style="padding: 6px 8px;">1234ABC</td>
+                                                                <td style="padding: 6px 8px;">125430</td>
+                                                                <td style="padding: 6px 8px;">Combustible</td>
+                                                                <td style="padding: 6px 8px;">55.40 €</td>
+                                                                <td style="padding: 6px 8px;">Diesel Plus 38L</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+
+                                                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                                    <button id="btn-download-refuels-template" type="button" class="btn-premium btn-secondary" style="flex: 1; min-width: 140px; padding: 10px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                                        <i class="bx bx-download"></i> Descargar Plantilla
+                                                    </button>
+                                                    <label for="input-import-refuels-excel" class="btn-premium" style="flex: 1; min-width: 140px; padding: 10px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; margin: 0; text-align: center; background: var(--accent-gradient);">
+                                                        <i class="bx bx-upload"></i> Subir Excel / CSV
+                                                    </label>
+                                                    <input type="file" id="input-import-refuels-excel" accept=".xlsx, .xls, .csv" style="display: none;">
+                                                </div>
+                                                <div id="refuels-import-status" style="font-size: 0.78rem; color: var(--accent); margin-top: 8px; display: none; font-weight: 600;"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div> <!-- Cierre de #admin-user-panel -->
+
+                            <!-- PESTAÑA 7: INFORMACIÓN DEL SISTEMA Y SESIÓN -->
+                            <div class="settings-accordion-item" id="acc-item-system">
+                                <div class="settings-accordion-header" id="accordion-system">
+                                    <div class="settings-header-left">
+                                        <div class="settings-header-icon">
+                                            <i class="bx bx-info-circle"></i>
+                                        </div>
+                                        <div class="settings-header-titles">
+                                            <h3 class="settings-header-title">Sistema y Sesión</h3>
+                                            <p class="settings-header-subtitle">Versión v1.22.03, almacenamiento y cierre</p>
+                                        </div>
+                                    </div>
+                                    <div class="settings-header-right">
+                                        <span class="settings-cat-badge">Sistema</span>
+                                        <i class="bx bx-chevron-down settings-chevron"></i>
+                                    </div>
+                                </div>
+                                <div class="settings-accordion-body" id="acc-content-system">
+                                    <div class="settings-accordion-inner">
+                                        <div class="settings-version-card">
+                                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                                <span style="font-weight: 700; color: var(--text-primary); font-size: 0.9rem;">ATS Seguridad</span>
+                                                <span class="badge" style="background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3); font-size: 0.75rem;">v1.22.03</span>
+                                            </div>
+                                            <div style="font-size: 0.78rem; color: var(--text-secondary);">
+                                                Aplicación Web Progresiva (PWA) con almacenamiento local cifrado AES-GCM y sincronización Git.
+                                            </div>
+                                        </div>
+
+                                        <button id="btn-logout" class="btn-premium btn-secondary" style="width: 100%; border-color: rgba(239, 68, 68, 0.4); color: #f87171; background: rgba(239, 68, 68, 0.08);">
+                                            <i class="bx bx-log-out"></i> CERRAR SESIÓN
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        
-                        <button id="btn-logout" class="btn-premium btn-secondary" style="margin-top: 12px; margin-bottom: 20px;">
-                            <i class="bx bx-log-out"></i> CERRAR SESIÓN
-                        </button>
+
+                        </div> <!-- Cierre de .settings-accordion-group -->
                     </div>
                 </div>
-
         
         <!-- L. EDIT USER FORM -->
         <div id="screen-form-user" class="screen">
