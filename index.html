@@ -873,28 +873,46 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Secciones Permitidas</label>
-                    <div style="display: flex; flex-direction: column; gap: 10px; padding: 12px; background: var(--bg-secondary); border-radius: var(--radius-md); border: 1px solid var(--border-glass);">
-                        <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 0; cursor: pointer; color: var(--text-primary); font-weight: normal;">
-                            <input type="checkbox" id="user-scope-passwords" checked style="width: 18px; height: 18px; accent-color: var(--accent);"> Contraseñas (Webs)
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label style="margin: 0;">Secciones y Permisos de Acceso</label>
+                        <div style="display: flex; gap: 6px;">
+                            <button type="button" id="btn-user-scopes-select-all" class="btn-premium btn-secondary" style="padding: 2px 8px; font-size: 0.7rem; margin: 0;">Marcar Todos</button>
+                            <button type="button" id="btn-user-scopes-clear-all" class="btn-premium btn-secondary" style="padding: 2px 8px; font-size: 0.7rem; margin: 0;">Desmarcar</button>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; padding: 12px; background: var(--bg-secondary); border-radius: var(--radius-md); border: 1px solid var(--border-glass);">
+                        <label class="scope-checkbox-label">
+                            <input type="checkbox" id="user-scope-passwords" checked> <span>🌐 Contraseñas</span>
                         </label>
-                        <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 0; cursor: pointer; color: var(--text-primary); font-weight: normal;">
-                            <input type="checkbox" id="user-scope-subscribers" checked style="width: 18px; height: 18px; accent-color: var(--accent);"> Abonados
+                        <label class="scope-checkbox-label">
+                            <input type="checkbox" id="user-scope-subscribers" checked> <span>🔔 Abonados</span>
                         </label>
-                        <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 0; cursor: pointer; color: var(--text-primary); font-weight: normal;">
-                            <input type="checkbox" id="user-scope-manuals" checked style="width: 18px; height: 18px; accent-color: var(--accent);"> Manuales
+                        <label class="scope-checkbox-label">
+                            <input type="checkbox" id="user-scope-manuals" checked> <span>📚 Manuales</span>
                         </label>
-                        <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 0; cursor: pointer; color: var(--text-primary); font-weight: normal;">
-                            <input type="checkbox" id="user-scope-expenses" checked style="width: 18px; height: 18px; accent-color: var(--accent);"> Gastos
+                        <label class="scope-checkbox-label">
+                            <input type="checkbox" id="user-scope-expenses" checked> <span>💰 Gastos</span>
                         </label>
-                        <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 0; cursor: pointer; color: var(--text-primary); font-weight: normal;">
-                            <input type="checkbox" id="user-scope-commercial" checked style="width: 18px; height: 18px; accent-color: var(--accent);"> Preventa / Comercial
+                        <label class="scope-checkbox-label">
+                            <input type="checkbox" id="user-scope-commercial" checked> <span>📝 Comercial</span>
                         </label>
-                        <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 0; cursor: pointer; color: var(--text-primary); font-weight: normal;">
-                            <input type="checkbox" id="user-scope-vacations" checked style="width: 18px; height: 18px; accent-color: var(--accent);"> Vacaciones
+                        <label class="scope-checkbox-label">
+                            <input type="checkbox" id="user-scope-vacations" checked> <span>📅 Vacaciones</span>
                         </label>
-                        <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 0; cursor: pointer; color: var(--text-primary); font-weight: normal;">
-                            <input type="checkbox" id="user-scope-routes" checked style="width: 18px; height: 18px; accent-color: var(--accent);"> Rutas Diarias
+                        <label class="scope-checkbox-label">
+                            <input type="checkbox" id="user-scope-routes" checked> <span>🚗 Rutas</span>
+                        </label>
+                        <label class="scope-checkbox-label">
+                            <input type="checkbox" id="user-scope-sims" checked> <span>💳 Tarjetas SIM</span>
+                        </label>
+                        <label class="scope-checkbox-label">
+                            <input type="checkbox" id="user-scope-vehicles" checked> <span>🚘 Flota / Vehículos</span>
+                        </label>
+                        <label class="scope-checkbox-label">
+                            <input type="checkbox" id="user-scope-warehouse" checked> <span>📦 Almacén y Stock</span>
+                        </label>
+                        <label class="scope-checkbox-label">
+                            <input type="checkbox" id="user-scope-audit" checked> <span>📊 Auditoría</span>
                         </label>
                     </div>
                 </div>

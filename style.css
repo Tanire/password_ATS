@@ -2463,4 +2463,56 @@ body.device-mobile #warehouse-list-container {
     gap: 10px !important;
 }
 
+/* User Permissions & Scopes v1.22.01 */
+.scope-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 0;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: 0.85rem;
+    padding: 9px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+    transition: all 0.2s ease;
+    user-select: none;
+}
+.scope-checkbox-label:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: var(--accent);
+}
+.scope-checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+.scope-badge-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.7rem;
+    padding: 2px 7px;
+    background: rgba(59, 130, 246, 0.12);
+    color: #93c5fd;
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    border-radius: 6px;
+    font-weight: 500;
+}
+.scope-badge-admin {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    border-radius: 12px;
+    font-weight: 600;
+}
+
 

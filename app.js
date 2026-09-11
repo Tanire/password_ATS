@@ -141,6 +141,27 @@ const state = {
     tempRoundPhotoBase64: ''
 };
 
+// Application Module Scopes v1.22.01
+const ALL_APP_SCOPES = [
+    "passwords", "subscribers", "manuals", "expenses",
+    "commercial", "vacations", "routes", "sims",
+    "vehicles", "warehouse", "audit"
+];
+
+const SCOPES_METADATA = {
+    passwords: { label: "Contraseñas", icon: "bx-key", color: "#60a5fa" },
+    subscribers: { label: "Abonados", icon: "bx-bell", color: "#34d399" },
+    manuals: { label: "Manuales", icon: "bx-book", color: "#fbbf24" },
+    expenses: { label: "Gastos", icon: "bx-wallet", color: "#f87171" },
+    commercial: { label: "Comercial", icon: "bx-briefcase", color: "#a78bfa" },
+    vacations: { label: "Vacaciones", icon: "bx-calendar", color: "#38bdf8" },
+    routes: { label: "Rutas", icon: "bx-navigation", color: "#4ade80" },
+    sims: { label: "SIMs", icon: "bx-card", color: "#f472b6" },
+    vehicles: { label: "Flota", icon: "bx-car", color: "#fb923c" },
+    warehouse: { label: "Almacén", icon: "bx-package", color: "#818cf8" },
+    audit: { label: "Auditoría", icon: "bx-bar-chart-alt-2", color: "#e879f9" }
+};
+
 // Personalización de Interfaz v1.19.01
 const DEFAULT_LAYOUTS = {
     dashboard_order: ["passwords", "subscribers", "manuals", "expenses", "commercial", "vacations", "routes", "sims", "vehicles", "warehouse", "audit"],
@@ -809,6 +830,31 @@ function setupEventListeners() {
     document.getElementById("btn-add-user").addEventListener("click", () => openUserForm(null));
     document.getElementById("btn-new-manual").addEventListener("click", () => openManualForm(null));
 
+    // User Scope selection helpers v1.22.01
+    const btnSelectAllScopes = document.getElementById("btn-user-scopes-select-all");
+    if (btnSelectAllScopes) {
+        btnSelectAllScopes.addEventListener("click", () => {
+            const canManage = state.currentUser && (state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico");
+            if (!canManage) return;
+            ALL_APP_SCOPES.forEach(s => {
+                const el = document.getElementById(`user-scope-${s}`);
+                if (el && !el.disabled) el.checked = true;
+            });
+        });
+    }
+
+    const btnClearAllScopes = document.getElementById("btn-user-scopes-clear-all");
+    if (btnClearAllScopes) {
+        btnClearAllScopes.addEventListener("click", () => {
+            const canManage = state.currentUser && (state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico");
+            if (!canManage) return;
+            ALL_APP_SCOPES.forEach(s => {
+                const el = document.getElementById(`user-scope-${s}`);
+                if (el && !el.disabled) el.checked = false;
+            });
+        });
+    }
+
     // Back buttons
     document.getElementById("btn-back-passwords").addEventListener("click", () => switchScreen("passwords"));
     document.getElementById("btn-back-subscribers").addEventListener("click", () => switchScreen("subscribers"));
@@ -1328,18 +1374,20 @@ function switchScreen(screenId) {
     if (state.currentUser && state.currentUser.role !== "admin") {
         const scopes = state.currentUser.scope || [];
         const isFuelAdmin = state.currentUser.role === "encargado_combustible";
-        if (screenId === "passwords" && !scopes.includes("passwords")) return;
-        if (screenId === "subscribers" && !scopes.includes("subscribers")) return;
-        if (screenId === "subscriber-view" && !scopes.includes("subscribers")) return;
-        if (screenId === "manuals" && !scopes.includes("manuals")) return;
-        if (screenId === "manuals-list" && !scopes.includes("manuals")) return;
-        if (screenId === "manual-view" && !scopes.includes("manuals")) return;
-        if (["commercial-home", "commercial-client-details", "commercial-disciplines", "commercial-wizard", "commercial-migration", "commercial-summary", "commercial-rounds"].includes(screenId) && !scopes.includes("commercial")) return;
+        const isTechLead = state.currentUser.role === "responsable_tecnico";
+
+        if (["passwords", "form-password"].includes(screenId) && !scopes.includes("passwords")) return;
+        if (["subscribers", "form-subscriber", "subscriber-view"].includes(screenId) && !scopes.includes("subscribers")) return;
+        if (["manuals", "manuals-list", "manual-view", "form-manual"].includes(screenId) && !scopes.includes("manuals")) return;
         if (["expenses-submenu", "hours", "diets", "materials", "form-hour", "form-diet", "form-material", "expenses", "form-expense"].includes(screenId) && !scopes.includes("expenses") && !isFuelAdmin) return;
-        if (screenId === "vacations" && !scopes.includes("vacations")) return;
-        if (screenId === "routes" && !scopes.includes("routes")) return;
-        if (["sims", "form-sim"].includes(screenId) && !scopes.includes("subscribers")) return;
-        if (screenId === "audit" || screenId === "admin-routes-clients") return; // Non-admin cannot access audit or client DB admin
+        if (["commercial-home", "commercial-history", "commercial-client-details", "commercial-disciplines", "commercial-wizard", "commercial-migration", "commercial-summary", "commercial-rounds"].includes(screenId) && !scopes.includes("commercial")) return;
+        if (["vacations"].includes(screenId) && !scopes.includes("vacations")) return;
+        if (["routes"].includes(screenId) && !scopes.includes("routes")) return;
+        if (["admin-routes-clients"].includes(screenId) && !scopes.includes("routes") && !isTechLead) return;
+        if (["sims", "form-sim"].includes(screenId) && !scopes.includes("sims")) return;
+        if (["vehicles", "vehicle-detail", "form-vehicle", "form-vehicle-incident", "form-vehicle-maintenance"].includes(screenId) && !scopes.includes("vehicles") && !isFuelAdmin) return;
+        if (["warehouse", "form-warehouse-item"].includes(screenId) && !scopes.includes("warehouse")) return;
+        if (screenId === "audit" && !scopes.includes("audit") && !isTechLead) return;
     }
 
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -1350,14 +1398,24 @@ function switchScreen(screenId) {
     state.currentScreen = screenId;
 
     // Highlight nav item
-    els.navItems.forEach(item => {
-        item.classList.remove("active");
-        const itemScreen = item.getAttribute("data-screen");
-        if (itemScreen === screenId || 
-            (itemScreen === "expenses-submenu" && ["hours", "diets", "materials", "form-hour", "form-diet", "form-material", "expenses", "form-expense"].includes(screenId))) {
-            item.classList.add("active");
-        }
-    });
+    if (els.navItems) {
+        els.navItems.forEach(item => {
+            item.classList.remove("active");
+            const itemScreen = item.getAttribute("data-screen");
+            if (itemScreen === screenId || 
+                (itemScreen === "expenses-submenu" && ["hours", "diets", "materials", "form-hour", "form-diet", "form-material", "expenses", "form-expense"].includes(screenId)) ||
+                (itemScreen === "subscribers" && ["form-subscriber", "subscriber-view"].includes(screenId)) ||
+                (itemScreen === "passwords" && screenId === "form-password") ||
+                (itemScreen === "manuals" && ["manuals-list", "manual-view", "form-manual"].includes(screenId)) ||
+                (itemScreen === "sims" && screenId === "form-sim") ||
+                (itemScreen === "vehicles" && ["vehicle-detail", "form-vehicle", "form-vehicle-incident", "form-vehicle-maintenance"].includes(screenId)) ||
+                (itemScreen === "warehouse" && ["warehouse", "form-warehouse-item"].includes(screenId)) ||
+                (itemScreen === "settings" && ["form-user", "admin-routes-clients"].includes(screenId)) ||
+                (itemScreen === "commercial" && ["commercial-home", "commercial-history", "commercial-client-details", "commercial-disciplines", "commercial-wizard", "commercial-migration", "commercial-summary", "commercial-rounds"].includes(screenId))) {
+                item.classList.add("active");
+            }
+        });
+    }
 
     // Load dynamic data on switch
     if (screenId === "passwords") renderPasswords();
@@ -1535,11 +1593,11 @@ async function handleUnlock() {
         // Automatic default admin user initialization on first unlock
         if (userCount === 0) {
             state.vault.users = [
-                { username: "admin", role: "admin", scope: ["passwords", "subscribers", "manuals", "expenses", "commercial", "vacations"] }
+                { username: "admin", role: "admin", scope: [...ALL_APP_SCOPES] }
             ];
             const adminWrapped = await encryptData(vaultKey, vaultKey);
             state.usersMetadata["admin"] = adminWrapped;
-            state.vault.version = "1.21.03";
+            state.vault.version = "1.22.01";
             state.vault.company_name = "ALTA TECNOLOGIA PARA LA SEGURIDAD";
         }
         
@@ -1550,7 +1608,7 @@ async function handleUnlock() {
             activeUser = {
                 username: loggedInUsername,
                 role: loggedInUsername === "admin" ? "admin" : "viewer",
-                scope: loggedInUsername === "admin" ? ["passwords", "subscribers", "manuals", "expenses", "commercial", "vacations"] : []
+                scope: loggedInUsername === "admin" ? [...ALL_APP_SCOPES] : []
             };
         }
         
@@ -3470,10 +3528,10 @@ function applyUserPrivileges(user) {
                     (key === "commercial" && (scopes.includes("commercial") || user.role === "admin")) ||
                     (key === "vacations" && (scopes.includes("vacations") || user.role === "admin")) ||
                     (key === "routes" && (scopes.includes("routes") || user.role === "admin")) ||
-                    (key === "sims" && (scopes.includes("subscribers") || user.role === "admin")) ||
-                    (key === "vehicles") ||
-                    (key === "warehouse") ||
-                    (key === "audit" && (user.role === "admin" || user.role === "responsable_tecnico"))
+                    (key === "sims" && (scopes.includes("sims") || user.role === "admin")) ||
+                    (key === "vehicles" && (scopes.includes("vehicles") || user.role === "admin" || user.role === "encargado_combustible")) ||
+                    (key === "warehouse" && (scopes.includes("warehouse") || user.role === "admin")) ||
+                    (key === "audit" && (scopes.includes("audit") || user.role === "admin" || user.role === "responsable_tecnico"))
                 );
 
                 card.style.display = isAllowed ? "flex" : "none";
@@ -3503,8 +3561,9 @@ function applyUserPrivileges(user) {
                 (key === "commercial" && (scopes.includes("commercial") || user.role === "admin")) ||
                 (key === "vacations" && (scopes.includes("vacations") || user.role === "admin")) ||
                 (key === "routes" && (scopes.includes("routes") || user.role === "admin")) ||
-                (key === "sims" && (scopes.includes("subscribers") || user.role === "admin")) ||
-                (key === "vehicles")
+                (key === "sims" && (scopes.includes("sims") || user.role === "admin")) ||
+                (key === "vehicles" && (scopes.includes("vehicles") || user.role === "admin" || user.role === "encargado_combustible")) ||
+                (key === "warehouse" && (scopes.includes("warehouse") || user.role === "admin"))
             );
 
             if (isAllowed) {
@@ -3512,7 +3571,13 @@ function applyUserPrivileges(user) {
                 div.className = "nav-item";
                 if (state.currentScreen === meta.screen || 
                     (key === "expenses-submenu" && ["hours", "diets", "materials", "form-hour", "form-diet", "form-material", "expenses", "form-expense"].includes(state.currentScreen)) ||
-                    (key === "settings" && state.currentScreen === "admin-routes-clients") ||
+                    (key === "settings" && ["form-user", "admin-routes-clients"].includes(state.currentScreen)) ||
+                    (key === "subscribers" && ["form-subscriber", "subscriber-view"].includes(state.currentScreen)) ||
+                    (key === "passwords" && state.currentScreen === "form-password") ||
+                    (key === "manuals" && ["manuals-list", "manual-view", "form-manual"].includes(state.currentScreen)) ||
+                    (key === "sims" && state.currentScreen === "form-sim") ||
+                    (key === "vehicles" && ["vehicle-detail", "form-vehicle", "form-vehicle-incident", "form-vehicle-maintenance"].includes(state.currentScreen)) ||
+                    (key === "warehouse" && ["warehouse", "form-warehouse-item"].includes(state.currentScreen)) ||
                     (key === "commercial" && ["commercial-home", "commercial-client-details", "commercial-disciplines", "commercial-wizard", "commercial-migration", "commercial-summary", "commercial-rounds", "commercial-history"].includes(state.currentScreen))) {
                     div.className = "nav-item active";
                 }
@@ -3879,16 +3944,37 @@ function renderAdminUsers() {
         item.style.display = "flex";
         item.style.justifyContent = "space-between";
         item.style.alignItems = "center";
-        item.style.padding = "10px 14px";
+        item.style.padding = "12px 14px";
         item.style.background = "rgba(255, 255, 255, 0.03)";
         item.style.border = "1px solid var(--border-glass)";
         item.style.borderRadius = "var(--radius-sm)";
         item.style.fontSize = "0.9rem";
+        item.style.marginBottom = "8px";
         
+        let scopeHtml = "";
+        if (u.role === "admin") {
+            scopeHtml = `<span class="scope-badge-admin"><i class="bx bx-shield-quarter"></i> Acceso Total (Admin)</span>`;
+        } else if (u.scope && u.scope.length > 0) {
+            scopeHtml = `<div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:5px;">` + 
+                u.scope.map(s => {
+                    const info = SCOPES_METADATA[s] || { label: s, icon: "bx-check", color: "#93c5fd" };
+                    return `<span class="scope-badge-pill"><i class="bx ${info.icon}" style="font-size:0.75rem;"></i>${info.label}</span>`;
+                }).join('') + 
+                `</div>`;
+        } else {
+            scopeHtml = `<div style="font-size:0.75rem; color:var(--text-secondary); font-style:italic; margin-top:4px;">Sin permisos de acceso asignados</div>`;
+        }
+
         const details = document.createElement("div");
+        details.style.flex = "1";
+        details.style.marginRight = "10px";
         details.innerHTML = `
-            <div style="font-weight:600;">${u.username} <span style="font-size:0.75rem; color:var(--accent); font-weight:normal; text-transform:uppercase;">(${u.role})</span></div>
-            <div style="font-size:0.75rem; color:var(--text-secondary);">Accesos: ${u.scope.join(', ') || 'ninguno'}</div>
+            <div style="font-weight:600; display:flex; align-items:center; gap:8px;">
+                <span>${u.username}</span>
+                <span style="font-size:0.72rem; color:var(--accent); font-weight:600; text-transform:uppercase; background:rgba(59,130,246,0.1); padding:1px 6px; border-radius:4px;">${u.role}</span>
+                ${u.fullName ? `<span style="font-size:0.75rem; color:var(--text-secondary); font-weight:normal;">• ${u.fullName}</span>` : ''}
+            </div>
+            <div style="margin-top: 2px;">${scopeHtml}</div>
         `;
         
         const actions = document.createElement("div");
@@ -3901,6 +3987,7 @@ function renderAdminUsers() {
         btnEdit.innerHTML = `<i class="bx bx-edit-alt"></i>`;
         btnEdit.style.width = "30px";
         btnEdit.style.height = "30px";
+        btnEdit.title = "Editar usuario y permisos";
         btnEdit.addEventListener("click", () => openUserForm(u));
         
         const btnDel = document.createElement("button");
@@ -3910,6 +3997,7 @@ function renderAdminUsers() {
         btnDel.style.width = "30px";
         btnDel.style.height = "30px";
         btnDel.style.color = "var(--danger)";
+        btnDel.title = "Eliminar usuario";
         if (u.username.toLowerCase() === state.currentUser.username.toLowerCase()) {
             btnDel.disabled = true;
             btnDel.style.opacity = "0.3";
@@ -3940,13 +4028,24 @@ function openUserForm(u = null) {
     // Disable role and scope fields if the current user is not admin and not responsable_tecnico
     const canManageRoles = state.currentUser && (state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico");
     roleSelect.disabled = !canManageRoles;
-    document.getElementById("user-scope-passwords").disabled = !canManageRoles;
-    document.getElementById("user-scope-subscribers").disabled = !canManageRoles;
-    document.getElementById("user-scope-manuals").disabled = !canManageRoles;
-    document.getElementById("user-scope-expenses").disabled = !canManageRoles;
-    document.getElementById("user-scope-commercial").disabled = !canManageRoles;
-    document.getElementById("user-scope-vacations").disabled = !canManageRoles;
-    document.getElementById("user-scope-routes").disabled = !canManageRoles;
+    
+    const btnSelectAllScopes = document.getElementById("btn-user-scopes-select-all");
+    const btnClearAllScopes = document.getElementById("btn-user-scopes-clear-all");
+    if (btnSelectAllScopes) btnSelectAllScopes.disabled = !canManageRoles;
+    if (btnClearAllScopes) btnClearAllScopes.disabled = !canManageRoles;
+
+    ALL_APP_SCOPES.forEach(s => {
+        const chk = document.getElementById(`user-scope-${s}`);
+        if (chk) {
+            chk.disabled = !canManageRoles;
+            if (u) {
+                // If user object has defined scopes, verify membership; if legacy user without scope, default true
+                chk.checked = u.scope ? u.scope.includes(s) : true;
+            } else {
+                chk.checked = true;
+            }
+        }
+    });
     
     if (u) {
         title.textContent = "Editar Usuario";
@@ -3956,14 +4055,6 @@ function openUserForm(u = null) {
         passInput.required = false;
         roleSelect.value = u.role;
         editId.value = u.username;
-        
-        document.getElementById("user-scope-passwords").checked = u.scope ? u.scope.includes("passwords") : true;
-        document.getElementById("user-scope-subscribers").checked = u.scope ? u.scope.includes("subscribers") : true;
-        document.getElementById("user-scope-manuals").checked = u.scope ? u.scope.includes("manuals") : true;
-        document.getElementById("user-scope-expenses").checked = u.scope ? u.scope.includes("expenses") : true;
-        document.getElementById("user-scope-commercial").checked = u.scope ? u.scope.includes("commercial") : true;
-        document.getElementById("user-scope-vacations").checked = u.scope ? u.scope.includes("vacations") : true;
-        document.getElementById("user-scope-routes").checked = u.scope ? u.scope.includes("routes") : true;
         
         // Profile fields
         document.getElementById("user-profile-fullname").value = u.fullName || "";
@@ -3982,14 +4073,6 @@ function openUserForm(u = null) {
         passInput.required = true;
         roleSelect.value = "editor";
         editId.value = "";
-        
-        document.getElementById("user-scope-passwords").checked = true;
-        document.getElementById("user-scope-subscribers").checked = true;
-        document.getElementById("user-scope-manuals").checked = true;
-        document.getElementById("user-scope-expenses").checked = true;
-        document.getElementById("user-scope-commercial").checked = true;
-        document.getElementById("user-scope-vacations").checked = true;
-        document.getElementById("user-scope-routes").checked = true;
         
         // Clear profile fields
         document.getElementById("user-profile-fullname").value = "";
@@ -4025,13 +4108,12 @@ async function saveUserAction(evt) {
     const role = document.getElementById("user-role-select").value;
     
     const scope = [];
-    if (document.getElementById("user-scope-passwords").checked) scope.push("passwords");
-    if (document.getElementById("user-scope-subscribers").checked) scope.push("subscribers");
-    if (document.getElementById("user-scope-manuals").checked) scope.push("manuals");
-    if (document.getElementById("user-scope-expenses").checked) scope.push("expenses");
-    if (document.getElementById("user-scope-commercial").checked) scope.push("commercial");
-    if (document.getElementById("user-scope-vacations").checked) scope.push("vacations");
-    if (document.getElementById("user-scope-routes").checked) scope.push("routes");
+    ALL_APP_SCOPES.forEach(s => {
+        const chk = document.getElementById(`user-scope-${s}`);
+        if (chk && chk.checked) {
+            scope.push(s);
+        }
+    });
     
     // Profile fields
     const fullName = document.getElementById("user-profile-fullname").value.trim();
@@ -4076,7 +4158,12 @@ async function saveUserAction(evt) {
                 
                 // Update currentUser in state if editing own profile
                 if (editId.toLowerCase() === state.currentUser.username.toLowerCase()) {
-                    state.currentUser = { ...state.currentUser, fullName, zona, delegacion, vehiculo, vehiculoBrandModel, tarjeta, hireDate, contractEnd };
+                    state.currentUser = {
+                        ...state.currentUser,
+                        role: canManageRoles ? role : state.currentUser.role,
+                        scope: canManageRoles ? scope : (state.currentUser.scope || []),
+                        fullName, zona, delegacion, vehiculo, vehiculoBrandModel, tarjeta, hireDate, contractEnd
+                    };
                     applyUserPrivileges(state.currentUser);
                 }
             }
@@ -9744,6 +9831,7 @@ function renderLocalDashboardList() {
         routes: "🚗 Rutas",
         sims: "💳 Tarjetas SIM",
         vehicles: "🚘 Flota de Vehículos",
+        warehouse: "📦 Almacén y Stock",
         audit: "📊 Auditoría"
     };
 
@@ -9756,9 +9844,10 @@ function renderLocalDashboardList() {
             (key === "commercial" && (scopes.includes("commercial") || state.currentUser.role === "admin")) ||
             (key === "vacations" && (scopes.includes("vacations") || state.currentUser.role === "admin")) ||
             (key === "routes" && (scopes.includes("routes") || state.currentUser.role === "admin")) ||
-            (key === "sims" && (scopes.includes("subscribers") || state.currentUser.role === "admin")) ||
-            (key === "vehicles") ||
-            (key === "audit" && (state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico"))
+            (key === "sims" && (scopes.includes("sims") || state.currentUser.role === "admin")) ||
+            (key === "vehicles" && (scopes.includes("vehicles") || state.currentUser.role === "admin" || state.currentUser.role === "encargado_combustible")) ||
+            (key === "warehouse" && (scopes.includes("warehouse") || state.currentUser.role === "admin")) ||
+            (key === "audit" && (scopes.includes("audit") || state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico"))
         );
 
         if (!isAllowed) return; // No mostrar lo que no tiene permitido
@@ -9829,6 +9918,7 @@ function renderLocalNavList() {
         routes: "🚗 Rutas",
         sims: "💳 SIMs",
         vehicles: "🚘 Vehículos",
+        warehouse: "📦 Almacén",
         settings: "⚙️ Ajustes"
     };
 
@@ -9843,8 +9933,9 @@ function renderLocalNavList() {
             (key === "commercial" && (scopes.includes("commercial") || state.currentUser.role === "admin")) ||
             (key === "vacations" && (scopes.includes("vacations") || state.currentUser.role === "admin")) ||
             (key === "routes" && (scopes.includes("routes") || state.currentUser.role === "admin")) ||
-            (key === "sims" && (scopes.includes("subscribers") || state.currentUser.role === "admin")) ||
-            (key === "vehicles")
+            (key === "sims" && (scopes.includes("sims") || state.currentUser.role === "admin")) ||
+            (key === "vehicles" && (scopes.includes("vehicles") || state.currentUser.role === "admin" || state.currentUser.role === "encargado_combustible")) ||
+            (key === "warehouse" && (scopes.includes("warehouse") || state.currentUser.role === "admin"))
         );
 
         if (!isAllowed) return;
