@@ -3021,8 +3021,11 @@ function populateAuthUsersChecklist(selectedUsers = []) {
 }
 
 function openPasswordForm(id = null) {
-    els.formPassword.reset();
-    document.getElementById("pass-id").value = "";
+    if (els.formPassword) {
+        els.formPassword.reset();
+    }
+    const idEl = document.getElementById("pass-id");
+    if (idEl) idEl.value = "";
     
     // Hide generator widget by default
     const genWidget = document.getElementById("pass-generator-widget");
@@ -3047,14 +3050,21 @@ function openPasswordForm(id = null) {
     if (id) {
         const entry = state.vault.entries.find(e => String(e.id) === String(id));
         if (entry) {
-            document.getElementById("password-form-title").textContent = "Editar Contraseña";
-            document.getElementById("pass-id").value = entry.id;
-            document.getElementById("pass-type").value = entry.tipo || entry.category || "web";
-            document.getElementById("pass-name").value = entry.nombre || "";
-            document.getElementById("pass-username").value = entry.usuario || "";
-            document.getElementById("pass-password").value = entry.password || "";
-            document.getElementById("pass-url").value = entry.url || "";
-            document.getElementById("pass-notes").value = entry.notes || "";
+            const titleEl = document.getElementById("password-form-title");
+            if (titleEl) titleEl.textContent = "Editar Contraseña";
+            if (idEl) idEl.value = entry.id;
+            const typeEl = document.getElementById("pass-type");
+            if (typeEl) typeEl.value = entry.tipo || entry.category || "web";
+            const nameEl = document.getElementById("pass-name");
+            if (nameEl) nameEl.value = entry.nombre || "";
+            const userEl = document.getElementById("pass-username");
+            if (userEl) userEl.value = entry.usuario || "";
+            const pInput = document.getElementById("pass-password");
+            if (pInput) pInput.value = entry.password || "";
+            const urlEl = document.getElementById("pass-url");
+            if (urlEl) urlEl.value = entry.url || "";
+            const notesEl = document.getElementById("pass-notes");
+            if (notesEl) notesEl.value = entry.notes || "";
             
             if (isFavChk) isFavChk.checked = entry.is_favorite === true;
 
@@ -3073,7 +3083,20 @@ function openPasswordForm(id = null) {
             updateFormPasswordStrength(entry.password || "");
         }
     } else {
-        document.getElementById("password-form-title").textContent = "Nueva Contraseña";
+        const titleEl = document.getElementById("password-form-title");
+        if (titleEl) titleEl.textContent = "Nueva Contraseña";
+        const nameEl = document.getElementById("pass-name");
+        if (nameEl) nameEl.value = "";
+        const userEl = document.getElementById("pass-username");
+        if (userEl) userEl.value = "";
+        const pInput = document.getElementById("pass-password");
+        if (pInput) pInput.value = "";
+        const urlEl = document.getElementById("pass-url");
+        if (urlEl) urlEl.value = "";
+        const notesEl = document.getElementById("pass-notes");
+        if (notesEl) notesEl.value = "";
+        const typeEl = document.getElementById("pass-type");
+        if (typeEl) typeEl.value = "web";
         if (scopeSelect) scopeSelect.value = "all";
         if (customUsersWrap) customUsersWrap.style.display = "none";
         if (isFavChk) isFavChk.checked = false;
@@ -3094,18 +3117,34 @@ async function savePasswordEntry(evt) {
         return;
     }
 
+    const id = (document.getElementById("pass-id")?.value || "").trim();
+    const tipo = document.getElementById("pass-type")?.value || "web";
+    const nombre = (document.getElementById("pass-name")?.value || "").trim();
+    const usuario = (document.getElementById("pass-username")?.value || "").trim();
+    const password = (document.getElementById("pass-password")?.value || "").trim();
+    const url = (document.getElementById("pass-url")?.value || "").trim();
+    const notes = (document.getElementById("pass-notes")?.value || "").trim();
+    const is_favorite = document.getElementById("pass-is-favorite")?.checked ?? false;
+    const canManageRestr = state.currentUser && (state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico");
+
+    if (!nombre) {
+        showToast("⚠️ Introduce el nombre del servicio");
+        document.getElementById("pass-name")?.focus();
+        return;
+    }
+    if (!usuario) {
+        showToast("⚠️ Introduce el usuario o cuenta");
+        document.getElementById("pass-username")?.focus();
+        return;
+    }
+    if (!password) {
+        showToast("⚠️ Introduce la contraseña");
+        document.getElementById("pass-password")?.focus();
+        return;
+    }
+
     try {
         showLoading(true, "Guardando contraseña...");
-
-        const id = document.getElementById("pass-id").value;
-        const tipo = document.getElementById("pass-type").value;
-        const nombre = document.getElementById("pass-name").value.trim();
-        const usuario = document.getElementById("pass-username").value.trim();
-        const password = document.getElementById("pass-password").value.trim();
-        const url = document.getElementById("pass-url").value.trim();
-        const notes = document.getElementById("pass-notes").value.trim();
-        const is_favorite = document.getElementById("pass-is-favorite")?.checked ?? false;
-        const canManageRestr = state.currentUser && (state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico");
 
         let authorized_scope = document.getElementById("pass-auth-scope-select")?.value || "all";
         let is_restricted = authorized_scope !== "all";
@@ -3143,6 +3182,10 @@ async function savePasswordEntry(evt) {
             authorized_users,
             updated_at: new Date().toISOString()
         };
+
+        if (!Array.isArray(state.vault.entries)) {
+            state.vault.entries = [];
+        }
 
         if (id) {
             // Update existing
