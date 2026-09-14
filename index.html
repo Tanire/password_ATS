@@ -72,10 +72,14 @@
                 <div style="text-align: center;">
                     <div style="font-size: 2.2rem; margin-bottom: 8px;">🚀</div>
                     <h2 style="font-size: 1.3rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">¡Aplicación Actualizada!</h2>
-                    <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3);">Versión 1.22.03</span>
+                    <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3);">Versión 1.21.04</span>
                 </div>
                 
                 <div style="border-top: 1px solid var(--border-glass); border-bottom: 1px solid var(--border-glass); padding: 14px 0; max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; line-height: 1.4; color: var(--text-primary);">
+                    <div>
+                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">🔑 v1.21.04 - Gestor de Contraseñas Avanzado, Control de Acceso por Usuario y Rediseño Profesional</strong>
+                        <p style="margin: 0; color: var(--text-secondary);">Renovación integral del módulo de Contraseñas: sistema de contraseñas restringidas/confidenciales con control de acceso por rol y usuarios específicos autorizados, métricas dinámicas de seguridad, filtrado por categorías (Webs, Routers/Redes, CCTV, Servidores, Software, Correos, WiFi), generador criptográfico de contraseñas complejas en tiempo real con medidor de entropía, notas técnicas estructuradas y visor modal detallado.</p>
+                    </div>
                     <div>
                         <strong style="color: var(--accent); display: block; margin-bottom: 3px;">⚙️ v1.22.03 - Menú de Ajustes Optimizado y Pestañas Desplegables Clasificadas</strong>
                         <p style="margin: 0; color: var(--text-secondary);">Rediseño integral del menú de Configuración con navegación por pestañas desplegables agrupadas por categorías (Mi Perfil y Seguridad, Apariencia y Visualización, Personalización de Menús, Administración de Usuarios y Permisos, Clientes de Rutas, Flota y Repostajes, e Información del Sistema). Interfaz mucho más limpia, moderna y organizada con controles de expansión rápida.</p>
@@ -262,58 +266,291 @@
                     </div>
                 </div>
 
-                <!-- B. PASSWORDS LIST SCREEN -->
+                <!-- B. PASSWORDS LIST SCREEN (v1.21.04) -->
                 <div id="screen-passwords" class="screen">
-                    <div class="list-header">
-                        <h2>Contraseñas Internas</h2>
-                        <button class="btn-add-circle" id="btn-new-password">+</button>
+                    <div class="list-header" style="margin-bottom: 12px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div>
+                                <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
+                                    <span>🌐 Contraseñas Internas</span>
+                                    <span class="badge" id="passwords-count-badge" style="background: var(--accent-glass); color: var(--accent); font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.3);">0</span>
+                                </h2>
+                                <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 2px 0 0 0;">Gestor seguro y centralizado de credenciales técnicas</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn-add-circle" id="btn-new-password" title="Nueva Contraseña">+</button>
+                        </div>
                     </div>
-                    <div class="search-container">
-                        <i class="bx bx-search search-icon"></i>
-                        <input type="text" id="search-passwords" class="search-input" placeholder="Buscar web o usuario...">
+
+                    <!-- Métricas de Contraseñas (v1.21.04) -->
+                    <div class="passwords-metrics-grid anim-fade">
+                        <div class="pass-stat-card" id="card-stat-total">
+                            <div class="pass-stat-icon" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa;"><i class="bx bx-key"></i></div>
+                            <div class="pass-stat-info">
+                                <div class="pass-stat-value" id="stat-pass-total">0</div>
+                                <div class="pass-stat-label">Total Claves</div>
+                            </div>
+                        </div>
+                        <div class="pass-stat-card" id="card-stat-restricted">
+                            <div class="pass-stat-icon" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;"><i class="bx bx-shield-quarter"></i></div>
+                            <div class="pass-stat-info">
+                                <div class="pass-stat-value" id="stat-pass-restricted">0</div>
+                                <div class="pass-stat-label">Protegidas</div>
+                            </div>
+                        </div>
+                        <div class="pass-stat-card" id="card-stat-favorites">
+                            <div class="pass-stat-icon" style="background: rgba(236, 72, 153, 0.15); color: #f472b6;"><i class="bx bx-star"></i></div>
+                            <div class="pass-stat-info">
+                                <div class="pass-stat-value" id="stat-pass-favorites">0</div>
+                                <div class="pass-stat-label">Favoritas</div>
+                            </div>
+                        </div>
+                        <div class="pass-stat-card" id="card-stat-strong">
+                            <div class="pass-stat-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;"><i class="bx bx-check-shield"></i></div>
+                            <div class="pass-stat-info">
+                                <div class="pass-stat-value" id="stat-pass-strong">0</div>
+                                <div class="pass-stat-label">Alta Seguridad</div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="items-list" id="list-passwords">
+
+                    <!-- Barra de Búsqueda y Ordenación (v1.21.04) -->
+                    <div class="passwords-toolbar anim-fade">
+                        <div class="search-container" style="flex: 1; margin-bottom: 0;">
+                            <i class="bx bx-search search-icon"></i>
+                            <input type="text" id="search-passwords" class="search-input" placeholder="Buscar por nombre, usuario, URL o notas...">
+                            <button type="button" id="btn-clear-search-passwords" class="btn-clear-input" style="display: none;" title="Limpiar búsqueda"><i class="bx bx-x"></i></button>
+                        </div>
+                        <div class="passwords-sort-select-wrap">
+                            <select id="sort-passwords" class="input-control select-compact">
+                                <option value="name_asc">🔤 Nombre (A - Z)</option>
+                                <option value="name_desc">🔤 Nombre (Z - A)</option>
+                                <option value="recent">⏱️ Más recientes</option>
+                                <option value="favorites_first">⭐ Favoritas primero</option>
+                                <option value="security">🛡️ Mayor seguridad</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Chips de Filtrado por Categoría (v1.21.04) -->
+                    <div class="passwords-category-chips-container anim-fade">
+                        <div class="passwords-category-chips" id="passwords-category-chips">
+                            <button type="button" class="pass-cat-chip active" data-cat="all">
+                                <i class="bx bx-grid-alt"></i> Todas <span class="chip-count" id="chip-count-all">0</span>
+                            </button>
+                            <button type="button" class="pass-cat-chip" data-cat="favorites">
+                                <i class="bx bxs-star" style="color: #fbbf24;"></i> Favoritas <span class="chip-count" id="chip-count-favorites">0</span>
+                            </button>
+                            <button type="button" class="pass-cat-chip" data-cat="restricted">
+                                <i class="bx bx-lock-alt" style="color: #f59e0b;"></i> Protegidas <span class="chip-count" id="chip-count-restricted">0</span>
+                            </button>
+                            <button type="button" class="pass-cat-chip" data-cat="web">
+                                <i class="bx bx-globe"></i> Webs & Portales <span class="chip-count" id="chip-count-web">0</span>
+                            </button>
+                            <button type="button" class="pass-cat-chip" data-cat="router">
+                                <i class="bx bx-hdd"></i> Routers & Redes <span class="chip-count" id="chip-count-router">0</span>
+                            </button>
+                            <button type="button" class="pass-cat-chip" data-cat="camera">
+                                <i class="bx bx-cctv"></i> Cámaras & CCTV <span class="chip-count" id="chip-count-camera">0</span>
+                            </button>
+                            <button type="button" class="pass-cat-chip" data-cat="server">
+                                <i class="bx bx-server"></i> Servidores <span class="chip-count" id="chip-count-server">0</span>
+                            </button>
+                            <button type="button" class="pass-cat-chip" data-cat="software">
+                                <i class="bx bx-desktop"></i> Software & Apps <span class="chip-count" id="chip-count-software">0</span>
+                            </button>
+                            <button type="button" class="pass-cat-chip" data-cat="email">
+                                <i class="bx bx-envelope"></i> Correos <span class="chip-count" id="chip-count-email">0</span>
+                            </button>
+                            <button type="button" class="pass-cat-chip" data-cat="wifi">
+                                <i class="bx bx-wifi"></i> WiFi <span class="chip-count" id="chip-count-wifi">0</span>
+                            </button>
+                            <button type="button" class="pass-cat-chip" data-cat="other">
+                                <i class="bx bx-dots-horizontal-rounded"></i> Otros <span class="chip-count" id="chip-count-other">0</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Lista Dinámica de Contraseñas -->
+                    <div class="items-list" id="list-passwords" style="margin-top: 6px;">
                         <!-- Populated dynamically -->
                     </div>
                 </div>
 
-                <!-- C. EDIT PASSWORD FORM -->
+                <!-- C. EDIT PASSWORD FORM (v1.21.04) -->
                 <div id="screen-form-password" class="screen">
                     <div class="list-header">
-                        <h2 id="password-form-title">Nueva Contraseña</h2>
-                        <button class="btn-icon" id="btn-back-passwords"><i class="bx bx-arrow-back"></i></button>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <button class="btn-icon" id="btn-back-passwords" title="Volver"><i class="bx bx-arrow-back"></i></button>
+                            <h2 id="password-form-title" style="font-size: 1.25rem; font-weight: 700; margin: 0;">Nueva Contraseña</h2>
+                        </div>
                     </div>
-                    <form id="form-password" class="anim-fade">
+                    <form id="form-password" class="anim-fade" style="display: flex; flex-direction: column; gap: 16px;">
                         <input type="hidden" id="pass-id">
-                        <div class="form-group">
-                            <label>Tipo</label>
-                            <select id="pass-type" class="input-control">
-                                <option value="web">Sitio Web</option>
-                                <option value="other">Otro</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Nombre / Cliente</label>
-                            <input type="text" id="pass-name" class="input-control" placeholder="Ej. Panel Hikvision o Cliente X" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Usuario</label>
-                            <input type="text" id="pass-username" class="input-control" placeholder="Correo o Nick" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Contraseña</label>
-                            <div class="input-with-action">
-                                <input type="text" id="pass-password" class="input-control" required>
-                                <button type="button" class="btn-icon" id="btn-gen-pass" title="Generar Contraseña Compleja"><i class="bx bx-bolt-circle"></i></button>
+
+                        <!-- Sección 1: Datos Generales -->
+                        <div class="form-section-card">
+                            <div class="form-section-header">
+                                <i class="bx bx-info-circle"></i> Información del Servicio
+                            </div>
+                            <div class="form-row" style="display: flex; gap: 12px; margin-bottom: 12px;">
+                                <div class="form-group" style="flex: 1.2; margin: 0;">
+                                    <label for="pass-name">Nombre / Servicio / Cliente *</label>
+                                    <input type="text" id="pass-name" class="input-control" placeholder="Ej. Panel Hik-Partner, Router Central..." required>
+                                </div>
+                                <div class="form-group" style="flex: 1; margin: 0;">
+                                    <label for="pass-type">Categoría</label>
+                                    <select id="pass-type" class="input-control">
+                                        <option value="web">🌐 Sitio Web / Portal</option>
+                                        <option value="router">🖥️ Router / Switch / Red</option>
+                                        <option value="camera">📹 Grabador / Cámara CCTV</option>
+                                        <option value="server">🗄️ Servidor / Hosting / DB</option>
+                                        <option value="software">🏢 Software / Licencia / App</option>
+                                        <option value="email">📧 Correo / Cuenta de Servicio</option>
+                                        <option value="wifi">📶 Red WiFi / Acceso</option>
+                                        <option value="other">⚙️ Otro</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin: 0;">
+                                <label for="pass-url">URL / Dirección IP / Enlace de Acceso</label>
+                                <div class="input-with-action">
+                                    <input type="text" id="pass-url" class="input-control" placeholder="https://panel.example.com ó 192.168.1.1">
+                                    <button type="button" class="btn-icon" id="btn-test-pass-url" title="Probar enlace"><i class="bx bx-link-external"></i></button>
+                                </div>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label>URL (para logos)</label>
-                            <input type="text" id="pass-url" class="input-control" placeholder="https://example.com">
+
+                        <!-- Sección 2: Credenciales de Acceso -->
+                        <div class="form-section-card">
+                            <div class="form-section-header">
+                                <i class="bx bx-key"></i> Credenciales de Acceso
+                            </div>
+                            <div class="form-group" style="margin-bottom: 12px;">
+                                <label for="pass-username">Usuario / Email / Identificador *</label>
+                                <input type="text" id="pass-username" class="input-control" placeholder="admin, técnico@seguridad.com, etc." required>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 8px;">
+                                <label for="pass-password">Contraseña *</label>
+                                <div class="input-with-action">
+                                    <input type="text" id="pass-password" class="input-control font-mono" placeholder="Introduce o genera una contraseña" required autocomplete="off">
+                                    <button type="button" class="btn-icon" id="btn-toggle-form-pass-vis" title="Mostrar/Ocultar contraseña"><i class="bx bx-show"></i></button>
+                                    <button type="button" class="btn-icon" id="btn-toggle-pass-gen-box" title="Abrir generador de claves avanzadas" style="color: var(--accent);"><i class="bx bx-bolt-circle"></i></button>
+                                </div>
+                                <!-- Medidor de Fortaleza en Tiempo Real -->
+                                <div class="pass-strength-meter-wrap" style="margin-top: 6px;">
+                                    <div class="pass-strength-bar">
+                                        <div id="pass-strength-fill" class="pass-strength-fill" style="width: 0%;"></div>
+                                    </div>
+                                    <div class="pass-strength-text" style="display: flex; justify-content: space-between; font-size: 0.72rem; margin-top: 3px; color: var(--text-secondary);">
+                                        <span id="pass-strength-label">Introduce una contraseña</span>
+                                        <span id="pass-strength-entropy">0 bits</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Generador Avanzado Desplegable -->
+                            <div id="pass-generator-widget" class="pass-generator-widget" style="display: none; margin-top: 10px;">
+                                <div style="font-size: 0.8rem; font-weight: 600; color: var(--accent); margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+                                    <span>⚡ Generador de Contraseñas de Alta Seguridad</span>
+                                    <button type="button" id="btn-quick-regen" class="btn-icon" style="width: 28px; height: 28px; font-size: 0.9rem;" title="Regenerar"><i class="bx bx-refresh"></i></button>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <div>
+                                        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 3px;">
+                                            <span>Longitud de caracteres:</span>
+                                            <strong id="gen-pass-length-val" style="color: var(--text-primary);">16</strong>
+                                        </div>
+                                        <input type="range" id="gen-pass-length" min="8" max="32" value="16" style="width: 100%; accent-color: var(--accent);">
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 0.75rem;">
+                                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                            <input type="checkbox" id="gen-opt-upper" checked style="accent-color: var(--accent);"> Mayúsculas (A-Z)
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                            <input type="checkbox" id="gen-opt-lower" checked style="accent-color: var(--accent);"> Minúsculas (a-z)
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                            <input type="checkbox" id="gen-opt-number" checked style="accent-color: var(--accent);"> Números (0-9)
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                            <input type="checkbox" id="gen-opt-symbol" checked style="accent-color: var(--accent);"> Símbolos (!@#$%)
+                                        </label>
+                                    </div>
+                                    <button type="button" id="btn-apply-generator" class="btn-premium btn-secondary" style="padding: 8px; font-size: 0.8rem; margin-top: 4px;">
+                                        <i class="bx bx-check"></i> Aplicar Contraseña Generada
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <button type="submit" class="btn-premium" style="margin-top: 10px;">
-                            <i class="bx bx-save"></i> GUARDAR
-                        </button>
+
+                        <!-- Sección 3: Control de Acceso y Autorización (v1.21.04) -->
+                        <div class="form-section-card" id="pass-auth-section">
+                            <div class="form-section-header" style="justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <i class="bx bx-shield-quarter" style="color: #f59e0b;"></i> Privacidad y Autorización de Acceso
+                                </div>
+                                <label class="switch-control" title="Activar restricción de acceso" style="position: relative; display: inline-block; width: 42px; height: 24px; margin: 0;">
+                                    <input type="checkbox" id="pass-is-restricted" style="opacity: 0; width: 0; height: 0;">
+                                    <span class="switch-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.2); transition: .3s; border-radius: 24px;"></span>
+                                </label>
+                            </div>
+                            <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0 0 10px 0;">
+                                Si activas la restricción, solo los usuarios autorizados podrán visualizar o copiar esta contraseña. Los demás verán los datos protegidos.
+                            </p>
+
+                            <!-- Sub-opciones de Restricción -->
+                            <div id="pass-restriction-options-wrap" style="display: none; flex-direction: column; gap: 10px; background: rgba(0,0,0,0.25); padding: 12px; border-radius: var(--radius-sm); border: 1px dashed rgba(245, 158, 11, 0.3);">
+                                <div class="form-group" style="margin: 0;">
+                                    <label style="font-size: 0.75rem; color: #fbbf24;">Nivel de Visibilidad Autorizada</label>
+                                    <select id="pass-auth-scope-select" class="input-control">
+                                        <option value="admin">👑 Solo Administradores (Admin)</option>
+                                        <option value="admin_lead" selected>🛡️ Administradores y Responsables Técnicos</option>
+                                        <option value="custom">👥 Usuarios Específicos Autorizados...</option>
+                                    </select>
+                                </div>
+
+                                <!-- Checklist de Selección de Usuarios Específicos -->
+                                <div id="pass-authorized-users-container" style="display: none; flex-direction: column; gap: 6px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: var(--text-secondary);">
+                                        <span>Selecciona los técnicos autorizados:</span>
+                                        <div style="display: flex; gap: 6px;">
+                                            <button type="button" id="btn-auth-users-select-all" class="btn-link" style="font-size: 0.7rem; color: var(--accent); background: none; border: none; cursor: pointer;">Todos</button>
+                                            <button type="button" id="btn-auth-users-clear-all" class="btn-link" style="font-size: 0.7rem; color: var(--text-secondary); background: none; border: none; cursor: pointer;">Ninguno</button>
+                                        </div>
+                                    </div>
+                                    <div id="pass-authorized-users-list" class="auth-users-checklist-box">
+                                        <!-- Rendered dynamically with users -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sección 4: Notas Técnicas y Parámetros -->
+                        <div class="form-section-card">
+                            <div class="form-section-header">
+                                <i class="bx bx-notepad"></i> Notas Técnicas y Observaciones
+                            </div>
+                            <div class="form-group" style="margin-bottom: 10px;">
+                                <textarea id="pass-notes" class="input-control" rows="3" placeholder="Información de red (puertos, IP privada, DNS), códigos de recuperación, PIN, etc..."></textarea>
+                            </div>
+                            <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass);">
+                                <label for="pass-is-favorite" style="display: flex; align-items: center; gap: 8px; margin: 0; font-size: 0.85rem; cursor: pointer;">
+                                    <i class="bx bx-star" style="color: #fbbf24; font-size: 1.1rem;"></i> Marcar como contraseña favorita
+                                </label>
+                                <input type="checkbox" id="pass-is-favorite" style="width: 18px; height: 18px; accent-color: #fbbf24;">
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; margin-top: 6px; padding-bottom: 60px;">
+                            <button type="button" id="btn-cancel-form-password" class="btn-premium btn-secondary" style="flex: 1;">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="btn-premium" style="flex: 2;">
+                                <i class="bx bx-save"></i> GUARDAR CONTRASEÑA
+                            </button>
+                        </div>
                     </form>
                 </div>
 
@@ -3975,9 +4212,112 @@
         </div>
     </div>
 
+    <!-- MODAL: DETALLE TÉCNICO DE CONTRASEÑA (v1.21.04) -->
+    <div id="modal-password-detail" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center; padding: 16px;">
+        <div class="glass-card anim-fade" style="width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; padding: 22px; border-radius: var(--radius-lg); background: rgba(18, 20, 30, 0.95); border: 1px solid var(--border-glass); display: flex; flex-direction: column; gap: 16px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8);">
+            
+            <!-- Header Modal -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; border-bottom: 1px solid var(--border-glass); padding-bottom: 14px;">
+                <div style="display: flex; gap: 14px; align-items: center; flex: 1; overflow: hidden;">
+                    <div id="detail-pass-logo-container" class="item-logo-container" style="width: 48px; height: 48px; font-size: 1.5rem; border-radius: 12px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); flex-shrink: 0;">
+                        🌐
+                    </div>
+                    <div style="flex: 1; overflow: hidden;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <h3 id="detail-pass-title" style="font-size: 1.15rem; font-weight: 700; margin: 0; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-</h3>
+                            <button type="button" id="detail-btn-fav-toggle" class="btn-icon" style="width: 28px; height: 28px; font-size: 1rem; border: none; background: transparent; color: var(--text-secondary); flex-shrink: 0;" title="Marcar/Desmarcar Favorito">
+                                <i class="bx bx-star"></i>
+                            </button>
+                        </div>
+                        <div style="display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap;" id="detail-pass-badges">
+                            <!-- Badges -->
+                        </div>
+                    </div>
+                </div>
+                <button type="button" id="btn-close-password-detail" class="btn-icon" style="border-radius: 50%; flex-shrink: 0;"><i class="bx bx-x"></i></button>
+            </div>
+
+            <!-- Credenciales Principales -->
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                
+                <!-- Usuario -->
+                <div class="detail-credential-row">
+                    <div style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 0.75rem;">
+                        <i class="bx bx-user" style="color: var(--accent);"></i> Usuario / Login
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-secondary); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass); margin-top: 4px;">
+                        <span id="detail-pass-username" style="font-weight: 600; font-size: 0.95rem; word-break: break-all; color: var(--text-primary);">-</span>
+                        <button type="button" id="btn-detail-copy-user" class="btn-icon" style="height: 30px; width: 30px;" title="Copiar Usuario"><i class="bx bx-copy"></i></button>
+                    </div>
+                </div>
+
+                <!-- Contraseña -->
+                <div class="detail-credential-row">
+                    <div style="display: flex; align-items: center; justify-content: space-between; color: var(--text-secondary); font-size: 0.75rem;">
+                        <span style="display: flex; align-items: center; gap: 8px;"><i class="bx bx-lock-alt" style="color: #34d399;"></i> Contraseña</span>
+                        <span id="detail-pass-strength-badge" class="badge" style="font-size: 0.68rem; padding: 2px 6px;">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-secondary); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass); margin-top: 4px;">
+                        <span id="detail-pass-password" class="font-mono" style="font-weight: 600; font-size: 0.95rem; word-break: break-all; color: var(--text-primary);">••••••••</span>
+                        <div style="display: flex; gap: 6px;">
+                            <button type="button" id="btn-detail-toggle-pass" class="btn-icon" style="height: 30px; width: 30px;" title="Mostrar / Ocultar"><i class="bx bx-show"></i></button>
+                            <button type="button" id="btn-detail-copy-pass" class="btn-icon" style="height: 30px; width: 30px; color: #34d399;" title="Copiar Contraseña"><i class="bx bx-copy"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Enlace / URL -->
+                <div class="detail-credential-row" id="detail-pass-url-row">
+                    <div style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 0.75rem;">
+                        <i class="bx bx-globe" style="color: #60a5fa;"></i> Enlace de Acceso / Portal
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-secondary); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass); margin-top: 4px;">
+                        <span id="detail-pass-url" style="font-size: 0.85rem; color: #60a5fa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
+                        <div style="display: flex; gap: 6px;">
+                            <button type="button" id="btn-detail-copy-url" class="btn-icon" style="height: 30px; width: 30px;" title="Copiar URL"><i class="bx bx-copy"></i></button>
+                            <button type="button" id="btn-detail-open-url" class="btn-icon" style="height: 30px; width: 30px;" title="Abrir en nueva pestaña"><i class="bx bx-link-external"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notas Técnicas -->
+                <div class="detail-credential-row" id="detail-pass-notes-row">
+                    <div style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 0.75rem;">
+                        <i class="bx bx-notepad"></i> Notas Técnicas y Parámetros
+                    </div>
+                    <div id="detail-pass-notes" style="background: rgba(0,0,0,0.3); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass); font-size: 0.85rem; line-height: 1.4; white-space: pre-wrap; margin-top: 4px; color: #cbd5e1; max-height: 120px; overflow-y: auto;">
+                        -
+                    </div>
+                </div>
+
+                <!-- Información de Seguridad & Permisos -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 10px; display: flex; flex-direction: column; gap: 6px; font-size: 0.75rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: var(--text-secondary);">Nivel de Acceso:</span>
+                        <span id="detail-pass-access-info" style="font-weight: 600;">Público (Todos los técnicos)</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: var(--text-secondary);">Última actualización:</span>
+                        <span id="detail-pass-updated-date" style="color: var(--text-secondary);">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones de Acción Modal -->
+            <div style="display: flex; gap: 8px; border-top: 1px solid var(--border-glass); padding-top: 14px; margin-top: 4px;">
+                <button type="button" id="btn-detail-edit" class="btn-premium btn-secondary" style="flex: 1; font-size: 0.85rem;">
+                    <i class="bx bx-edit-alt"></i> Editar Ficha
+                </button>
+                <button type="button" id="btn-detail-close-bottom" class="btn-premium" style="flex: 1; font-size: 0.85rem;">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Crypto, GitHub API, and App Controller Logic -->
-    <script src="crypto.js?v=1.22.02"></script>
-    <script src="github.js?v=1.22.02"></script>
-    <script src="app.js?v=1.22.02"></script>
+    <script src="crypto.js?v=1.21.04"></script>
+    <script src="github.js?v=1.21.04"></script>
+    <script src="app.js?v=1.21.04"></script>
 </body>
 </html>

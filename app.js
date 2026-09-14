@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.22.03",
+        version: "1.21.04",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -33,6 +33,14 @@ const state = {
     gitSha: null,
     isSynced: true,      // true: Synced, false: Unsaved changes, 'offline': Offline mode
     currentScreen: "dashboard",
+    // Passwords module state v1.21.04
+    passwords: {
+        filterCategory: "all",
+        searchQuery: "",
+        sortOrder: "name_asc",
+        activeDetailId: null,
+        revealedMap: {}
+    },
     vacation: {
         currentDate: new Date(),
         editingId: null,
@@ -208,6 +216,119 @@ const NAV_ITEMS_METADATA = {
     warehouse: { icon: "bx-package", title: "Almacén", screen: "warehouse" },
     settings: { icon: "bx-cog", title: "Ajustes", screen: "settings" }
 };
+
+// Password Categories Metadata v1.21.04
+const PASSWORD_CATEGORIES = {
+    web: { label: "Webs & Portales", icon: "bx-globe", emoji: "🌐", color: "#3b82f6" },
+    router: { label: "Routers & Redes", icon: "bx-hdd", emoji: "🖥️", color: "#8b5cf6" },
+    camera: { label: "Cámaras & CCTV", icon: "bx-cctv", emoji: "📹", color: "#06b6d4" },
+    server: { label: "Servidores & DB", icon: "bx-server", emoji: "🗄️", color: "#ec4899" },
+    software: { label: "Software & Apps", icon: "bx-desktop", emoji: "🏢", color: "#f59e0b" },
+    email: { label: "Correos & Cuentas", icon: "bx-envelope", emoji: "📧", color: "#10b981" },
+    wifi: { label: "Redes WiFi", icon: "bx-wifi", emoji: "📶", color: "#38bdf8" },
+    other: { label: "Otros", icon: "bx-dots-horizontal-rounded", emoji: "⚙️", color: "#94a3b8" }
+};
+
+// Password Access Control Checker v1.21.04
+function canUserAccessPassword(entry, user = state.currentUser) {
+    if (!entry) return false;
+    if (!user) return false;
+    // Admins always have access to everything
+    if (user.role === "admin") return true;
+
+    const isRestricted = entry.is_restricted === true || entry.visibility === "restricted";
+    if (!isRestricted) return true;
+
+    // Evaluate restricted scope
+    const scope = entry.authorized_scope || "admin_lead";
+    if (scope === "admin") {
+        return user.role === "admin";
+    }
+    if (scope === "admin_lead") {
+        return user.role === "admin" || user.role === "responsable_tecnico";
+    }
+    if (scope === "custom") {
+        if (user.role === "admin") return true;
+        const currentUname = String(user.username || "").trim().toLowerCase();
+        const authUsers = (entry.authorized_users || []).map(u => String(u).trim().toLowerCase());
+        return authUsers.includes(currentUname);
+    }
+
+    // Backward compatibility
+    if (Array.isArray(entry.authorized_roles) && entry.authorized_roles.includes(user.role)) return true;
+    if (Array.isArray(entry.authorized_users) && entry.authorized_users.map(u => String(u).toLowerCase()).includes(String(user.username || "").toLowerCase())) return true;
+
+    return false;
+}
+
+// Password Strength & Entropy Calculator v1.21.04
+function getPasswordStrength(password) {
+    if (!password) {
+        return { score: 0, label: "Introduce una contraseña", color: "#6b7280", percent: 0, entropy: "0 bits" };
+    }
+    let poolSize = 0;
+    if (/[a-z]/.test(password)) poolSize += 26;
+    if (/[A-Z]/.test(password)) poolSize += 26;
+    if (/[0-9]/.test(password)) poolSize += 10;
+    if (/[^a-zA-Z0-9]/.test(password)) poolSize += 32;
+
+    const entropy = Math.round(password.length * (Math.log2(poolSize || 1)));
+
+    let score = 0;
+    if (password.length >= 8) score++;
+    if (password.length >= 12 && poolSize >= 50) score++;
+    if (password.length >= 16 && poolSize >= 70) score++;
+    if (entropy >= 80) score++;
+
+    if (entropy < 30 || password.length < 6) {
+        return { score: 1, label: "Débil (Vulnerable)", color: "#ef4444", percent: 25, entropy: `${entropy} bits` };
+    } else if (entropy < 55 || password.length < 10) {
+        return { score: 2, label: "Media (Aceptable)", color: "#f59e0b", percent: 50, entropy: `${entropy} bits` };
+    } else if (entropy < 75 || password.length < 14) {
+        return { score: 3, label: "Fuerte (Recomendada)", color: "#3b82f6", percent: 75, entropy: `${entropy} bits` };
+    } else {
+        return { score: 4, label: "Muy Fuerte (Excelente)", color: "#10b981", percent: 100, entropy: `${entropy} bits` };
+    }
+}
+
+// Cryptographically Secure Advanced Password Generator v1.21.04
+function generateAdvancedPassword(length = 16, options = {}) {
+    const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // without ambiguous I, O
+    const lowercase = "abcdefghijkmnopqrstuvwxyz"; // without ambiguous l
+    const numbers = "23456789"; // without ambiguous 0, 1
+    const symbols = "!@#$%^&*()_+-=[]{}|;:,.<>?";
+    const fullUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const fullLower = "abcdefghijklmnopqrstuvwxyz";
+    const fullNumbers = "0123456789";
+
+    const useUpper = options.upper !== false;
+    const useLower = options.lower !== false;
+    const useNumber = options.number !== false;
+    const useSymbol = options.symbol !== false;
+    const noAmbiguous = options.noAmbiguous === true;
+
+    let pool = "";
+    if (useUpper) pool += noAmbiguous ? uppercase : fullUpper;
+    if (useLower) pool += noAmbiguous ? lowercase : fullLower;
+    if (useNumber) pool += noAmbiguous ? numbers : fullNumbers;
+    if (useSymbol) pool += symbols;
+
+    if (!pool) pool = fullLower + fullNumbers;
+
+    const randomValues = new Uint32Array(length);
+    if (window.crypto && window.crypto.getRandomValues) {
+        window.crypto.getRandomValues(randomValues);
+    } else {
+        for (let i = 0; i < length; i++) randomValues[i] = Math.floor(Math.random() * 1000000);
+    }
+
+    let password = "";
+    for (let i = 0; i < length; i++) {
+        password += pool.charAt(randomValues[i] % pool.length);
+    }
+    return password;
+}
+
 
 
 // LocalStorage Keys
@@ -834,7 +955,254 @@ function setupEventListeners() {
     els.btnSyncTrigger.addEventListener("click", syncWithCloud);
 
     // List Search Filter Triggers (debounced for mobile performance)
-    els.searchPasswords.addEventListener("input", debounce(renderPasswords));
+    if (els.searchPasswords) {
+        els.searchPasswords.addEventListener("input", (e) => {
+            state.passwords.searchQuery = e.target.value;
+            const btnClear = document.getElementById("btn-clear-search-passwords");
+            if (btnClear) btnClear.style.display = e.target.value ? "flex" : "none";
+            debounce(renderPasswords, 150)();
+        });
+    }
+    const btnClearSearchPass = document.getElementById("btn-clear-search-passwords");
+    if (btnClearSearchPass) {
+        btnClearSearchPass.addEventListener("click", () => {
+            if (els.searchPasswords) {
+                els.searchPasswords.value = "";
+                state.passwords.searchQuery = "";
+                btnClearSearchPass.style.display = "none";
+                renderPasswords();
+            }
+        });
+    }
+
+    const sortPassSelect = document.getElementById("sort-passwords");
+    if (sortPassSelect) {
+        sortPassSelect.addEventListener("change", (e) => {
+            state.passwords.sortOrder = e.target.value;
+            renderPasswords();
+        });
+    }
+
+    // Category chips filter clicks
+    const passCatChips = document.querySelectorAll("#passwords-category-chips .pass-cat-chip");
+    passCatChips.forEach(chip => {
+        chip.addEventListener("click", () => {
+            passCatChips.forEach(c => c.classList.remove("active"));
+            chip.classList.add("active");
+            state.passwords.filterCategory = chip.dataset.cat || "all";
+            renderPasswords();
+        });
+    });
+
+    // Form input password strength evaluator in real time
+    const formPassInput = document.getElementById("pass-password");
+    if (formPassInput) {
+        formPassInput.addEventListener("input", (e) => {
+            updateFormPasswordStrength(e.target.value);
+        });
+    }
+
+    // Toggle form password visibility
+    const btnToggleFormPassVis = document.getElementById("btn-toggle-form-pass-vis");
+    if (btnToggleFormPassVis && formPassInput) {
+        btnToggleFormPassVis.addEventListener("click", () => {
+            const isText = formPassInput.type === "text";
+            formPassInput.type = isText ? "password" : "text";
+            btnToggleFormPassVis.innerHTML = isText ? '<i class="bx bx-hide"></i>' : '<i class="bx bx-show"></i>';
+        });
+    }
+
+    // Toggle Generator Widget
+    const btnTogglePassGenBox = document.getElementById("btn-toggle-pass-gen-box");
+    const passGenWidget = document.getElementById("pass-generator-widget");
+    if (btnTogglePassGenBox && passGenWidget) {
+        btnTogglePassGenBox.addEventListener("click", () => {
+            const isHidden = passGenWidget.style.display === "none" || !passGenWidget.style.display;
+            passGenWidget.style.display = isHidden ? "block" : "none";
+            if (isHidden) {
+                regenFormPasswordPreview();
+            }
+        });
+    }
+
+    // Length range slider in generator
+    const genLengthRange = document.getElementById("gen-pass-length");
+    const genLengthVal = document.getElementById("gen-pass-length-val");
+    if (genLengthRange && genLengthVal) {
+        genLengthRange.addEventListener("input", (e) => {
+            genLengthVal.textContent = e.target.value;
+            regenFormPasswordPreview();
+        });
+    }
+
+    // Regen button
+    const btnQuickRegen = document.getElementById("btn-quick-regen");
+    if (btnQuickRegen) {
+        btnQuickRegen.addEventListener("click", regenFormPasswordPreview);
+    }
+
+    // Apply generated password
+    const btnApplyGenerator = document.getElementById("btn-apply-generator");
+    if (btnApplyGenerator) {
+        btnApplyGenerator.addEventListener("click", () => {
+            const genPass = generatePasswordFromFormWidget();
+            if (formPassInput) {
+                formPassInput.value = genPass;
+                updateFormPasswordStrength(genPass);
+                showToast("⚡ Contraseña generada aplicada");
+                if (passGenWidget) passGenWidget.style.display = "none";
+            }
+        });
+    }
+
+    // Restriction switch toggle
+    const passIsRestricted = document.getElementById("pass-is-restricted");
+    const passRestrictionOptionsWrap = document.getElementById("pass-restriction-options-wrap");
+    if (passIsRestricted && passRestrictionOptionsWrap) {
+        passIsRestricted.addEventListener("change", (e) => {
+            passRestrictionOptionsWrap.style.display = e.target.checked ? "flex" : "none";
+        });
+    }
+
+    // Auth scope select toggle
+    const passAuthScopeSelect = document.getElementById("pass-auth-scope-select");
+    const passAuthorizedUsersContainer = document.getElementById("pass-authorized-users-container");
+    if (passAuthScopeSelect && passAuthorizedUsersContainer) {
+        passAuthScopeSelect.addEventListener("change", (e) => {
+            passAuthorizedUsersContainer.style.display = e.target.value === "custom" ? "flex" : "none";
+        });
+    }
+
+    // Select all / Clear all auth users
+    const btnAuthUsersSelectAll = document.getElementById("btn-auth-users-select-all");
+    if (btnAuthUsersSelectAll) {
+        btnAuthUsersSelectAll.addEventListener("click", () => {
+            document.querySelectorAll("#pass-authorized-users-list input[type='checkbox']").forEach(chk => chk.checked = true);
+        });
+    }
+
+    const btnAuthUsersClearAll = document.getElementById("btn-auth-users-clear-all");
+    if (btnAuthUsersClearAll) {
+        btnAuthUsersClearAll.addEventListener("click", () => {
+            document.querySelectorAll("#pass-authorized-users-list input[type='checkbox']").forEach(chk => chk.checked = false);
+        });
+    }
+
+    // Test URL button
+    const btnTestPassUrl = document.getElementById("btn-test-pass-url");
+    if (btnTestPassUrl) {
+        btnTestPassUrl.addEventListener("click", () => {
+            let urlVal = (document.getElementById("pass-url").value || "").trim();
+            if (!urlVal) {
+                showToast("Introduce una URL para probar");
+                return;
+            }
+            if (!urlVal.startsWith("http://") && !urlVal.startsWith("https://")) {
+                urlVal = "https://" + urlVal;
+            }
+            window.open(urlVal, "_blank");
+        });
+    }
+
+    // Back / Cancel Buttons
+    const btnBackPasswords = document.getElementById("btn-back-passwords");
+    if (btnBackPasswords) {
+        btnBackPasswords.addEventListener("click", () => switchScreen("passwords"));
+    }
+
+    const btnCancelFormPassword = document.getElementById("btn-cancel-form-password");
+    if (btnCancelFormPassword) {
+        btnCancelFormPassword.addEventListener("click", () => switchScreen("passwords"));
+    }
+
+    // Detail Modal Events
+    const btnClosePassDetail = document.getElementById("btn-close-password-detail");
+    if (btnClosePassDetail) btnClosePassDetail.addEventListener("click", closePasswordDetailModal);
+
+    const btnDetailCloseBottom = document.getElementById("btn-detail-close-bottom");
+    if (btnDetailCloseBottom) btnDetailCloseBottom.addEventListener("click", closePasswordDetailModal);
+
+    const btnDetailCopyUser = document.getElementById("btn-detail-copy-user");
+    if (btnDetailCopyUser) {
+        btnDetailCopyUser.addEventListener("click", () => {
+            const entry = state.vault.entries.find(e => e.id === state.passwords.activeDetailId);
+            if (entry && entry.usuario) copyToClipboard(entry.usuario, "Usuario copiado");
+        });
+    }
+
+    const btnDetailCopyPass = document.getElementById("btn-detail-copy-pass");
+    if (btnDetailCopyPass) {
+        btnDetailCopyPass.addEventListener("click", () => {
+            const entry = state.vault.entries.find(e => e.id === state.passwords.activeDetailId);
+            if (entry) {
+                if (!canUserAccessPassword(entry)) {
+                    showToast("⚠️ Acceso protegido: No estás autorizado a copiar esta clave");
+                    return;
+                }
+                copyToClipboard(entry.password, "Contraseña copiada al portapapeles");
+            }
+        });
+    }
+
+    const btnDetailCopyUrl = document.getElementById("btn-detail-copy-url");
+    if (btnDetailCopyUrl) {
+        btnDetailCopyUrl.addEventListener("click", () => {
+            const entry = state.vault.entries.find(e => e.id === state.passwords.activeDetailId);
+            if (entry && entry.url) copyToClipboard(entry.url, "URL copiada");
+        });
+    }
+
+    const btnDetailOpenUrl = document.getElementById("btn-detail-open-url");
+    if (btnDetailOpenUrl) {
+        btnDetailOpenUrl.addEventListener("click", () => {
+            const entry = state.vault.entries.find(e => e.id === state.passwords.activeDetailId);
+            if (entry && entry.url) {
+                let u = entry.url.trim();
+                if (!u.startsWith("http://") && !u.startsWith("https://")) u = "https://" + u;
+                window.open(u, "_blank");
+            }
+        });
+    }
+
+    const btnDetailTogglePass = document.getElementById("btn-detail-toggle-pass");
+    if (btnDetailTogglePass) {
+        btnDetailTogglePass.addEventListener("click", () => {
+            const entry = state.vault.entries.find(e => e.id === state.passwords.activeDetailId);
+            if (!entry) return;
+            if (!canUserAccessPassword(entry)) {
+                showToast("⚠️ Clave protegida: Requiere autorización");
+                return;
+            }
+            const passEl = document.getElementById("detail-pass-password");
+            const isMasked = passEl.textContent === "••••••••";
+            passEl.textContent = isMasked ? entry.password : "••••••••";
+            btnDetailTogglePass.innerHTML = isMasked ? '<i class="bx bx-hide"></i>' : '<i class="bx bx-show"></i>';
+        });
+    }
+
+    const detailBtnFavToggle = document.getElementById("detail-btn-fav-toggle");
+    if (detailBtnFavToggle) {
+        detailBtnFavToggle.addEventListener("click", () => {
+            if (state.passwords.activeDetailId) {
+                togglePasswordFavorite(state.passwords.activeDetailId);
+                const entry = state.vault.entries.find(e => e.id === state.passwords.activeDetailId);
+                if (entry) {
+                    detailBtnFavToggle.innerHTML = entry.is_favorite ? '<i class="bx bxs-star" style="color: #fbbf24;"></i>' : '<i class="bx bx-star"></i>';
+                }
+            }
+        });
+    }
+
+    const btnDetailEdit = document.getElementById("btn-detail-edit");
+    if (btnDetailEdit) {
+        btnDetailEdit.addEventListener("click", () => {
+            if (state.passwords.activeDetailId) {
+                closePasswordDetailModal();
+                openPasswordForm(state.passwords.activeDetailId);
+            }
+        });
+    }
+
     els.searchSubscribers.addEventListener("input", debounce(renderSubscribers));
     els.searchManuals.addEventListener("input", debounce(renderManualsList));
 
@@ -1852,67 +2220,319 @@ function lockVault() {
 
 // --- RENDERING VIEWS ---
 
-// A. Passwords list
+// A. Passwords list & metrics renderer v1.21.04
 function renderPasswords() {
+    if (!els.listPasswords) return;
     els.listPasswords.innerHTML = "";
-    const q = els.searchPasswords.value.trim().toLowerCase();
     
-    const filtered = state.vault.entries.filter(e => {
-        return (e.nombre || "").toLowerCase().includes(q) || 
-               (e.usuario || "").toLowerCase().includes(q);
+    const entries = state.vault.entries || [];
+    const q = (state.passwords?.searchQuery || (els.searchPasswords ? els.searchPasswords.value : "")).trim().toLowerCase();
+    const activeCat = state.passwords?.filterCategory || "all";
+    const sortOrder = state.passwords?.sortOrder || "name_asc";
+    const currentUser = state.currentUser;
+
+    // 1. Calculate & Render Summary Metrics
+    const totalCount = entries.length;
+    let restrictedCount = 0;
+    let favoritesCount = 0;
+    let strongCount = 0;
+
+    const catCounts = {
+        all: totalCount,
+        favorites: 0,
+        restricted: 0,
+        web: 0,
+        router: 0,
+        camera: 0,
+        server: 0,
+        software: 0,
+        email: 0,
+        wifi: 0,
+        other: 0
+    };
+
+    entries.forEach(e => {
+        const isRestr = e.is_restricted === true || e.visibility === "restricted";
+        if (isRestr) {
+            restrictedCount++;
+            catCounts.restricted++;
+        }
+        if (e.is_favorite === true) {
+            favoritesCount++;
+            catCounts.favorites++;
+        }
+        const st = getPasswordStrength(e.password || "");
+        if (st.score >= 3) strongCount++;
+
+        const cType = (e.tipo || e.category || "web").toLowerCase();
+        if (catCounts.hasOwnProperty(cType)) {
+            catCounts[cType]++;
+        } else {
+            catCounts.other++;
+        }
     });
 
+    const elStatTotal = document.getElementById("stat-pass-total");
+    if (elStatTotal) elStatTotal.textContent = totalCount;
+    const elStatRestr = document.getElementById("stat-pass-restricted");
+    if (elStatRestr) elStatRestr.textContent = restrictedCount;
+    const elStatFav = document.getElementById("stat-pass-favorites");
+    if (elStatFav) elStatFav.textContent = favoritesCount;
+    const elStatStrong = document.getElementById("stat-pass-strong");
+    if (elStatStrong) elStatStrong.textContent = strongCount;
+
+    const badgeCount = document.getElementById("passwords-count-badge");
+    if (badgeCount) badgeCount.textContent = totalCount;
+
+    // Update category chip counts in UI
+    Object.keys(catCounts).forEach(k => {
+        const chipEl = document.getElementById(`chip-count-${k}`);
+        if (chipEl) chipEl.textContent = catCounts[k];
+    });
+
+    // 2. Filter list
+    let filtered = entries.filter(e => {
+        // Search query filter
+        const matchesQuery = !q || (
+            (e.nombre || "").toLowerCase().includes(q) ||
+            (e.usuario || "").toLowerCase().includes(q) ||
+            (e.url || "").toLowerCase().includes(q) ||
+            (e.notes || "").toLowerCase().includes(q)
+        );
+        if (!matchesQuery) return false;
+
+        // Category filter
+        if (activeCat === "all") return true;
+        if (activeCat === "favorites") return e.is_favorite === true;
+        if (activeCat === "restricted") return e.is_restricted === true || e.visibility === "restricted";
+        
+        const itemCat = (e.tipo || e.category || "web").toLowerCase();
+        return itemCat === activeCat;
+    });
+
+    // 3. Sort list
+    filtered.sort((a, b) => {
+        if (sortOrder === "name_asc") {
+            return (a.nombre || "").localeCompare(b.nombre || "");
+        } else if (sortOrder === "name_desc") {
+            return (b.nombre || "").localeCompare(a.nombre || "");
+        } else if (sortOrder === "recent") {
+            const timeA = a.updated_at || a.created_at || a.id || 0;
+            const timeB = b.updated_at || b.created_at || b.id || 0;
+            const valA = typeof timeA === 'number' ? timeA : new Date(timeA).getTime();
+            const valB = typeof timeB === 'number' ? timeB : new Date(timeB).getTime();
+            return valB - valA;
+        } else if (sortOrder === "favorites_first") {
+            const favA = a.is_favorite ? 1 : 0;
+            const favB = b.is_favorite ? 1 : 0;
+            if (favA !== favB) return favB - favA;
+            return (a.nombre || "").localeCompare(b.nombre || "");
+        } else if (sortOrder === "security") {
+            const scoreA = getPasswordStrength(a.password || "").score;
+            const scoreB = getPasswordStrength(b.password || "").score;
+            return scoreB - scoreA;
+        }
+        return 0;
+    });
+
+    // 4. Render Empty State
     if (filtered.length === 0) {
-        els.listPasswords.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-secondary); font-size:0.9rem;">No hay registros</div>`;
+        els.listPasswords.innerHTML = `
+            <div style="text-align:center; padding: 40px 20px; color: var(--text-secondary); background: var(--bg-glass); border: 1px dashed var(--border-glass); border-radius: var(--radius-md);" class="anim-fade">
+                <div style="font-size: 2.5rem; margin-bottom: 8px;">🔑</div>
+                <div style="font-size: 1rem; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">No se encontraron contraseñas</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary); max-width: 320px; margin: 0 auto;">Prueba a cambiar el filtro de categoría o pulsa en el botón '+' para añadir una nueva credencial.</div>
+            </div>
+        `;
         return;
     }
 
+    // 5. Render Cards
     filtered.forEach(e => {
+        const isAuth = canUserAccessPassword(e, currentUser);
+        const isRestr = e.is_restricted === true || e.visibility === "restricted";
+        const catKey = (e.tipo || e.category || "web").toLowerCase();
+        const catMeta = PASSWORD_CATEGORIES[catKey] || PASSWORD_CATEGORIES.other;
+        const strength = getPasswordStrength(e.password || "");
+        const isRevealed = !!state.passwords.revealedMap[e.id];
+
         const card = document.createElement("div");
-        card.className = "item-card anim-fade";
-        
-        // Logo favicon fetching proxy
-        const faviconSrc = e.url ? `https://www.google.com/s2/favicons?domain=${e.url}&sz=64` : "";
-        const logoHtml = e.url ? 
-            `<img src="${faviconSrc}" alt="" onerror="this.src=''; this.parentElement.innerHTML='🌐'">` : 
-            `<i class="bx bx-globe"></i>`;
+        card.className = `password-card anim-fade ${isRestr ? "is-restricted" : ""} ${e.is_favorite ? "is-favorite" : ""}`;
+        card.setAttribute("data-id", e.id);
+
+        // Logo / Icon fetching
+        let logoContent = `<i class="bx ${catMeta.icon}" style="color: ${catMeta.color};"></i>`;
+        if (e.url && e.url.includes(".")) {
+            let domain = e.url.replace(/^https?:\/\//, '').split('/')[0].split(':')[0];
+            if (domain) {
+                const favSrc = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+                logoContent = `<img src="${favSrc}" alt="" onerror="this.src=''; this.parentElement.innerHTML='<i class=\\'bx ${catMeta.icon}\\' style=\\'color:${catMeta.color}\\'></i>'">`;
+            }
+        }
+
+        // Badges HTML
+        let badgesHtml = `<span class="badge-tag tag-category"><i class="bx ${catMeta.icon}"></i> ${catMeta.label}</span>`;
+        if (isRestr) {
+            badgesHtml += `<span class="badge-tag tag-restricted"><i class="bx bx-shield-quarter"></i> Protegida</span>`;
+        }
+        if (e.is_favorite) {
+            badgesHtml += `<span class="badge-tag" style="background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.35);"><i class="bx bxs-star"></i> Favorita</span>`;
+        }
+
+        // Password Row Display
+        let passwordDisplay = "";
+        if (isAuth) {
+            const passText = isRevealed ? e.password : "••••••••••••";
+            passwordDisplay = `
+                <div class="pass-row-item">
+                    <span class="pass-row-label"><i class="bx bx-lock-alt" style="color: #34d399;"></i> Clave:</span>
+                    <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
+                        <span class="pass-row-val font-mono" id="pass-val-${e.id}" style="color: ${isRevealed ? '#60a5fa' : 'inherit'}; font-weight: 700;">${passText}</span>
+                        <span class="badge" style="background: ${strength.color}22; color: ${strength.color}; border: 1px solid ${strength.color}44; font-size: 0.65rem; padding: 1px 5px;">${strength.label.split(' ')[0]}</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            passwordDisplay = `
+                <div class="pass-row-item" style="opacity: 0.85;">
+                    <span class="pass-row-label"><i class="bx bx-lock-alt" style="color: #f59e0b;"></i> Clave:</span>
+                    <span class="pass-row-val font-mono" style="color: #fbbf24; font-size: 0.75rem;"><i class="bx bx-shield-quarter"></i> Acceso Restringido</span>
+                </div>
+            `;
+        }
+
+        // URL display if present
+        let urlDisplay = "";
+        if (e.url) {
+            urlDisplay = `
+                <div class="pass-row-item">
+                    <span class="pass-row-label"><i class="bx bx-globe" style="color: #60a5fa;"></i> Enlace:</span>
+                    <span class="pass-row-val" style="color: #60a5fa; font-size: 0.78rem;">${e.url}</span>
+                </div>
+            `;
+        }
+
+        // Actions Bar
+        let actionButtons = "";
+        if (isAuth) {
+            actionButtons = `
+                <button type="button" class="btn-card-action btn-copy-pass" data-action="copy-pass" title="Copiar Contraseña">
+                    <i class="bx bx-copy"></i> Copiar Clave
+                </button>
+                <button type="button" class="btn-icon" data-action="toggle-pass" title="${isRevealed ? 'Ocultar' : 'Mostrar'} Contraseña" style="height: 32px; width: 32px;">
+                    <i class="bx ${isRevealed ? 'bx-hide' : 'bx-show'}"></i>
+                </button>
+            `;
+        } else {
+            actionButtons = `
+                <button type="button" class="btn-card-action btn-locked" data-action="locked-pass" title="Contraseña protegida">
+                    <i class="bx bx-lock-alt"></i> Protegida
+                </button>
+            `;
+        }
 
         card.innerHTML = `
-            <div class="item-card-left">
-                <div class="item-logo-container">${logoHtml}</div>
-                <div class="item-details">
-                    <span class="item-title">${e.nombre || "Sin nombre"}</span>
-                    <span class="item-sub">${e.usuario || "-"} ${e.url ? '• ' + e.url : ''}</span>
+            <div class="password-card-header">
+                <div class="password-card-title-group">
+                    <div class="password-logo-box">${logoContent}</div>
+                    <div class="password-card-info">
+                        <span class="password-card-title">${e.nombre || "Sin Nombre"}</span>
+                        <div class="password-card-badges">${badgesHtml}</div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 4px; align-items: center;">
+                    <button type="button" class="btn-icon" data-action="toggle-fav" style="border: none; background: transparent; width: 30px; height: 30px; color: ${e.is_favorite ? '#fbbf24' : 'var(--text-secondary)'}; font-size: 1.15rem;" title="${e.is_favorite ? 'Quitar favorita' : 'Marcar favorita'}">
+                        <i class="bx ${e.is_favorite ? 'bxs-star' : 'bx-star'}"></i>
+                    </button>
                 </div>
             </div>
-            <div class="item-actions">
-                <button class="btn-icon btn-copy" data-pass="${e.password}" title="Copiar Contraseña"><i class="bx bx-copy"></i></button>
-                <button class="btn-icon btn-edit" data-id="${e.id}" title="Editar"><i class="bx bx-edit-alt"></i></button>
-                <button class="btn-icon btn-delete" data-id="${e.id}" style="color:var(--danger);" title="Eliminar"><i class="bx bx-trash"></i></button>
+
+            <div class="password-card-body">
+                <div class="pass-row-item">
+                    <span class="pass-row-label"><i class="bx bx-user" style="color: var(--accent);"></i> Usuario:</span>
+                    <span class="pass-row-val">${e.usuario || "-"}</span>
+                </div>
+                ${passwordDisplay}
+                ${urlDisplay}
+            </div>
+
+            <div class="password-card-footer">
+                <div class="pass-card-actions">
+                    ${actionButtons}
+                    <button type="button" class="btn-icon" data-action="copy-user" title="Copiar Usuario" style="height: 32px; width: 32px;">
+                        <i class="bx bx-user-check"></i>
+                    </button>
+                    ${e.url ? `
+                        <button type="button" class="btn-icon" data-action="open-url" title="Abrir URL en navegador" style="height: 32px; width: 32px;">
+                            <i class="bx bx-link-external"></i>
+                        </button>
+                    ` : ''}
+                </div>
+                <div class="pass-card-actions">
+                    <button type="button" class="btn-icon" data-action="view-detail" title="Ver detalles técnicos" style="height: 32px; width: 32px; color: var(--accent);">
+                        <i class="bx bx-info-circle"></i>
+                    </button>
+                    <button type="button" class="btn-icon" data-action="edit-pass" title="Editar" style="height: 32px; width: 32px;">
+                        <i class="bx bx-edit-alt"></i>
+                    </button>
+                    <button type="button" class="btn-icon" data-action="delete-pass" title="Eliminar" style="height: 32px; width: 32px; color: var(--danger);">
+                        <i class="bx bx-trash"></i>
+                    </button>
+                </div>
             </div>
         `;
 
-        // Copy trigger
-        card.querySelector(".btn-copy").addEventListener("click", (evt) => {
-            evt.stopPropagation();
-            copyToClipboard(e.password);
-        });
+        // Card Clicks Routing
+        card.addEventListener("click", (evt) => {
+            const btn = evt.target.closest("button");
+            if (!btn) {
+                // Click on card body opens detail modal
+                openPasswordDetailModal(e.id);
+                return;
+            }
 
-        // Edit trigger
-        card.querySelector(".btn-edit").addEventListener("click", (evt) => {
-            evt.stopPropagation();
-            openPasswordForm(e.id);
-        });
-
-        // Delete trigger
-        card.querySelector(".btn-delete").addEventListener("click", (evt) => {
-            evt.stopPropagation();
-            deletePasswordEntry(e.id);
-        });
-
-        // Double click copies password too
-        card.addEventListener("dblclick", () => {
-            copyToClipboard(e.password);
+            const action = btn.dataset.action;
+            if (action === "copy-pass") {
+                evt.stopPropagation();
+                if (!isAuth) {
+                    showToast("⚠️ Acceso protegido: No estás autorizado a ver esta contraseña");
+                    return;
+                }
+                copyToClipboard(e.password, "Contraseña copiada al portapapeles");
+                btn.innerHTML = '<i class="bx bx-check"></i> ¡Copiado!';
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="bx bx-copy"></i> Copiar Clave';
+                }, 1800);
+            } else if (action === "toggle-pass") {
+                evt.stopPropagation();
+                state.passwords.revealedMap[e.id] = !state.passwords.revealedMap[e.id];
+                renderPasswords();
+            } else if (action === "locked-pass") {
+                evt.stopPropagation();
+                showToast("⚠️ Contraseña restringida: Consulta con el Administrador");
+            } else if (action === "copy-user") {
+                evt.stopPropagation();
+                if (e.usuario) copyToClipboard(e.usuario, "Usuario copiado");
+            } else if (action === "open-url") {
+                evt.stopPropagation();
+                let u = (e.url || "").trim();
+                if (u) {
+                    if (!u.startsWith("http://") && !u.startsWith("https://")) u = "https://" + u;
+                    window.open(u, "_blank");
+                }
+            } else if (action === "toggle-fav") {
+                evt.stopPropagation();
+                togglePasswordFavorite(e.id);
+            } else if (action === "view-detail") {
+                evt.stopPropagation();
+                openPasswordDetailModal(e.id);
+            } else if (action === "edit-pass") {
+                evt.stopPropagation();
+                openPasswordForm(e.id);
+            } else if (action === "delete-pass") {
+                evt.stopPropagation();
+                deletePasswordEntry(e.id);
+            }
         });
 
         els.listPasswords.appendChild(card);
@@ -2293,24 +2913,285 @@ function renderFuelReport() {
 
 // --- CRUD LOGIC FOR FORMS ---
 
-// 1. Password CRUD
+// 1. Password CRUD & Modal Handlers v1.21.04
+
+// Toggle password favorite
+async function togglePasswordFavorite(id) {
+    const entry = state.vault.entries.find(e => e.id === id);
+    if (!entry) return;
+    entry.is_favorite = !entry.is_favorite;
+    entry.updated_at = new Date().toISOString();
+    setSyncStatus(false);
+    renderPasswords();
+    showToast(entry.is_favorite ? "⭐ Añadida a favoritas" : "Quitada de favoritas");
+    await syncWithCloud();
+}
+
+// Password Detail Modal v1.21.04
+function openPasswordDetailModal(id) {
+    const entry = state.vault.entries.find(e => e.id === id);
+    if (!entry) return;
+    state.passwords.activeDetailId = id;
+
+    const modal = document.getElementById("modal-password-detail");
+    if (!modal) return;
+
+    const isAuth = canUserAccessPassword(entry, state.currentUser);
+    const isRestr = entry.is_restricted === true || entry.visibility === "restricted";
+    const catKey = (entry.tipo || entry.category || "web").toLowerCase();
+    const catMeta = PASSWORD_CATEGORIES[catKey] || PASSWORD_CATEGORIES.other;
+    const strength = getPasswordStrength(entry.password || "");
+
+    // Logo
+    const logoContainer = document.getElementById("detail-pass-logo-container");
+    if (logoContainer) {
+        if (entry.url && entry.url.includes(".")) {
+            let domain = entry.url.replace(/^https?:\/\//, '').split('/')[0].split(':')[0];
+            logoContainer.innerHTML = `<img src="https://www.google.com/s2/favicons?domain=${domain}&sz=64" alt="" onerror="this.src=''; this.parentElement.innerHTML='<i class=\\'bx ${catMeta.icon}\\' style=\\'color:${catMeta.color}\\'></i>'">`;
+        } else {
+            logoContainer.innerHTML = `<i class="bx ${catMeta.icon}" style="color:${catMeta.color}"></i>`;
+        }
+    }
+
+    // Title
+    const titleEl = document.getElementById("detail-pass-title");
+    if (titleEl) titleEl.textContent = entry.nombre || "Sin Nombre";
+
+    // Favorite button
+    const favBtn = document.getElementById("detail-btn-fav-toggle");
+    if (favBtn) {
+        favBtn.innerHTML = entry.is_favorite ? '<i class="bx bxs-star" style="color: #fbbf24;"></i>' : '<i class="bx bx-star"></i>';
+    }
+
+    // Badges
+    const badgesContainer = document.getElementById("detail-pass-badges");
+    if (badgesContainer) {
+        let badges = `<span class="badge-tag tag-category"><i class="bx ${catMeta.icon}"></i> ${catMeta.label}</span>`;
+        if (isRestr) {
+            badges += `<span class="badge-tag tag-restricted"><i class="bx bx-shield-quarter"></i> Protegida</span>`;
+        }
+        badgesContainer.innerHTML = badges;
+    }
+
+    // User
+    const userEl = document.getElementById("detail-pass-username");
+    if (userEl) userEl.textContent = entry.usuario || "—";
+
+    // Password & Strength
+    const passEl = document.getElementById("detail-pass-password");
+    const stBadge = document.getElementById("detail-pass-strength-badge");
+    const togglePassBtn = document.getElementById("btn-detail-toggle-pass");
+    if (stBadge) {
+        stBadge.textContent = strength.label;
+        stBadge.style.background = `${strength.color}22`;
+        stBadge.style.color = strength.color;
+        stBadge.style.borderColor = `${strength.color}44`;
+    }
+    if (passEl) {
+        if (isAuth) {
+            passEl.textContent = "••••••••";
+            if (togglePassBtn) {
+                togglePassBtn.style.display = "inline-flex";
+                togglePassBtn.innerHTML = '<i class="bx bx-show"></i>';
+            }
+        } else {
+            passEl.textContent = "🔒 Acceso Restringido (Confidencial)";
+            passEl.style.color = "#fbbf24";
+            if (togglePassBtn) togglePassBtn.style.display = "none";
+        }
+    }
+
+    // URL
+    const urlRow = document.getElementById("detail-pass-url-row");
+    const urlEl = document.getElementById("detail-pass-url");
+    if (urlRow && urlEl) {
+        if (entry.url) {
+            urlRow.style.display = "flex";
+            urlEl.textContent = entry.url;
+        } else {
+            urlRow.style.display = "none";
+        }
+    }
+
+    // Notes
+    const notesRow = document.getElementById("detail-pass-notes-row");
+    const notesEl = document.getElementById("detail-pass-notes");
+    if (notesRow && notesEl) {
+        if (entry.notes && entry.notes.trim()) {
+            notesRow.style.display = "flex";
+            notesEl.textContent = entry.notes;
+        } else {
+            notesRow.style.display = "none";
+        }
+    }
+
+    // Security & Auth Info
+    const authInfoEl = document.getElementById("detail-pass-access-info");
+    if (authInfoEl) {
+        if (!isRestr) {
+            authInfoEl.textContent = "🌐 Público (Todos los técnicos)";
+            authInfoEl.style.color = "#34d399";
+        } else {
+            const scope = entry.authorized_scope || "admin_lead";
+            if (scope === "admin") {
+                authInfoEl.textContent = "👑 Solo Administradores";
+            } else if (scope === "admin_lead") {
+                authInfoEl.textContent = "🛡️ Administradores y Resp. Técnicos";
+            } else if (scope === "custom") {
+                const uCount = (entry.authorized_users || []).length;
+                authInfoEl.textContent = `👥 ${uCount} usuario(s) autorizado(s)`;
+            }
+            authInfoEl.style.color = "#fbbf24";
+        }
+    }
+
+    const updatedDateEl = document.getElementById("detail-pass-updated-date");
+    if (updatedDateEl) {
+        const rawDate = entry.updated_at || entry.created_at;
+        updatedDateEl.textContent = rawDate ? new Date(rawDate).toLocaleString("es-ES") : "Reciente";
+    }
+
+    modal.style.display = "flex";
+}
+
+function closePasswordDetailModal() {
+    const modal = document.getElementById("modal-password-detail");
+    if (modal) modal.style.display = "none";
+    state.passwords.activeDetailId = null;
+}
+
+// Password Generator helpers for form
+function updateFormPasswordStrength(val) {
+    const st = getPasswordStrength(val);
+    const fillEl = document.getElementById("pass-strength-fill");
+    const labelEl = document.getElementById("pass-strength-label");
+    const entropyEl = document.getElementById("pass-strength-entropy");
+
+    if (fillEl) {
+        fillEl.style.width = `${st.percent}%`;
+        fillEl.style.backgroundColor = st.color;
+    }
+    if (labelEl) {
+        labelEl.textContent = st.label;
+        labelEl.style.color = st.color;
+    }
+    if (entropyEl) {
+        entropyEl.textContent = st.entropy;
+    }
+}
+
+function generatePasswordFromFormWidget() {
+    const len = parseInt(document.getElementById("gen-pass-length")?.value) || 16;
+    const upper = document.getElementById("gen-opt-upper")?.checked ?? true;
+    const lower = document.getElementById("gen-opt-lower")?.checked ?? true;
+    const number = document.getElementById("gen-opt-number")?.checked ?? true;
+    const symbol = document.getElementById("gen-opt-symbol")?.checked ?? true;
+
+    return generateAdvancedPassword(len, { upper, lower, number, symbol });
+}
+
+function regenFormPasswordPreview() {
+    const pass = generatePasswordFromFormWidget();
+    const passInput = document.getElementById("pass-password");
+    if (passInput) {
+        passInput.value = pass;
+        updateFormPasswordStrength(pass);
+    }
+}
+
+// Populate Authorized Users Checklist in Form
+function populateAuthUsersChecklist(selectedUsers = []) {
+    const container = document.getElementById("pass-authorized-users-list");
+    if (!container) return;
+    container.innerHTML = "";
+
+    const allUsers = state.vault.users || [];
+    if (allUsers.length === 0) {
+        container.innerHTML = `<div style="font-size:0.75rem; color:var(--text-secondary); text-align:center; padding:6px;">No hay otros usuarios registrados</div>`;
+        return;
+    }
+
+    const normSelected = selectedUsers.map(u => String(u).trim().toLowerCase());
+
+    allUsers.forEach(u => {
+        const uname = u.username || "";
+        const uRole = u.role || "tecnico";
+        const isChecked = normSelected.includes(uname.toLowerCase());
+
+        const div = document.createElement("div");
+        div.className = "auth-user-item";
+        div.innerHTML = `
+            <label for="auth-user-${uname}">
+                <input type="checkbox" id="auth-user-${uname}" value="${uname}" ${isChecked ? 'checked' : ''} style="accent-color: var(--accent);">
+                <span style="font-weight: 600; color: var(--text-primary);">${uname.toUpperCase()}</span>
+                <span style="font-size: 0.68rem; color: var(--text-secondary);">(${uRole})</span>
+            </label>
+        `;
+        container.appendChild(div);
+    });
+}
+
 function openPasswordForm(id = null) {
     els.formPassword.reset();
     document.getElementById("pass-id").value = "";
     
+    // Hide generator widget by default
+    const genWidget = document.getElementById("pass-generator-widget");
+    if (genWidget) genWidget.style.display = "none";
+
+    const passInput = document.getElementById("pass-password");
+    if (passInput) passInput.type = "text";
+    const btnToggleVis = document.getElementById("btn-toggle-form-pass-vis");
+    if (btnToggleVis) btnToggleVis.innerHTML = '<i class="bx bx-show"></i>';
+
+    const isRestrictedChk = document.getElementById("pass-is-restricted");
+    const restrWrap = document.getElementById("pass-restriction-options-wrap");
+    const scopeSelect = document.getElementById("pass-auth-scope-select");
+    const customUsersWrap = document.getElementById("pass-authorized-users-container");
+    const isFavChk = document.getElementById("pass-is-favorite");
+
+    // Manage access section permissions
+    const canManageRestr = state.currentUser && (state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico");
+    const authSection = document.getElementById("pass-auth-section");
+    if (authSection) {
+        authSection.style.display = canManageRestr ? "flex" : "none";
+    }
+
     if (id) {
         const entry = state.vault.entries.find(e => e.id === id);
         if (entry) {
             document.getElementById("password-form-title").textContent = "Editar Contraseña";
             document.getElementById("pass-id").value = entry.id;
-            document.getElementById("pass-type").value = entry.tipo || "web";
+            document.getElementById("pass-type").value = entry.tipo || entry.category || "web";
             document.getElementById("pass-name").value = entry.nombre || "";
             document.getElementById("pass-username").value = entry.usuario || "";
             document.getElementById("pass-password").value = entry.password || "";
             document.getElementById("pass-url").value = entry.url || "";
+            document.getElementById("pass-notes").value = entry.notes || "";
+            
+            if (isFavChk) isFavChk.checked = entry.is_favorite === true;
+
+            const isRestr = entry.is_restricted === true || entry.visibility === "restricted";
+            if (isRestrictedChk) isRestrictedChk.checked = isRestr;
+            if (restrWrap) restrWrap.style.display = isRestr ? "flex" : "none";
+
+            const authScope = entry.authorized_scope || (entry.authorized_users?.length ? "custom" : "admin_lead");
+            if (scopeSelect) scopeSelect.value = authScope;
+            if (customUsersWrap) customUsersWrap.style.display = authScope === "custom" ? "flex" : "none";
+
+            populateAuthUsersChecklist(entry.authorized_users || []);
+            updateFormPasswordStrength(entry.password || "");
         }
     } else {
         document.getElementById("password-form-title").textContent = "Nueva Contraseña";
+        if (isRestrictedChk) isRestrictedChk.checked = false;
+        if (restrWrap) restrWrap.style.display = "none";
+        if (scopeSelect) scopeSelect.value = "admin_lead";
+        if (customUsersWrap) customUsersWrap.style.display = "none";
+        if (isFavChk) isFavChk.checked = false;
+        
+        populateAuthUsersChecklist([]);
+        updateFormPasswordStrength("");
     }
     switchScreen("form-password");
 }
@@ -2321,30 +3202,64 @@ async function savePasswordEntry(evt) {
         showToast("Error: Acceso de sólo lectura");
         return;
     }
+
     const id = document.getElementById("pass-id").value;
     const tipo = document.getElementById("pass-type").value;
     const nombre = document.getElementById("pass-name").value.trim();
     const usuario = document.getElementById("pass-username").value.trim();
     const password = document.getElementById("pass-password").value.trim();
     const url = document.getElementById("pass-url").value.trim();
+    const notes = document.getElementById("pass-notes").value.trim();
+    const is_favorite = document.getElementById("pass-is-favorite")?.checked ?? false;
+    const is_restricted = document.getElementById("pass-is-restricted")?.checked ?? false;
+    const authorized_scope = document.getElementById("pass-auth-scope-select")?.value || "admin_lead";
 
-    const entryData = { tipo, nombre, usuario, password, url };
+    // Collect custom authorized users
+    const authorized_users = [];
+    if (is_restricted && authorized_scope === "custom") {
+        document.querySelectorAll("#pass-authorized-users-list input[type='checkbox']:checked").forEach(chk => {
+            authorized_users.push(chk.value.trim().toLowerCase());
+        });
+        // Always include current admin creator
+        if (state.currentUser && !authorized_users.includes(state.currentUser.username.toLowerCase())) {
+            authorized_users.push(state.currentUser.username.toLowerCase());
+        }
+    }
+
+    const entryData = {
+        tipo,
+        category: tipo,
+        nombre,
+        usuario,
+        password,
+        url,
+        notes,
+        is_favorite,
+        is_restricted,
+        visibility: is_restricted ? "restricted" : "all",
+        authorized_scope,
+        authorized_users,
+        updated_at: new Date().toISOString()
+    };
 
     if (id) {
-        // Update
-        const idx = state.vault.entries.findIndex(e => e.id == id);
+        // Update existing
+        const idx = state.vault.entries.findIndex(e => String(e.id) === String(id));
         if (idx !== -1) {
             state.vault.entries[idx] = { ...state.vault.entries[idx], ...entryData };
         }
     } else {
         // Create new
         entryData.id = Date.now();
+        entryData.created_at = new Date().toISOString();
+        entryData.created_by = state.currentUser ? state.currentUser.username : "admin";
         state.vault.entries.unshift(entryData);
     }
 
-    setSyncStatus(false); // Mark as modified
+    setSyncStatus(false);
+    renderPasswords();
     switchScreen("passwords");
-    showToast("Contraseña guardada localmente");
+    showToast("Contraseña guardada correctamente");
     
     // Auto sync to cloud
     await syncWithCloud();
@@ -2355,10 +3270,20 @@ async function deletePasswordEntry(id) {
         showToast("Error: Acceso de sólo lectura");
         return;
     }
-    if (confirm("¿Estás seguro de que quieres eliminar esta contraseña?")) {
+    const entry = state.vault.entries.find(e => e.id === id);
+    if (!entry) return;
+
+    if (!canUserAccessPassword(entry)) {
+        showToast("Error: No tienes permisos para eliminar esta contraseña");
+        return;
+    }
+
+    if (confirm(`¿Estás seguro de que deseas eliminar la contraseña "${entry.nombre}"?`)) {
         state.vault.entries = state.vault.entries.filter(e => e.id !== id);
+        delete state.passwords.revealedMap[id];
         setSyncStatus(false);
         renderPasswords();
+        showToast("Contraseña eliminada");
         await syncWithCloud();
     }
 }
