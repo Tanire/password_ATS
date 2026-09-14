@@ -1068,9 +1068,15 @@ function setupEventListeners() {
     // Auth scope select toggle
     const passAuthScopeSelect = document.getElementById("pass-auth-scope-select");
     const passAuthorizedUsersContainer = document.getElementById("pass-authorized-users-container");
-    if (passAuthScopeSelect && passAuthorizedUsersContainer) {
+    if (passAuthScopeSelect) {
         passAuthScopeSelect.addEventListener("change", (e) => {
-            passAuthorizedUsersContainer.style.display = e.target.value === "custom" ? "flex" : "none";
+            if (passIsRestricted && !passIsRestricted.checked) {
+                passIsRestricted.checked = true;
+                if (passRestrictionOptionsWrap) passRestrictionOptionsWrap.style.display = "flex";
+            }
+            if (passAuthorizedUsersContainer) {
+                passAuthorizedUsersContainer.style.display = e.target.value === "custom" ? "flex" : "none";
+            }
         });
     }
 
@@ -3090,72 +3096,84 @@ function openPasswordForm(id = null) {
 }
 
 async function savePasswordEntry(evt) {
-    evt.preventDefault();
+    if (evt) {
+        evt.preventDefault();
+        evt.stopPropagation();
+    }
     if (state.currentUser && state.currentUser.role === "viewer") {
         showToast("Error: Acceso de sólo lectura");
         return;
     }
 
-    const id = document.getElementById("pass-id").value;
-    const tipo = document.getElementById("pass-type").value;
-    const nombre = document.getElementById("pass-name").value.trim();
-    const usuario = document.getElementById("pass-username").value.trim();
-    const password = document.getElementById("pass-password").value.trim();
-    const url = document.getElementById("pass-url").value.trim();
-    const notes = document.getElementById("pass-notes").value.trim();
-    const is_favorite = document.getElementById("pass-is-favorite")?.checked ?? false;
-    const is_restricted = document.getElementById("pass-is-restricted")?.checked ?? false;
-    const authorized_scope = document.getElementById("pass-auth-scope-select")?.value || "admin_lead";
+    try {
+        showLoading(true, "Guardando contraseña...");
 
-    // Collect custom authorized users
-    const authorized_users = [];
-    if (is_restricted && authorized_scope === "custom") {
-        document.querySelectorAll("#pass-authorized-users-list input[type='checkbox']:checked").forEach(chk => {
-            authorized_users.push(chk.value.trim().toLowerCase());
-        });
-        // Always include current admin creator
-        if (state.currentUser && !authorized_users.includes(state.currentUser.username.toLowerCase())) {
-            authorized_users.push(state.currentUser.username.toLowerCase());
+        const id = document.getElementById("pass-id").value;
+        const tipo = document.getElementById("pass-type").value;
+        const nombre = document.getElementById("pass-name").value.trim();
+        const usuario = document.getElementById("pass-username").value.trim();
+        const password = document.getElementById("pass-password").value.trim();
+        const url = document.getElementById("pass-url").value.trim();
+        const notes = document.getElementById("pass-notes").value.trim();
+        const is_favorite = document.getElementById("pass-is-favorite")?.checked ?? false;
+        const is_restricted = document.getElementById("pass-is-restricted")?.checked ?? false;
+        const authorized_scope = document.getElementById("pass-auth-scope-select")?.value || "admin_lead";
+
+        // Collect custom authorized users
+        const authorized_users = [];
+        if (is_restricted && authorized_scope === "custom") {
+            document.querySelectorAll("#pass-authorized-users-list input[type='checkbox']:checked").forEach(chk => {
+                authorized_users.push(chk.value.trim().toLowerCase());
+            });
+            // Always include current admin creator
+            if (state.currentUser && !authorized_users.includes(state.currentUser.username.toLowerCase())) {
+                authorized_users.push(state.currentUser.username.toLowerCase());
+            }
         }
-    }
 
-    const entryData = {
-        tipo,
-        category: tipo,
-        nombre,
-        usuario,
-        password,
-        url,
-        notes,
-        is_favorite,
-        is_restricted,
-        visibility: is_restricted ? "restricted" : "all",
-        authorized_scope,
-        authorized_users,
-        updated_at: new Date().toISOString()
-    };
+        const entryData = {
+            tipo,
+            category: tipo,
+            nombre,
+            usuario,
+            password,
+            url,
+            notes,
+            is_favorite,
+            is_restricted,
+            visibility: is_restricted ? "restricted" : "all",
+            authorized_scope: is_restricted ? authorized_scope : "all",
+            authorized_users,
+            updated_at: new Date().toISOString()
+        };
 
-    if (id) {
-        // Update existing
-        const idx = state.vault.entries.findIndex(e => String(e.id) === String(id));
-        if (idx !== -1) {
-            state.vault.entries[idx] = { ...state.vault.entries[idx], ...entryData };
+        if (id) {
+            // Update existing
+            const idx = state.vault.entries.findIndex(e => String(e.id) === String(id));
+            if (idx !== -1) {
+                state.vault.entries[idx] = { ...state.vault.entries[idx], ...entryData };
+            }
+        } else {
+            // Create new
+            entryData.id = Date.now();
+            entryData.created_at = new Date().toISOString();
+            entryData.created_by = state.currentUser ? state.currentUser.username : "admin";
+            state.vault.entries.unshift(entryData);
         }
-    } else {
-        // Create new
-        entryData.id = Date.now();
-        entryData.created_at = new Date().toISOString();
-        entryData.created_by = state.currentUser ? state.currentUser.username : "admin";
-        state.vault.entries.unshift(entryData);
-    }
 
-    setSyncStatus(false);
-    renderPasswords();
-    switchScreen("passwords");
-    showToast("Contraseña guardada correctamente");
-    
-    // Auto sync to cloud
-    await syncWithCloud();
+        setSyncStatus(false);
+        renderPasswords();
+        switchScreen("passwords");
+        showToast("Contraseña guardada correctamente");
+        
+        // Auto sync to cloud
+        await syncWithCloud();
+    } catch (err) {
+        console.error("Save password error:", err);
+        showToast("Error al guardar contraseña: " + (err.message || err));
+    } finally {
+        showLoading(false);
+    }
 }
 
 async function deletePasswordEntry(id) {
@@ -5048,6 +5066,7 @@ async function saveUserAction(evt) {
         }
         
         setSyncStatus(false);
+        renderAdminUsers();
         switchScreen("settings");
         showToast("Usuario guardado");
         
