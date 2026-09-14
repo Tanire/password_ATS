@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.21.04",
+        version: "1.21.05",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -229,18 +229,19 @@ const PASSWORD_CATEGORIES = {
     other: { label: "Otros", icon: "bx-dots-horizontal-rounded", emoji: "⚙️", color: "#94a3b8" }
 };
 
-// Password Access Control Checker v1.21.04
+// Password Access Control Checker v1.21.05
 function canUserAccessPassword(entry, user = state.currentUser) {
     if (!entry) return false;
     if (!user) return false;
     // Admins always have access to everything
     if (user.role === "admin") return true;
 
-    const isRestricted = entry.is_restricted === true || entry.visibility === "restricted";
+    const isRestricted = entry.is_restricted === true || entry.visibility === "restricted" || (entry.authorized_scope && entry.authorized_scope !== "all");
     if (!isRestricted) return true;
 
     // Evaluate restricted scope
     const scope = entry.authorized_scope || "admin_lead";
+    if (scope === "all") return true;
     if (scope === "admin") {
         return user.role === "admin";
     }
@@ -1056,24 +1057,11 @@ function setupEventListeners() {
         });
     }
 
-    // Restriction switch toggle
-    const passIsRestricted = document.getElementById("pass-is-restricted");
-    const passRestrictionOptionsWrap = document.getElementById("pass-restriction-options-wrap");
-    if (passIsRestricted && passRestrictionOptionsWrap) {
-        passIsRestricted.addEventListener("change", (e) => {
-            passRestrictionOptionsWrap.style.display = e.target.checked ? "flex" : "none";
-        });
-    }
-
     // Auth scope select toggle
     const passAuthScopeSelect = document.getElementById("pass-auth-scope-select");
     const passAuthorizedUsersContainer = document.getElementById("pass-authorized-users-container");
     if (passAuthScopeSelect) {
         passAuthScopeSelect.addEventListener("change", (e) => {
-            if (passIsRestricted && !passIsRestricted.checked) {
-                passIsRestricted.checked = true;
-                if (passRestrictionOptionsWrap) passRestrictionOptionsWrap.style.display = "flex";
-            }
             if (passAuthorizedUsersContainer) {
                 passAuthorizedUsersContainer.style.display = e.target.value === "custom" ? "flex" : "none";
             }
@@ -2250,7 +2238,7 @@ function renderPasswords() {
         // Category filter
         if (activeCat === "all") return true;
         if (activeCat === "favorites") return e.is_favorite === true;
-        if (activeCat === "restricted") return e.is_restricted === true || e.visibility === "restricted";
+        if (activeCat === "restricted") return e.is_restricted === true || e.visibility === "restricted" || (e.authorized_scope && e.authorized_scope !== "all");
         
         const itemCat = (e.tipo || e.category || "web").toLowerCase();
         return itemCat === activeCat;
@@ -2277,7 +2265,7 @@ function renderPasswords() {
     // 4. Render Standard ATS Item Cards
     filtered.forEach(e => {
         const isAuth = canUserAccessPassword(e, currentUser);
-        const isRestr = e.is_restricted === true || e.visibility === "restricted";
+        const isRestr = e.is_restricted === true || e.visibility === "restricted" || (e.authorized_scope && e.authorized_scope !== "all");
         const catKey = (e.tipo || e.category || "web").toLowerCase();
         const catMeta = PASSWORD_CATEGORIES[catKey] || PASSWORD_CATEGORIES.other;
         const isRevealed = !!(state.passwords && state.passwords.revealedMap && state.passwords.revealedMap[e.id]);
@@ -2836,7 +2824,7 @@ function openPasswordDetailModal(id) {
     if (!modal) return;
 
     const isAuth = canUserAccessPassword(entry, state.currentUser);
-    const isRestr = entry.is_restricted === true || entry.visibility === "restricted";
+    const isRestr = entry.is_restricted === true || entry.visibility === "restricted" || (entry.authorized_scope && entry.authorized_scope !== "all");
     const catKey = (entry.tipo || entry.category || "web").toLowerCase();
     const catMeta = PASSWORD_CATEGORIES[catKey] || PASSWORD_CATEGORIES.other;
     const strength = getPasswordStrength(entry.password || "");
@@ -2927,19 +2915,21 @@ function openPasswordDetailModal(id) {
     // Security & Auth Info
     const authInfoEl = document.getElementById("detail-pass-access-info");
     if (authInfoEl) {
-        if (!isRestr) {
+        const isRestrictedEntry = entry.is_restricted === true || entry.visibility === "restricted" || (entry.authorized_scope && entry.authorized_scope !== "all");
+        const scope = entry.authorized_scope || (isRestrictedEntry ? "admin_lead" : "all");
+
+        if (!isRestrictedEntry || scope === "all") {
             authInfoEl.textContent = "🌐 Público (Todos los técnicos)";
             authInfoEl.style.color = "#34d399";
-        } else {
-            const scope = entry.authorized_scope || "admin_lead";
-            if (scope === "admin") {
-                authInfoEl.textContent = "👑 Solo Administradores";
-            } else if (scope === "admin_lead") {
-                authInfoEl.textContent = "🛡️ Administradores y Resp. Técnicos";
-            } else if (scope === "custom") {
-                const uCount = (entry.authorized_users || []).length;
-                authInfoEl.textContent = `👥 ${uCount} usuario(s) autorizado(s)`;
-            }
+        } else if (scope === "admin") {
+            authInfoEl.textContent = "👑 Restringido: Solo Administradores";
+            authInfoEl.style.color = "#fbbf24";
+        } else if (scope === "admin_lead") {
+            authInfoEl.textContent = "🛡️ Restringido: Administradores y Resp. Técnicos";
+            authInfoEl.style.color = "#fbbf24";
+        } else if (scope === "custom") {
+            const uCount = (entry.authorized_users || []).length;
+            authInfoEl.textContent = `👥 Restringido: ${uCount} usuario(s) autorizado(s)`;
             authInfoEl.style.color = "#fbbf24";
         }
     }
@@ -3043,8 +3033,6 @@ function openPasswordForm(id = null) {
     const btnToggleVis = document.getElementById("btn-toggle-form-pass-vis");
     if (btnToggleVis) btnToggleVis.innerHTML = '<i class="bx bx-show"></i>';
 
-    const isRestrictedChk = document.getElementById("pass-is-restricted");
-    const restrWrap = document.getElementById("pass-restriction-options-wrap");
     const scopeSelect = document.getElementById("pass-auth-scope-select");
     const customUsersWrap = document.getElementById("pass-authorized-users-container");
     const isFavChk = document.getElementById("pass-is-favorite");
@@ -3070,11 +3058,14 @@ function openPasswordForm(id = null) {
             
             if (isFavChk) isFavChk.checked = entry.is_favorite === true;
 
-            const isRestr = entry.is_restricted === true || entry.visibility === "restricted";
-            if (isRestrictedChk) isRestrictedChk.checked = isRestr;
-            if (restrWrap) restrWrap.style.display = isRestr ? "flex" : "none";
-
-            const authScope = entry.authorized_scope || (entry.authorized_users?.length ? "custom" : "admin_lead");
+            const isRestr = entry.is_restricted === true || entry.visibility === "restricted" || (entry.authorized_scope && entry.authorized_scope !== "all");
+            let authScope = "all";
+            if (isRestr) {
+                authScope = entry.authorized_scope || (entry.authorized_users?.length ? "custom" : "admin_lead");
+                if (authScope === "all") authScope = "admin_lead";
+            } else {
+                authScope = "all";
+            }
             if (scopeSelect) scopeSelect.value = authScope;
             if (customUsersWrap) customUsersWrap.style.display = authScope === "custom" ? "flex" : "none";
 
@@ -3083,9 +3074,7 @@ function openPasswordForm(id = null) {
         }
     } else {
         document.getElementById("password-form-title").textContent = "Nueva Contraseña";
-        if (isRestrictedChk) isRestrictedChk.checked = false;
-        if (restrWrap) restrWrap.style.display = "none";
-        if (scopeSelect) scopeSelect.value = "admin_lead";
+        if (scopeSelect) scopeSelect.value = "all";
         if (customUsersWrap) customUsersWrap.style.display = "none";
         if (isFavChk) isFavChk.checked = false;
         
@@ -3116,11 +3105,12 @@ async function savePasswordEntry(evt) {
         const url = document.getElementById("pass-url").value.trim();
         const notes = document.getElementById("pass-notes").value.trim();
         const is_favorite = document.getElementById("pass-is-favorite")?.checked ?? false;
-        const is_restricted = document.getElementById("pass-is-restricted")?.checked ?? false;
-        const authorized_scope = document.getElementById("pass-auth-scope-select")?.value || "admin_lead";
+        const canManageRestr = state.currentUser && (state.currentUser.role === "admin" || state.currentUser.role === "responsable_tecnico");
 
-        // Collect custom authorized users
-        const authorized_users = [];
+        let authorized_scope = document.getElementById("pass-auth-scope-select")?.value || "all";
+        let is_restricted = authorized_scope !== "all";
+        let authorized_users = [];
+
         if (is_restricted && authorized_scope === "custom") {
             document.querySelectorAll("#pass-authorized-users-list input[type='checkbox']:checked").forEach(chk => {
                 authorized_users.push(chk.value.trim().toLowerCase());
@@ -3129,6 +3119,13 @@ async function savePasswordEntry(evt) {
             if (state.currentUser && !authorized_users.includes(state.currentUser.username.toLowerCase())) {
                 authorized_users.push(state.currentUser.username.toLowerCase());
             }
+        }
+
+        const existingEntry = id ? state.vault.entries.find(e => String(e.id) === String(id)) : null;
+        if (existingEntry && !canManageRestr) {
+            authorized_scope = existingEntry.authorized_scope || (existingEntry.is_restricted ? "admin_lead" : "all");
+            is_restricted = authorized_scope !== "all";
+            authorized_users = existingEntry.authorized_users || [];
         }
 
         const entryData = {
@@ -3142,7 +3139,7 @@ async function savePasswordEntry(evt) {
             is_favorite,
             is_restricted,
             visibility: is_restricted ? "restricted" : "all",
-            authorized_scope: is_restricted ? authorized_scope : "all",
+            authorized_scope,
             authorized_users,
             updated_at: new Date().toISOString()
         };
