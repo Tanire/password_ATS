@@ -984,11 +984,12 @@ function setupEventListeners() {
     }
 
     // Category chips filter clicks
-    const passCatChips = document.querySelectorAll("#passwords-category-chips .pass-cat-chip");
+    const passCatChips = document.querySelectorAll("#passwords-category-chips .category-chip, #passwords-category-chips .pass-cat-chip");
     passCatChips.forEach(chip => {
         chip.addEventListener("click", () => {
             passCatChips.forEach(c => c.classList.remove("active"));
             chip.classList.add("active");
+            if (!state.passwords) state.passwords = {};
             state.passwords.filterCategory = chip.dataset.cat || "all";
             renderPasswords();
         });
@@ -2218,9 +2219,7 @@ function lockVault() {
     showToast("Sesión cerrada");
 }
 
-// --- RENDERING VIEWS ---
-
-// A. Passwords list & metrics renderer v1.21.04
+// A. Passwords list renderer v1.21.04
 function renderPasswords() {
     if (!els.listPasswords) return;
     els.listPasswords.innerHTML = "";
@@ -2228,69 +2227,9 @@ function renderPasswords() {
     const entries = state.vault.entries || [];
     const q = (state.passwords?.searchQuery || (els.searchPasswords ? els.searchPasswords.value : "")).trim().toLowerCase();
     const activeCat = state.passwords?.filterCategory || "all";
-    const sortOrder = state.passwords?.sortOrder || "name_asc";
     const currentUser = state.currentUser;
 
-    // 1. Calculate & Render Summary Metrics
-    const totalCount = entries.length;
-    let restrictedCount = 0;
-    let favoritesCount = 0;
-    let strongCount = 0;
-
-    const catCounts = {
-        all: totalCount,
-        favorites: 0,
-        restricted: 0,
-        web: 0,
-        router: 0,
-        camera: 0,
-        server: 0,
-        software: 0,
-        email: 0,
-        wifi: 0,
-        other: 0
-    };
-
-    entries.forEach(e => {
-        const isRestr = e.is_restricted === true || e.visibility === "restricted";
-        if (isRestr) {
-            restrictedCount++;
-            catCounts.restricted++;
-        }
-        if (e.is_favorite === true) {
-            favoritesCount++;
-            catCounts.favorites++;
-        }
-        const st = getPasswordStrength(e.password || "");
-        if (st.score >= 3) strongCount++;
-
-        const cType = (e.tipo || e.category || "web").toLowerCase();
-        if (catCounts.hasOwnProperty(cType)) {
-            catCounts[cType]++;
-        } else {
-            catCounts.other++;
-        }
-    });
-
-    const elStatTotal = document.getElementById("stat-pass-total");
-    if (elStatTotal) elStatTotal.textContent = totalCount;
-    const elStatRestr = document.getElementById("stat-pass-restricted");
-    if (elStatRestr) elStatRestr.textContent = restrictedCount;
-    const elStatFav = document.getElementById("stat-pass-favorites");
-    if (elStatFav) elStatFav.textContent = favoritesCount;
-    const elStatStrong = document.getElementById("stat-pass-strong");
-    if (elStatStrong) elStatStrong.textContent = strongCount;
-
-    const badgeCount = document.getElementById("passwords-count-badge");
-    if (badgeCount) badgeCount.textContent = totalCount;
-
-    // Update category chip counts in UI
-    Object.keys(catCounts).forEach(k => {
-        const chipEl = document.getElementById(`chip-count-${k}`);
-        if (chipEl) chipEl.textContent = catCounts[k];
-    });
-
-    // 2. Filter list
+    // 1. Filter list
     let filtered = entries.filter(e => {
         // Search query filter
         const matchesQuery = !q || (
@@ -2310,57 +2249,37 @@ function renderPasswords() {
         return itemCat === activeCat;
     });
 
-    // 3. Sort list
+    // 2. Sort list: Favorites first, then alphabetical by name
     filtered.sort((a, b) => {
-        if (sortOrder === "name_asc") {
-            return (a.nombre || "").localeCompare(b.nombre || "");
-        } else if (sortOrder === "name_desc") {
-            return (b.nombre || "").localeCompare(a.nombre || "");
-        } else if (sortOrder === "recent") {
-            const timeA = a.updated_at || a.created_at || a.id || 0;
-            const timeB = b.updated_at || b.created_at || b.id || 0;
-            const valA = typeof timeA === 'number' ? timeA : new Date(timeA).getTime();
-            const valB = typeof timeB === 'number' ? timeB : new Date(timeB).getTime();
-            return valB - valA;
-        } else if (sortOrder === "favorites_first") {
-            const favA = a.is_favorite ? 1 : 0;
-            const favB = b.is_favorite ? 1 : 0;
-            if (favA !== favB) return favB - favA;
-            return (a.nombre || "").localeCompare(b.nombre || "");
-        } else if (sortOrder === "security") {
-            const scoreA = getPasswordStrength(a.password || "").score;
-            const scoreB = getPasswordStrength(b.password || "").score;
-            return scoreB - scoreA;
-        }
-        return 0;
+        const favA = a.is_favorite ? 1 : 0;
+        const favB = b.is_favorite ? 1 : 0;
+        if (favA !== favB) return favB - favA;
+        return (a.nombre || "").localeCompare(b.nombre || "");
     });
 
-    // 4. Render Empty State
+    // 3. Render Empty State
     if (filtered.length === 0) {
         els.listPasswords.innerHTML = `
-            <div style="text-align:center; padding: 40px 20px; color: var(--text-secondary); background: var(--bg-glass); border: 1px dashed var(--border-glass); border-radius: var(--radius-md);" class="anim-fade">
-                <div style="font-size: 2.5rem; margin-bottom: 8px;">🔑</div>
-                <div style="font-size: 1rem; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">No se encontraron contraseñas</div>
-                <div style="font-size: 0.8rem; color: var(--text-secondary); max-width: 320px; margin: 0 auto;">Prueba a cambiar el filtro de categoría o pulsa en el botón '+' para añadir una nueva credencial.</div>
+            <div style="text-align:center; padding: 35px 20px; color: var(--text-secondary); font-size: 0.9rem;" class="anim-fade">
+                No hay contraseñas en esta categoría
             </div>
         `;
         return;
     }
 
-    // 5. Render Cards
+    // 4. Render Standard ATS Item Cards
     filtered.forEach(e => {
         const isAuth = canUserAccessPassword(e, currentUser);
         const isRestr = e.is_restricted === true || e.visibility === "restricted";
         const catKey = (e.tipo || e.category || "web").toLowerCase();
         const catMeta = PASSWORD_CATEGORIES[catKey] || PASSWORD_CATEGORIES.other;
-        const strength = getPasswordStrength(e.password || "");
-        const isRevealed = !!state.passwords.revealedMap[e.id];
+        const isRevealed = !!(state.passwords && state.passwords.revealedMap && state.passwords.revealedMap[e.id]);
 
         const card = document.createElement("div");
-        card.className = `password-card anim-fade ${isRestr ? "is-restricted" : ""} ${e.is_favorite ? "is-favorite" : ""}`;
+        card.className = "item-card anim-fade";
         card.setAttribute("data-id", e.id);
 
-        // Logo / Icon fetching
+        // Logo / Favicon
         let logoContent = `<i class="bx ${catMeta.icon}" style="color: ${catMeta.color};"></i>`;
         if (e.url && e.url.includes(".")) {
             let domain = e.url.replace(/^https?:\/\//, '').split('/')[0].split(':')[0];
@@ -2370,169 +2289,142 @@ function renderPasswords() {
             }
         }
 
-        // Badges HTML
-        let badgesHtml = `<span class="badge-tag tag-category"><i class="bx ${catMeta.icon}"></i> ${catMeta.label}</span>`;
+        // Title and badges
+        const titleText = e.nombre || "Sin Nombre";
+        let badgesHtml = "";
         if (isRestr) {
-            badgesHtml += `<span class="badge-tag tag-restricted"><i class="bx bx-shield-quarter"></i> Protegida</span>`;
+            badgesHtml += `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35); font-size: 0.68rem; padding: 1px 6px; border-radius: 10px; margin-left: 6px; display: inline-flex; align-items: center; gap: 3px;"><i class="bx bx-shield-quarter"></i> Protegida</span>`;
         }
         if (e.is_favorite) {
-            badgesHtml += `<span class="badge-tag" style="background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.35);"><i class="bx bxs-star"></i> Favorita</span>`;
+            badgesHtml += `<i class="bx bxs-star" style="color: #fbbf24; font-size: 0.85rem; margin-left: 4px;" title="Favorita"></i>`;
         }
 
-        // Password Row Display
-        let passwordDisplay = "";
+        // Subtitle content
+        let passDisplay = "";
         if (isAuth) {
-            const passText = isRevealed ? e.password : "••••••••••••";
-            passwordDisplay = `
-                <div class="pass-row-item">
-                    <span class="pass-row-label"><i class="bx bx-lock-alt" style="color: #34d399;"></i> Clave:</span>
-                    <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
-                        <span class="pass-row-val font-mono" id="pass-val-${e.id}" style="color: ${isRevealed ? '#60a5fa' : 'inherit'}; font-weight: 700;">${passText}</span>
-                        <span class="badge" style="background: ${strength.color}22; color: ${strength.color}; border: 1px solid ${strength.color}44; font-size: 0.65rem; padding: 1px 5px;">${strength.label.split(' ')[0]}</span>
-                    </div>
-                </div>
-            `;
+            passDisplay = isRevealed ? `<span class="font-mono" style="color: #60a5fa; font-weight: 600;">${e.password}</span>` : '••••••••';
         } else {
-            passwordDisplay = `
-                <div class="pass-row-item" style="opacity: 0.85;">
-                    <span class="pass-row-label"><i class="bx bx-lock-alt" style="color: #f59e0b;"></i> Clave:</span>
-                    <span class="pass-row-val font-mono" style="color: #fbbf24; font-size: 0.75rem;"><i class="bx bx-shield-quarter"></i> Acceso Restringido</span>
-                </div>
-            `;
+            passDisplay = `<span style="color: #fbbf24; font-size: 0.75rem;"><i class="bx bx-lock-alt"></i> Restringida</span>`;
         }
 
-        // URL display if present
-        let urlDisplay = "";
+        let urlSub = "";
         if (e.url) {
-            urlDisplay = `
-                <div class="pass-row-item">
-                    <span class="pass-row-label"><i class="bx bx-globe" style="color: #60a5fa;"></i> Enlace:</span>
-                    <span class="pass-row-val" style="color: #60a5fa; font-size: 0.78rem;">${e.url}</span>
-                </div>
+            let cleanUrl = e.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+            urlSub = ` • <span style="color: var(--text-secondary);">${cleanUrl}</span>`;
+        }
+
+        const subtext = `${catMeta.label} • Usuario: <strong>${e.usuario || '-'}</strong> • Clave: ${passDisplay}${urlSub}`;
+
+        // Action Buttons
+        let actionsHtml = "";
+        if (isAuth) {
+            actionsHtml += `
+                <button class="btn-icon btn-toggle-pass" title="${isRevealed ? 'Ocultar' : 'Mostrar'} Contraseña"><i class="bx ${isRevealed ? 'bx-hide' : 'bx-show'}"></i></button>
+                <button class="btn-icon btn-copy-pass" title="Copiar Clave"><i class="bx bx-copy"></i></button>
+            `;
+        } else {
+            actionsHtml += `
+                <button class="btn-icon btn-locked-pass" style="color: #fbbf24;" title="Contraseña protegida"><i class="bx bx-lock-alt"></i></button>
             `;
         }
 
-        // Actions Bar
-        let actionButtons = "";
-        if (isAuth) {
-            actionButtons = `
-                <button type="button" class="btn-card-action btn-copy-pass" data-action="copy-pass" title="Copiar Contraseña">
-                    <i class="bx bx-copy"></i> Copiar Clave
-                </button>
-                <button type="button" class="btn-icon" data-action="toggle-pass" title="${isRevealed ? 'Ocultar' : 'Mostrar'} Contraseña" style="height: 32px; width: 32px;">
-                    <i class="bx ${isRevealed ? 'bx-hide' : 'bx-show'}"></i>
-                </button>
-            `;
-        } else {
-            actionButtons = `
-                <button type="button" class="btn-card-action btn-locked" data-action="locked-pass" title="Contraseña protegida">
-                    <i class="bx bx-lock-alt"></i> Protegida
-                </button>
-            `;
+        if (e.url) {
+            actionsHtml += `<button class="btn-icon btn-open-url" title="Abrir Enlace"><i class="bx bx-link-external"></i></button>`;
         }
+        actionsHtml += `
+            <button class="btn-icon btn-edit" title="Editar"><i class="bx bx-edit-alt"></i></button>
+            <button class="btn-icon btn-delete" style="color: var(--danger);" title="Eliminar"><i class="bx bx-trash"></i></button>
+        `;
 
         card.innerHTML = `
-            <div class="password-card-header">
-                <div class="password-card-title-group">
-                    <div class="password-logo-box">${logoContent}</div>
-                    <div class="password-card-info">
-                        <span class="password-card-title">${e.nombre || "Sin Nombre"}</span>
-                        <div class="password-card-badges">${badgesHtml}</div>
+            <div class="item-card-left">
+                <div class="item-logo-container">${logoContent}</div>
+                <div class="item-details">
+                    <div style="display: flex; align-items: center; flex-wrap: wrap;">
+                        <span class="item-title">${titleText}</span>
+                        ${badgesHtml}
                     </div>
-                </div>
-                <div style="display: flex; gap: 4px; align-items: center;">
-                    <button type="button" class="btn-icon" data-action="toggle-fav" style="border: none; background: transparent; width: 30px; height: 30px; color: ${e.is_favorite ? '#fbbf24' : 'var(--text-secondary)'}; font-size: 1.15rem;" title="${e.is_favorite ? 'Quitar favorita' : 'Marcar favorita'}">
-                        <i class="bx ${e.is_favorite ? 'bxs-star' : 'bx-star'}"></i>
-                    </button>
+                    <span class="item-sub">${subtext}</span>
                 </div>
             </div>
-
-            <div class="password-card-body">
-                <div class="pass-row-item">
-                    <span class="pass-row-label"><i class="bx bx-user" style="color: var(--accent);"></i> Usuario:</span>
-                    <span class="pass-row-val">${e.usuario || "-"}</span>
-                </div>
-                ${passwordDisplay}
-                ${urlDisplay}
-            </div>
-
-            <div class="password-card-footer">
-                <div class="pass-card-actions">
-                    ${actionButtons}
-                    <button type="button" class="btn-icon" data-action="copy-user" title="Copiar Usuario" style="height: 32px; width: 32px;">
-                        <i class="bx bx-user-check"></i>
-                    </button>
-                    ${e.url ? `
-                        <button type="button" class="btn-icon" data-action="open-url" title="Abrir URL en navegador" style="height: 32px; width: 32px;">
-                            <i class="bx bx-link-external"></i>
-                        </button>
-                    ` : ''}
-                </div>
-                <div class="pass-card-actions">
-                    <button type="button" class="btn-icon" data-action="view-detail" title="Ver detalles técnicos" style="height: 32px; width: 32px; color: var(--accent);">
-                        <i class="bx bx-info-circle"></i>
-                    </button>
-                    <button type="button" class="btn-icon" data-action="edit-pass" title="Editar" style="height: 32px; width: 32px;">
-                        <i class="bx bx-edit-alt"></i>
-                    </button>
-                    <button type="button" class="btn-icon" data-action="delete-pass" title="Eliminar" style="height: 32px; width: 32px; color: var(--danger);">
-                        <i class="bx bx-trash"></i>
-                    </button>
-                </div>
+            <div class="item-actions">
+                ${actionsHtml}
             </div>
         `;
 
-        // Card Clicks Routing
-        card.addEventListener("click", (evt) => {
-            const btn = evt.target.closest("button");
-            if (!btn) {
-                // Click on card body opens detail modal
-                openPasswordDetailModal(e.id);
-                return;
-            }
+        // Event Listeners for Card Actions
+        const btnToggle = card.querySelector(".btn-toggle-pass");
+        if (btnToggle) {
+            btnToggle.addEventListener("click", (evt) => {
+                evt.stopPropagation();
+                if (!state.passwords) state.passwords = {};
+                if (!state.passwords.revealedMap) state.passwords.revealedMap = {};
+                state.passwords.revealedMap[e.id] = !state.passwords.revealedMap[e.id];
+                renderPasswords();
+            });
+        }
 
-            const action = btn.dataset.action;
-            if (action === "copy-pass") {
+        const btnCopy = card.querySelector(".btn-copy-pass");
+        if (btnCopy) {
+            btnCopy.addEventListener("click", (evt) => {
                 evt.stopPropagation();
                 if (!isAuth) {
-                    showToast("⚠️ Acceso protegido: No estás autorizado a ver esta contraseña");
+                    showToast("⚠️ Contraseña protegida: No estás autorizado");
                     return;
                 }
                 copyToClipboard(e.password, "Contraseña copiada al portapapeles");
-                btn.innerHTML = '<i class="bx bx-check"></i> ¡Copiado!';
-                setTimeout(() => {
-                    btn.innerHTML = '<i class="bx bx-copy"></i> Copiar Clave';
-                }, 1800);
-            } else if (action === "toggle-pass") {
+            });
+        }
+
+        const btnLocked = card.querySelector(".btn-locked-pass");
+        if (btnLocked) {
+            btnLocked.addEventListener("click", (evt) => {
                 evt.stopPropagation();
-                state.passwords.revealedMap[e.id] = !state.passwords.revealedMap[e.id];
-                renderPasswords();
-            } else if (action === "locked-pass") {
-                evt.stopPropagation();
-                showToast("⚠️ Contraseña restringida: Consulta con el Administrador");
-            } else if (action === "copy-user") {
-                evt.stopPropagation();
-                if (e.usuario) copyToClipboard(e.usuario, "Usuario copiado");
-            } else if (action === "open-url") {
+                showToast("⚠️ Contraseña protegida: Consulta con el Administrador");
+            });
+        }
+
+        const btnUrl = card.querySelector(".btn-open-url");
+        if (btnUrl) {
+            btnUrl.addEventListener("click", (evt) => {
                 evt.stopPropagation();
                 let u = (e.url || "").trim();
                 if (u) {
                     if (!u.startsWith("http://") && !u.startsWith("https://")) u = "https://" + u;
                     window.open(u, "_blank");
                 }
-            } else if (action === "toggle-fav") {
-                evt.stopPropagation();
-                togglePasswordFavorite(e.id);
-            } else if (action === "view-detail") {
-                evt.stopPropagation();
-                openPasswordDetailModal(e.id);
-            } else if (action === "edit-pass") {
+            });
+        }
+
+        const btnEdit = card.querySelector(".btn-edit");
+        if (btnEdit) {
+            btnEdit.addEventListener("click", (evt) => {
                 evt.stopPropagation();
                 openPasswordForm(e.id);
-            } else if (action === "delete-pass") {
+            });
+        }
+
+        const btnDelete = card.querySelector(".btn-delete");
+        if (btnDelete) {
+            btnDelete.addEventListener("click", (evt) => {
                 evt.stopPropagation();
                 deletePasswordEntry(e.id);
+            });
+        }
+
+        // Double click copies password
+        card.addEventListener("dblclick", () => {
+            if (isAuth) {
+                copyToClipboard(e.password, "Contraseña copiada al portapapeles");
+            } else {
+                showToast("⚠️ Contraseña protegida: No estás autorizado");
             }
+        });
+
+        // Click on card body opens details modal
+        card.addEventListener("click", (evt) => {
+            if (evt.target.closest(".item-actions")) return;
+            openPasswordDetailModal(e.id);
         });
 
         els.listPasswords.appendChild(card);

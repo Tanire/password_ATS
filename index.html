@@ -267,113 +267,35 @@
                 </div>
 
                 <!-- B. PASSWORDS LIST SCREEN (v1.21.04) -->
+                <!-- B. PASSWORDS LIST SCREEN -->
                 <div id="screen-passwords" class="screen">
-                    <div class="list-header" style="margin-bottom: 12px;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <div>
-                                <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
-                                    <span>🌐 Contraseñas Internas</span>
-                                    <span class="badge" id="passwords-count-badge" style="background: var(--accent-glass); color: var(--accent); font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.3);">0</span>
-                                </h2>
-                                <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 2px 0 0 0;">Gestor seguro y centralizado de credenciales técnicas</p>
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="btn-add-circle" id="btn-new-password" title="Nueva Contraseña">+</button>
-                        </div>
+                    <div class="list-header">
+                        <h2>Contraseñas Internas</h2>
+                        <button class="btn-add-circle" id="btn-new-password" title="Nueva Contraseña">+</button>
                     </div>
 
-                    <!-- Métricas de Contraseñas (v1.21.04) -->
-                    <div class="passwords-metrics-grid anim-fade">
-                        <div class="pass-stat-card" id="card-stat-total">
-                            <div class="pass-stat-icon" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa;"><i class="bx bx-key"></i></div>
-                            <div class="pass-stat-info">
-                                <div class="pass-stat-value" id="stat-pass-total">0</div>
-                                <div class="pass-stat-label">Total Claves</div>
-                            </div>
-                        </div>
-                        <div class="pass-stat-card" id="card-stat-restricted">
-                            <div class="pass-stat-icon" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;"><i class="bx bx-shield-quarter"></i></div>
-                            <div class="pass-stat-info">
-                                <div class="pass-stat-value" id="stat-pass-restricted">0</div>
-                                <div class="pass-stat-label">Protegidas</div>
-                            </div>
-                        </div>
-                        <div class="pass-stat-card" id="card-stat-favorites">
-                            <div class="pass-stat-icon" style="background: rgba(236, 72, 153, 0.15); color: #f472b6;"><i class="bx bx-star"></i></div>
-                            <div class="pass-stat-info">
-                                <div class="pass-stat-value" id="stat-pass-favorites">0</div>
-                                <div class="pass-stat-label">Favoritas</div>
-                            </div>
-                        </div>
-                        <div class="pass-stat-card" id="card-stat-strong">
-                            <div class="pass-stat-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;"><i class="bx bx-check-shield"></i></div>
-                            <div class="pass-stat-info">
-                                <div class="pass-stat-value" id="stat-pass-strong">0</div>
-                                <div class="pass-stat-label">Alta Seguridad</div>
-                            </div>
-                        </div>
+                    <div class="search-container">
+                        <i class="bx bx-search search-icon"></i>
+                        <input type="text" id="search-passwords" class="search-input" placeholder="Buscar por servicio, usuario o notas...">
                     </div>
 
-                    <!-- Barra de Búsqueda y Ordenación (v1.21.04) -->
-                    <div class="passwords-toolbar anim-fade">
-                        <div class="search-container" style="flex: 1; margin-bottom: 0;">
-                            <i class="bx bx-search search-icon"></i>
-                            <input type="text" id="search-passwords" class="search-input" placeholder="Buscar por nombre, usuario, URL o notas...">
-                            <button type="button" id="btn-clear-search-passwords" class="btn-clear-input" style="display: none;" title="Limpiar búsqueda"><i class="bx bx-x"></i></button>
-                        </div>
-                        <div class="passwords-sort-select-wrap">
-                            <select id="sort-passwords" class="input-control select-compact">
-                                <option value="name_asc">🔤 Nombre (A - Z)</option>
-                                <option value="name_desc">🔤 Nombre (Z - A)</option>
-                                <option value="recent">⏱️ Más recientes</option>
-                                <option value="favorites_first">⭐ Favoritas primero</option>
-                                <option value="security">🛡️ Mayor seguridad</option>
-                            </select>
-                        </div>
+                    <!-- Category Chips Filter -->
+                    <div class="category-chips-scroll" id="passwords-category-chips">
+                        <button type="button" class="category-chip active" data-cat="all">Todas</button>
+                        <button type="button" class="category-chip" data-cat="favorites">⭐ Favoritas</button>
+                        <button type="button" class="category-chip" data-cat="restricted">🔒 Protegidas</button>
+                        <button type="button" class="category-chip" data-cat="web">🌐 Webs</button>
+                        <button type="button" class="category-chip" data-cat="router">🖥️ Routers</button>
+                        <button type="button" class="category-chip" data-cat="camera">📹 Cámaras</button>
+                        <button type="button" class="category-chip" data-cat="server">🗄️ Servidores</button>
+                        <button type="button" class="category-chip" data-cat="software">🏢 Software</button>
+                        <button type="button" class="category-chip" data-cat="email">📧 Correos</button>
+                        <button type="button" class="category-chip" data-cat="wifi">📶 WiFi</button>
+                        <button type="button" class="category-chip" data-cat="other">⚙️ Otros</button>
                     </div>
 
-                    <!-- Chips de Filtrado por Categoría (v1.21.04) -->
-                    <div class="passwords-category-chips-container anim-fade">
-                        <div class="passwords-category-chips" id="passwords-category-chips">
-                            <button type="button" class="pass-cat-chip active" data-cat="all">
-                                <i class="bx bx-grid-alt"></i> Todas <span class="chip-count" id="chip-count-all">0</span>
-                            </button>
-                            <button type="button" class="pass-cat-chip" data-cat="favorites">
-                                <i class="bx bxs-star" style="color: #fbbf24;"></i> Favoritas <span class="chip-count" id="chip-count-favorites">0</span>
-                            </button>
-                            <button type="button" class="pass-cat-chip" data-cat="restricted">
-                                <i class="bx bx-lock-alt" style="color: #f59e0b;"></i> Protegidas <span class="chip-count" id="chip-count-restricted">0</span>
-                            </button>
-                            <button type="button" class="pass-cat-chip" data-cat="web">
-                                <i class="bx bx-globe"></i> Webs & Portales <span class="chip-count" id="chip-count-web">0</span>
-                            </button>
-                            <button type="button" class="pass-cat-chip" data-cat="router">
-                                <i class="bx bx-hdd"></i> Routers & Redes <span class="chip-count" id="chip-count-router">0</span>
-                            </button>
-                            <button type="button" class="pass-cat-chip" data-cat="camera">
-                                <i class="bx bx-cctv"></i> Cámaras & CCTV <span class="chip-count" id="chip-count-camera">0</span>
-                            </button>
-                            <button type="button" class="pass-cat-chip" data-cat="server">
-                                <i class="bx bx-server"></i> Servidores <span class="chip-count" id="chip-count-server">0</span>
-                            </button>
-                            <button type="button" class="pass-cat-chip" data-cat="software">
-                                <i class="bx bx-desktop"></i> Software & Apps <span class="chip-count" id="chip-count-software">0</span>
-                            </button>
-                            <button type="button" class="pass-cat-chip" data-cat="email">
-                                <i class="bx bx-envelope"></i> Correos <span class="chip-count" id="chip-count-email">0</span>
-                            </button>
-                            <button type="button" class="pass-cat-chip" data-cat="wifi">
-                                <i class="bx bx-wifi"></i> WiFi <span class="chip-count" id="chip-count-wifi">0</span>
-                            </button>
-                            <button type="button" class="pass-cat-chip" data-cat="other">
-                                <i class="bx bx-dots-horizontal-rounded"></i> Otros <span class="chip-count" id="chip-count-other">0</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Lista Dinámica de Contraseñas -->
-                    <div class="items-list" id="list-passwords" style="margin-top: 6px;">
+                    <!-- Dynamic List of Passwords -->
+                    <div class="items-list" id="list-passwords">
                         <!-- Populated dynamically -->
                     </div>
                 </div>
