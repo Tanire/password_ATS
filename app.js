@@ -461,21 +461,36 @@ function setupEventListeners() {
     }
 
     // Dashboard Cards Shortcuts
-    document.getElementById("menu-passwords").addEventListener("click", () => switchScreen("passwords"));
-    document.getElementById("menu-subscribers").addEventListener("click", () => switchScreen("subscribers"));
-    document.getElementById("menu-manuals").addEventListener("click", () => switchScreen("manuals"));
-    document.getElementById("menu-expenses").addEventListener("click", () => switchScreen("expenses-submenu"));
-    document.getElementById("menu-routes").addEventListener("click", () => switchScreen("routes"));
-    document.getElementById("btn-back-routes").addEventListener("click", () => switchScreen("dashboard"));
-    document.getElementById("menu-sims").addEventListener("click", () => switchScreen("sims"));
-    document.getElementById("btn-back-sims").addEventListener("click", () => switchScreen("dashboard"));
-    document.getElementById("btn-new-sim").addEventListener("click", () => openSimCardForm(null));
-    document.getElementById("form-sim").addEventListener("submit", saveSimCardEntry);
-    document.getElementById("input-sim-ocr").addEventListener("change", handleSimOcrCapture);
-    document.getElementById("sim-photo-file").addEventListener("change", (e) => handleFilePreview(e, "sim-photo-preview"));
-    document.getElementById("search-sims").addEventListener("input", debounce(renderSimCards));
-    document.getElementById("menu-audit").addEventListener("click", () => switchScreen("audit"));
-    document.getElementById("btn-back-audit").addEventListener("click", () => switchScreen("dashboard"));
+    const menuPass = document.getElementById("menu-passwords");
+    if (menuPass) menuPass.addEventListener("click", () => switchScreen("passwords"));
+    const menuSubs = document.getElementById("menu-subscribers");
+    if (menuSubs) menuSubs.addEventListener("click", () => switchScreen("subscribers"));
+    const menuMans = document.getElementById("menu-manuals");
+    if (menuMans) menuMans.addEventListener("click", () => switchScreen("manuals"));
+    const menuExp = document.getElementById("menu-expenses");
+    if (menuExp) menuExp.addEventListener("click", () => switchScreen("expenses-submenu"));
+    const menuRts = document.getElementById("menu-routes");
+    if (menuRts) menuRts.addEventListener("click", () => switchScreen("routes"));
+    const btnBackRts = document.getElementById("btn-back-routes");
+    if (btnBackRts) btnBackRts.addEventListener("click", () => switchScreen("dashboard"));
+    const menuSims = document.getElementById("menu-sims");
+    if (menuSims) menuSims.addEventListener("click", () => switchScreen("sims"));
+    const btnBackSims = document.getElementById("btn-back-sims");
+    if (btnBackSims) btnBackSims.addEventListener("click", () => switchScreen("dashboard"));
+    const btnNewSim = document.getElementById("btn-new-sim");
+    if (btnNewSim) btnNewSim.addEventListener("click", () => openSimCardForm(null));
+    const formSim = document.getElementById("form-sim");
+    if (formSim) formSim.addEventListener("submit", saveSimCardEntry);
+    const inSimOcr = document.getElementById("input-sim-ocr");
+    if (inSimOcr) inSimOcr.addEventListener("change", handleSimOcrCapture);
+    const simPhoto = document.getElementById("sim-photo-file");
+    if (simPhoto) simPhoto.addEventListener("change", (e) => handleFilePreview(e, "sim-photo-preview"));
+    const searchSims = document.getElementById("search-sims");
+    if (searchSims) searchSims.addEventListener("input", debounce(renderSimCards));
+    const menuAudit = document.getElementById("menu-audit");
+    if (menuAudit) menuAudit.addEventListener("click", () => switchScreen("audit"));
+    const btnBackAudit = document.getElementById("btn-back-audit");
+    if (btnBackAudit) btnBackAudit.addEventListener("click", () => switchScreen("dashboard"));
 
     // Warehouse & Barcode Scanner Module Listeners (v1.22.01)
     const menuWarehouse = document.getElementById("menu-warehouse");
@@ -1199,58 +1214,82 @@ function setupEventListeners() {
         });
     }
 
-    els.searchSubscribers.addEventListener("input", debounce(renderSubscribers));
-    els.searchManuals.addEventListener("input", debounce(renderManualsList));
+    if (els.searchSubscribers) els.searchSubscribers.addEventListener("input", debounce(renderSubscribers));
+    if (els.searchManuals) els.searchManuals.addEventListener("input", debounce(renderManualsList));
 
     // Expenses Category Filter
-    els.filterExpensesCat.addEventListener("change", renderExpenses);
-    document.getElementById("fuel-report-year").addEventListener("change", renderFuelReport);
-    document.getElementById("exp-vehicle-select").addEventListener("change", handleVehicleSelectionChange);
+    if (els.filterExpensesCat) els.filterExpensesCat.addEventListener("change", renderExpenses);
+    const fuelReportYear = document.getElementById("fuel-report-year");
+    if (fuelReportYear) fuelReportYear.addEventListener("change", renderFuelReport);
+    const expVehSelect = document.getElementById("exp-vehicle-select");
+    if (expVehSelect) expVehSelect.addEventListener("change", handleVehicleSelectionChange);
 
     // Dynamic fuel field toggling in expense form
-    document.getElementById("exp-category").addEventListener("change", (e) => {
-        const fuelContainer = document.getElementById("fuel-fields-container");
-        if (e.target.value === "Combustible") {
-            fuelContainer.style.display = "block";
-        } else {
-            fuelContainer.style.display = "none";
-        }
-    });
+    const expCatSelect = document.getElementById("exp-category");
+    if (expCatSelect) {
+        expCatSelect.addEventListener("change", (e) => {
+            const fuelContainer = document.getElementById("fuel-fields-container");
+            if (fuelContainer) {
+                fuelContainer.style.display = e.target.value === "Combustible" ? "block" : "none";
+            }
+        });
+    }
 
     // GPS Location Fetch
-    document.getElementById("btn-get-location").addEventListener("click", getGeoLocation);
-    document.getElementById("btn-get-sub-location").addEventListener("click", getSubGeoLocation);
+    const btnGetLoc = document.getElementById("btn-get-location");
+    if (btnGetLoc) btnGetLoc.addEventListener("click", getGeoLocation);
+    const btnGetSubLoc = document.getElementById("btn-get-sub-location");
+    if (btnGetSubLoc) btnGetSubLoc.addEventListener("click", getSubGeoLocation);
 
     // Generate Passwords triggers
-    document.getElementById("btn-gen-pass").addEventListener("click", () => {
-        document.getElementById("pass-password").value = generateComplexPassword(16);
-        showToast("Contraseña compleja generada");
-    });
-    document.getElementById("btn-gen-sub-pass").addEventListener("click", () => {
-        const len = parseInt(document.getElementById("sub-pass-length-range").value) || 6;
-        const useUpper = document.getElementById("sub-opt-upper").checked;
-        const useLower = document.getElementById("sub-opt-lower").checked;
-        const useNumber = document.getElementById("sub-opt-number").checked;
-        const useSymbol = document.getElementById("sub-opt-symbol").checked;
+    const btnGenPass = document.getElementById("btn-gen-pass");
+    if (btnGenPass) {
+        btnGenPass.addEventListener("click", () => {
+            const passEl = document.getElementById("pass-password");
+            if (passEl) {
+                passEl.value = generateComplexPassword(16);
+                updateFormPasswordStrength(passEl.value);
+            }
+            showToast("Contraseña compleja generada");
+        });
+    }
 
-        let pass = generateCustomPassword(len, { upper: useUpper, lower: useLower, number: useNumber, symbol: useSymbol });
-        document.getElementById("sub-password").value = pass;
-        showToast(`Clave generada (${len} caracteres)`);
-    });
+    const btnGenSubPass = document.getElementById("btn-gen-sub-pass");
+    if (btnGenSubPass) {
+        btnGenSubPass.addEventListener("click", () => {
+            const len = parseInt(document.getElementById("sub-pass-length-range")?.value) || 6;
+            const useUpper = document.getElementById("sub-opt-upper")?.checked ?? true;
+            const useLower = document.getElementById("sub-opt-lower")?.checked ?? true;
+            const useNumber = document.getElementById("sub-opt-number")?.checked ?? true;
+            const useSymbol = document.getElementById("sub-opt-symbol")?.checked ?? false;
+
+            let pass = generateCustomPassword(len, { upper: useUpper, lower: useLower, number: useNumber, symbol: useSymbol });
+            const subPassInput = document.getElementById("sub-password");
+            if (subPassInput) subPassInput.value = pass;
+            showToast(`Clave generada (${len} caracteres)`);
+        });
+    }
 
     // Form Submissions
-    els.formPassword.addEventListener("submit", savePasswordEntry);
-    els.formSubscriber.addEventListener("submit", saveSubscriberEntry);
-    els.formExpense.addEventListener("submit", saveExpenseEntry);
-    document.getElementById("form-user").addEventListener("submit", saveUserAction);
-    document.getElementById("form-manual").addEventListener("submit", saveManualAction);
+    if (els.formPassword) els.formPassword.addEventListener("submit", savePasswordEntry);
+    if (els.formSubscriber) els.formSubscriber.addEventListener("submit", saveSubscriberEntry);
+    if (els.formExpense) els.formExpense.addEventListener("submit", saveExpenseEntry);
+    const formUserEl = document.getElementById("form-user");
+    if (formUserEl) formUserEl.addEventListener("submit", saveUserAction);
+    const formManualEl = document.getElementById("form-manual");
+    if (formManualEl) formManualEl.addEventListener("submit", saveManualAction);
 
     // New item buttons
-    document.getElementById("btn-new-password").addEventListener("click", () => openPasswordForm(null));
-    document.getElementById("btn-new-subscriber").addEventListener("click", () => openSubscriberForm(null));
-    document.getElementById("btn-new-expense").addEventListener("click", () => openExpenseForm());
-    document.getElementById("btn-add-user").addEventListener("click", () => openUserForm(null));
-    document.getElementById("btn-new-manual").addEventListener("click", () => openManualForm(null));
+    const btnNewPass = document.getElementById("btn-new-password");
+    if (btnNewPass) btnNewPass.addEventListener("click", () => openPasswordForm(null));
+    const btnNewSub = document.getElementById("btn-new-subscriber");
+    if (btnNewSub) btnNewSub.addEventListener("click", () => openSubscriberForm(null));
+    const btnNewExp = document.getElementById("btn-new-expense");
+    if (btnNewExp) btnNewExp.addEventListener("click", () => openExpenseForm());
+    const btnAddUserEl = document.getElementById("btn-add-user");
+    if (btnAddUserEl) btnAddUserEl.addEventListener("click", () => openUserForm(null));
+    const btnNewManEl = document.getElementById("btn-new-manual");
+    if (btnNewManEl) btnNewManEl.addEventListener("click", () => openManualForm(null));
 
     // User Scope selection helpers v1.22.01
     const btnSelectAllScopes = document.getElementById("btn-user-scopes-select-all");
@@ -1278,39 +1317,60 @@ function setupEventListeners() {
     }
 
     // Back buttons
-    document.getElementById("btn-back-passwords").addEventListener("click", () => switchScreen("passwords"));
-    document.getElementById("btn-back-subscribers").addEventListener("click", () => switchScreen("subscribers"));
-    document.getElementById("btn-back-manuals-brands").addEventListener("click", () => switchScreen("manuals"));
-    document.getElementById("btn-back-manuals-list").addEventListener("click", () => switchScreen("manuals-list"));
-    document.getElementById("btn-back-expenses").addEventListener("click", () => switchScreen("expenses"));
-    document.getElementById("btn-back-settings").addEventListener("click", () => switchScreen("settings"));
-    document.getElementById("btn-back-manuals-list-form").addEventListener("click", () => switchScreen("manuals-list"));
+    const btnBackPass = document.getElementById("btn-back-passwords");
+    if (btnBackPass) btnBackPass.addEventListener("click", () => switchScreen("passwords"));
+    const btnBackSub = document.getElementById("btn-back-subscribers");
+    if (btnBackSub) btnBackSub.addEventListener("click", () => switchScreen("subscribers"));
+    const btnBackManBr = document.getElementById("btn-back-manuals-brands");
+    if (btnBackManBr) btnBackManBr.addEventListener("click", () => switchScreen("manuals"));
+    const btnBackManLi = document.getElementById("btn-back-manuals-list");
+    if (btnBackManLi) btnBackManLi.addEventListener("click", () => switchScreen("manuals-list"));
+    const btnBackExp = document.getElementById("btn-back-expenses");
+    if (btnBackExp) btnBackExp.addEventListener("click", () => switchScreen("expenses"));
+    const btnBackSet = document.getElementById("btn-back-settings");
+    if (btnBackSet) btnBackSet.addEventListener("click", () => switchScreen("settings"));
+    const btnBackManLiF = document.getElementById("btn-back-manuals-list-form");
+    if (btnBackManLiF) btnBackManLiF.addEventListener("click", () => switchScreen("manuals-list"));
     
     // Delete actions
-    document.getElementById("btn-delete-manual").addEventListener("click", deleteManualEntry);
+    const btnDelMan = document.getElementById("btn-delete-manual");
+    if (btnDelMan) btnDelMan.addEventListener("click", deleteManualEntry);
 
     // V1.04 New Listeners
-    document.getElementById("btn-change-my-pass").addEventListener("click", changeMyPassword);
-    document.getElementById("btn-new-folder").addEventListener("click", createNewFolderAction);
-    document.getElementById("btn-back-sub-list").addEventListener("click", () => switchScreen("subscribers"));
-    document.getElementById("btn-sub-view-edit").addEventListener("click", editSubscriberFromView);
+    const btnChangeMyPass = document.getElementById("btn-change-my-pass");
+    if (btnChangeMyPass) btnChangeMyPass.addEventListener("click", changeMyPassword);
+    const btnNewFold = document.getElementById("btn-new-folder");
+    if (btnNewFold) btnNewFold.addEventListener("click", createNewFolderAction);
+    const btnBackSubLi = document.getElementById("btn-back-sub-list");
+    if (btnBackSubLi) btnBackSubLi.addEventListener("click", () => switchScreen("subscribers"));
+    const btnSubViewEdit = document.getElementById("btn-sub-view-edit");
+    if (btnSubViewEdit) btnSubViewEdit.addEventListener("click", editSubscriberFromView);
     
-    document.getElementById("btn-sub-view-copy-user").addEventListener("click", () => {
-        if (state.activeSubscriber) copyToClipboard(state.activeSubscriber.usuario);
-    });
+    const btnSubViewCopyUser = document.getElementById("btn-sub-view-copy-user");
+    if (btnSubViewCopyUser) {
+        btnSubViewCopyUser.addEventListener("click", () => {
+            if (state.activeSubscriber) copyToClipboard(state.activeSubscriber.usuario);
+        });
+    }
     
-    document.getElementById("btn-sub-view-copy-pass").addEventListener("click", () => {
-        if (state.activeSubscriber) copyToClipboard(state.activeSubscriber.password);
-    });
+    const btnSubViewCopyPass = document.getElementById("btn-sub-view-copy-pass");
+    if (btnSubViewCopyPass) {
+        btnSubViewCopyPass.addEventListener("click", () => {
+            if (state.activeSubscriber) copyToClipboard(state.activeSubscriber.password);
+        });
+    }
     
-    document.getElementById("btn-sub-view-map").addEventListener("click", () => {
-        if (state.activeSubscriber && state.activeSubscriber.address) {
-            const query = encodeURIComponent(state.activeSubscriber.address);
-            window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, "_blank");
-        } else {
-            showToast("Este abonado no tiene dirección registrada");
-        }
-    });
+    const btnSubViewMap = document.getElementById("btn-sub-view-map");
+    if (btnSubViewMap) {
+        btnSubViewMap.addEventListener("click", () => {
+            if (state.activeSubscriber && state.activeSubscriber.address) {
+                const query = encodeURIComponent(state.activeSubscriber.address);
+                window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, "_blank");
+            } else {
+                showToast("Este abonado no tiene dirección registrada");
+            }
+        });
+    }
 
     // Settings save & Logout
     if (els.btnSaveSettings) els.btnSaveSettings.addEventListener("click", saveSettingsAction);
