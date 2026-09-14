@@ -8,12 +8,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ATS Seguridad">
-    <link rel="icon" type="image/png" href="icon-512.png?v=1.21.05">
-    <link rel="shortcut icon" href="icon-512.png?v=1.21.05">
-    <link rel="apple-touch-icon" href="icon-512.png?v=1.21.05">
-    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png?v=1.21.05">
-    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=1.21.05">
-    <link rel="manifest" href="manifest.json?v=1.21.05">
+    <link rel="icon" type="image/png" href="icon-512.png?v=1.21.06">
+    <link rel="shortcut icon" href="icon-512.png?v=1.21.06">
+    <link rel="apple-touch-icon" href="icon-512.png?v=1.21.06">
+    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png?v=1.21.06">
+    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=1.21.06">
+    <link rel="manifest" href="manifest.json?v=1.21.06">
     
     <!-- Instant synchronous device detection before DOM and styles render -->
     <script>
@@ -48,7 +48,7 @@
     <!-- HTML5 QR / Barcode Scanner (ZXing based) v1.22.01 -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <!-- Main Style Sheet -->
-    <link rel="stylesheet" href="style.css?v=1.21.05">
+    <link rel="stylesheet" href="style.css?v=1.21.06">
     <!-- html2pdf.js library for clean client-side PDF generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <!-- jsPDF library for commercial reports -->
@@ -72,10 +72,14 @@
                 <div style="text-align: center;">
                     <div style="font-size: 2.2rem; margin-bottom: 8px;">🚀</div>
                     <h2 style="font-size: 1.3rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">¡Aplicación Actualizada!</h2>
-                    <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3);">Versión 1.21.05</span>
+                    <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3);">Versión 1.21.06</span>
                 </div>
                 
                 <div style="border-top: 1px solid var(--border-glass); border-bottom: 1px solid var(--border-glass); padding: 14px 0; max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; line-height: 1.4; color: var(--text-primary);">
+                    <div>
+                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">🖥️ v1.21.06 - Optimización de Pantalla y Cuadrícula en Modo PC / Escritorio</strong>
+                        <p style="margin: 0; color: var(--text-secondary);">Rediseño integral de la vista de PC: cuadrícula compacta y adaptable en el Panel de Control y listados para que todos los accesos quepan perfectamente en la ventana del navegador sin necesidad de scroll vertical ni tarjetas sobredimensionadas.</p>
+                    </div>
                     <div>
                         <strong style="color: var(--accent); display: block; margin-bottom: 3px;">🔑 v1.21.05 - Corrección en Edición de Contraseñas</strong>
                         <p style="margin: 0; color: var(--text-secondary);">Solucionada la apertura del formulario de edición al seleccionar una contraseña existente desde el visor modal y la lista técnica, cargando todos sus datos (categoría, credenciales, notas, permisos y favoritos).</p>
@@ -164,7 +168,7 @@
         <div id="screen-login" class="screen active">
             <div class="login-box anim-fade">
                 <div class="login-logo-container" style="text-align: center; margin-bottom: 20px;">
-                    <img src="logo.png?v=1.21.05" alt="ALTA TECNOLOGIA PARA LA SEGURIDAD Logo" style="max-width: 240px; max-height: 95px; width: auto; height: auto; object-fit: contain; display: inline-block; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
+                    <img src="logo.png?v=1.21.06" alt="ALTA TECNOLOGIA PARA LA SEGURIDAD Logo" style="max-width: 240px; max-height: 95px; width: auto; height: auto; object-fit: contain; display: inline-block; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
                 </div>
                 <h2 style="font-size: 1.1rem; line-height: 1.3;">ALTA TECNOLOGIA PARA LA SEGURIDAD</h2>
                 <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--accent); margin-top: 5px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1.5px;">APP SISTEMAS</h3>
@@ -177,7 +181,7 @@
                     <input type="password" id="login-password" class="input-control" placeholder="Contraseña" required>
                 </div>
                 <div style="margin-top: 20px; font-size: 0.8rem; color: var(--text-secondary); text-align: center;">
-                    Versión 1.21.05 - By JMSYSTEMAS
+                    Versión 1.21.06 - By JMSYSTEMAS
                 </div>
                 <button id="btn-login" class="btn-premium">
                     <i class="bx bx-key"></i> DESBLOQUEAR
@@ -191,7 +195,7 @@
             <!-- App Header -->
             <header>
                 <div class="header-logo">
-                    <img src="logo.png?v=1.21.05" alt="Logo" style="height: 32px; width: auto; object-fit: contain; border-radius: 4px;">
+                    <img src="logo.png?v=1.21.06" alt="Logo" style="height: 32px; width: auto; object-fit: contain; border-radius: 4px;">
                     <h1 id="lbl-company-name">ALTA TECNOLOGIA PARA LA SEGURIDAD</h1>
                 </div>
                 <div class="header-actions" style="display: flex; align-items: center; gap: 8px;">
@@ -266,7 +270,7 @@
                         </div>
                     </div>
                     <div style="text-align: center; margin-top: 40px; font-size: 0.8rem; color: var(--text-secondary);" class="dashboard-footer">
-                        Versión 1.21.05 - JMSYSTEMAS
+                        Versión 1.21.06 - JMSYSTEMAS
                     </div>
                 </div>
 
@@ -1141,7 +1145,7 @@
                                         </div>
                                         <div class="settings-header-titles">
                                              <h3 class="settings-header-title">Sistema y Sesión</h3>
-                                             <p class="settings-header-subtitle">Versión v1.21.05, almacenamiento y cierre</p>
+                                             <p class="settings-header-subtitle">Versión v1.21.06, almacenamiento y cierre</p>
                                         </div>
                                     </div>
                                     <div class="settings-header-right">
@@ -1154,7 +1158,7 @@
                                         <div class="settings-version-card">
                                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                                 <span style="font-weight: 700; color: var(--text-primary); font-size: 0.9rem;">ATS Seguridad</span>
-                                                <span class="badge" style="background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3); font-size: 0.75rem;">v1.21.05</span>
+                                                <span class="badge" style="background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3); font-size: 0.75rem;">v1.21.06</span>
                                             </div>
                                             <div style="font-size: 0.78rem; color: var(--text-secondary);">
                                                 Aplicación Web Progresiva (PWA) con almacenamiento local cifrado AES-GCM y sincronización Git.
@@ -4230,8 +4234,8 @@
     </div>
 
     <!-- Crypto, GitHub API, and App Controller Logic -->
-    <script src="crypto.js?v=1.21.05"></script>
-    <script src="github.js?v=1.21.05"></script>
-    <script src="app.js?v=1.21.05"></script>
+    <script src="crypto.js?v=1.21.06"></script>
+    <script src="github.js?v=1.21.06"></script>
+    <script src="app.js?v=1.21.06"></script>
 </body>
 </html>

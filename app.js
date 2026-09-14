@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.21.05",
+        version: "1.21.06",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
