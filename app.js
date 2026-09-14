@@ -2022,7 +2022,7 @@ async function handleUnlock() {
             ];
             const adminWrapped = await encryptData(vaultKey, vaultKey);
             state.usersMetadata["admin"] = adminWrapped;
-            state.vault.version = "1.22.03";
+            state.vault.version = "1.21.04";
             state.vault.company_name = "ALTA TECNOLOGIA PARA LA SEGURIDAD";
         }
         
@@ -2199,7 +2199,7 @@ async function syncWithCloud(isRetry = false) {
 // Lock application and wipe password from memory
 function lockVault() {
     state.masterPassword = "";
-    state.vault = { version: "1.21.03", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [], sim_cards: [], vehicles: [], vehicle_incidents: [], vehicle_maintenances: [], vehicle_mileages: [] };
+    state.vault = { version: "1.21.04", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [], sim_cards: [], vehicles: [], vehicle_incidents: [], vehicle_maintenances: [], vehicle_mileages: [] };
     state.gitSha = null;
     state.currentUser = null;
     
@@ -4288,16 +4288,9 @@ function adaptLoginFields() {
     const loginSubtitle = document.getElementById("login-box-subtitle");
     const loginPassInput = document.getElementById("login-password");
     
-    const userCount = Object.keys(state.usersMetadata || {}).length;
-    if (userCount > 0) {
-        if (usernameGroup) usernameGroup.style.display = "block";
-        if (loginSubtitle) loginSubtitle.textContent = "Introduce tus credenciales para acceder a ALTA TECNOLOGIA PARA LA SEGURIDAD - APP SISTEMAS.";
-        if (loginPassInput) loginPassInput.placeholder = "Contraseña";
-    } else {
-        if (usernameGroup) usernameGroup.style.display = "none";
-        if (loginSubtitle) loginSubtitle.textContent = "Introduce tu contraseña de acceso a ALTA TECNOLOGIA PARA LA SEGURIDAD - APP SISTEMAS.";
-        if (loginPassInput) loginPassInput.placeholder = "Contraseña";
-    }
+    if (usernameGroup) usernameGroup.style.display = "block";
+    if (loginSubtitle) loginSubtitle.textContent = "Introduce tus credenciales para acceder a ALTA TECNOLOGIA PARA LA SEGURIDAD - APP SISTEMAS.";
+    if (loginPassInput) loginPassInput.placeholder = "Contraseña";
 }
 
 // Apply role and scope privileges in the UI
