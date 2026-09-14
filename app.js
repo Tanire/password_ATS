@@ -1197,9 +1197,10 @@ function setupEventListeners() {
     const btnDetailEdit = document.getElementById("btn-detail-edit");
     if (btnDetailEdit) {
         btnDetailEdit.addEventListener("click", () => {
-            if (state.passwords.activeDetailId) {
+            const currentId = state.passwords ? state.passwords.activeDetailId : null;
+            if (currentId) {
                 closePasswordDetailModal();
-                openPasswordForm(state.passwords.activeDetailId);
+                openPasswordForm(currentId);
             }
         });
     }
@@ -2022,7 +2023,7 @@ async function handleUnlock() {
             ];
             const adminWrapped = await encryptData(vaultKey, vaultKey);
             state.usersMetadata["admin"] = adminWrapped;
-            state.vault.version = "1.21.04";
+            state.vault.version = "1.21.05";
             state.vault.company_name = "ALTA TECNOLOGIA PARA LA SEGURIDAD";
         }
         
@@ -2199,7 +2200,7 @@ async function syncWithCloud(isRetry = false) {
 // Lock application and wipe password from memory
 function lockVault() {
     state.masterPassword = "";
-    state.vault = { version: "1.21.04", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [], sim_cards: [], vehicles: [], vehicle_incidents: [], vehicle_maintenances: [], vehicle_mileages: [] };
+    state.vault = { version: "1.21.05", company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD", theme: "default", entries: [], subscribers: [], manuals: [], expenses: [], users: [], vacations: [], sim_cards: [], vehicles: [], vehicle_incidents: [], vehicle_maintenances: [], vehicle_mileages: [] };
     state.gitSha = null;
     state.currentUser = null;
     
@@ -3050,7 +3051,7 @@ function openPasswordForm(id = null) {
     }
 
     if (id) {
-        const entry = state.vault.entries.find(e => e.id === id);
+        const entry = state.vault.entries.find(e => String(e.id) === String(id));
         if (entry) {
             document.getElementById("password-form-title").textContent = "Editar Contraseña";
             document.getElementById("pass-id").value = entry.id;
