@@ -6,7 +6,7 @@
 // App State
 const state = {
     vault: {
-        version: "1.21.06",
+        version: "1.21.07",
         company_name: "ALTA TECNOLOGIA PARA LA SEGURIDAD",
         theme: "default",
         entries: [],       // General passwords
@@ -170,8 +170,8 @@ const ALL_APP_SCOPES = [
 ];
 
 const SCOPES_METADATA = {
-    passwords: { label: "Contraseñas", icon: "bx-key", color: "#60a5fa" },
-    subscribers: { label: "Abonados", icon: "bx-bell", color: "#34d399" },
+    passwords: { label: "Contraseñas apps y Webs", icon: "bx-key", color: "#60a5fa" },
+    subscribers: { label: "Datos de Abonados", icon: "bx-bell", color: "#34d399" },
     manuals: { label: "Manuales", icon: "bx-book", color: "#fbbf24" },
     expenses: { label: "Gastos", icon: "bx-wallet", color: "#f87171" },
     commercial: { label: "Comercial", icon: "bx-briefcase", color: "#a78bfa" },
@@ -204,7 +204,7 @@ const DEFAULT_LAYOUTS = {
 
 const NAV_ITEMS_METADATA = {
     dashboard: { icon: "bx-grid-alt", title: "Inicio", screen: "dashboard" },
-    subscribers: { icon: "bx-bell", title: "Abonados", screen: "subscribers" },
+    subscribers: { icon: "bx-bell", title: "Datos Abonados", screen: "subscribers" },
     "expenses-submenu": { icon: "bx-wallet", title: "Gastos", screen: "expenses-submenu" },
     vacations: { icon: "bx-calendar", title: "Vacaciones", screen: "vacations" },
     passwords: { icon: "bx-key", title: "Claves", screen: "passwords" },
@@ -228,6 +228,207 @@ const PASSWORD_CATEGORIES = {
     wifi: { label: "Redes WiFi", icon: "bx-wifi", emoji: "📶", color: "#38bdf8" },
     other: { label: "Otros", icon: "bx-dots-horizontal-rounded", emoji: "⚙️", color: "#94a3b8" }
 };
+
+// Subscriber Device Types & Multi-Device Helpers v1.21.07
+const SUBSCRIBER_DEVICE_TYPES = {
+    alarm: { label: "Alarma", icon: "🔔", defaultUser: "Instalador", passPlaceholder: "Clave / Código / PIN" },
+    recorder: { label: "Grabador", icon: "📹", defaultUser: "admin", passPlaceholder: "Contraseña técnica" },
+    switch: { label: "Switch Gestionable", icon: "🔀", defaultUser: "admin", passPlaceholder: "Contraseña técnica" },
+    router: { label: "Router / Red", icon: "🌐", defaultUser: "admin", passPlaceholder: "Clave / Contraseña" },
+    camera: { label: "Cámara IP", icon: "📷", defaultUser: "admin", passPlaceholder: "Contraseña" },
+    access: { label: "Control de Accesos", icon: "🚪", defaultUser: "admin", passPlaceholder: "Código / Contraseña" },
+    intercom: { label: "Videoportero", icon: "📞", defaultUser: "admin", passPlaceholder: "Contraseña" },
+    system: { label: "Sistema / Servidor", icon: "⚙️", defaultUser: "admin", passPlaceholder: "Contraseña" },
+    other: { label: "Otro Dispositivo", icon: "🔒", defaultUser: "admin", passPlaceholder: "Contraseña" }
+};
+
+function getSubscriberDeviceMeta(tipo) {
+    return SUBSCRIBER_DEVICE_TYPES[tipo] || SUBSCRIBER_DEVICE_TYPES.other;
+}
+
+function getSubscriberDevices(sub) {
+    if (!sub) return [];
+    if (Array.isArray(sub.devices) && sub.devices.length > 0) {
+        return sub.devices.map((d, i) => ({
+            id: d.id || `dev_${Date.now()}_${i}`,
+            tipo: d.tipo || "alarm",
+            tipo_detalle: d.tipo_detalle || "",
+            usuario: d.usuario || "",
+            password: d.password || "",
+            ip: d.ip || "",
+            notes: d.notes || ""
+        }));
+    }
+    // Backward compatibility with legacy single-device record
+    return [{
+        id: `dev_legacy_${sub.id || Date.now()}`,
+        tipo: sub.tipo || "alarm",
+        tipo_detalle: sub.tipo_detalle || "",
+        usuario: sub.usuario || "",
+        password: sub.password || "",
+        ip: sub.ip || "",
+        notes: sub.notes || ""
+    }];
+}
+
+function generateQuickPinOrKey(tipo = "alarm", length = 6) {
+    if (tipo === "alarm" || tipo === "access") {
+        let pin = "";
+        for (let i = 0; i < length; i++) {
+            pin += Math.floor(Math.random() * 10);
+        }
+        return pin;
+    } else {
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*";
+        let pass = "";
+        for (let i = 0; i < 12; i++) {
+            pass += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return pass;
+    }
+}
+
+let subscriberDeviceRowCount = 0;
+
+function addSubscriberDeviceRow(deviceData = null) {
+    const container = document.getElementById("subscriber-devices-container");
+    if (!container) return;
+
+    subscriberDeviceRowCount++;
+    const rowId = `sub-dev-row-${Date.now()}-${subscriberDeviceRowCount}`;
+    const dev = deviceData || {
+        tipo: "alarm",
+        tipo_detalle: "",
+        usuario: "",
+        password: "",
+        ip: "",
+        notes: ""
+    };
+
+    const card = document.createElement("div");
+    card.className = "subscriber-device-card anim-fade";
+    card.id = rowId;
+
+    const currentType = dev.tipo || "alarm";
+    const meta = getSubscriberDeviceMeta(currentType);
+
+    let optionsHtml = "";
+    Object.keys(SUBSCRIBER_DEVICE_TYPES).forEach(key => {
+        const item = SUBSCRIBER_DEVICE_TYPES[key];
+        const isSelected = key === currentType ? "selected" : "";
+        optionsHtml += `<option value="${key}" ${isSelected}>${item.icon} ${item.label}</option>`;
+    });
+
+    card.innerHTML = `
+        <div class="subscriber-device-header">
+            <div class="subscriber-device-title">
+                <span class="sub-dev-icon">${meta.icon}</span>
+                <span class="sub-dev-label-text">${meta.label}</span>
+                <span class="subscriber-device-badge sub-dev-num-badge">Equipo #${container.children.length + 1}</span>
+            </div>
+            <button type="button" class="btn-icon btn-remove-sub-dev" title="Eliminar este equipo" style="color: var(--danger); width: 28px; height: 28px;">
+                <i class="bx bx-trash"></i>
+            </button>
+        </div>
+
+        <div class="form-row" style="gap: 10px;">
+            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                <label style="font-size: 0.75rem;">Tipo de Dispositivo</label>
+                <select class="input-control sub-dev-tipo" style="padding: 8px 12px; font-size: 0.85rem;">
+                    ${optionsHtml}
+                </select>
+            </div>
+            <div class="form-group" style="flex: 1.5; margin-bottom: 0;">
+                <label style="font-size: 0.75rem;">Modelo / Especificación</label>
+                <input type="text" class="input-control sub-dev-detalle" placeholder="Ej. Ajax Hub 2, Hikvision 16CH, Cisco SG350..." value="${escapeHtml(dev.tipo_detalle || '')}" style="padding: 8px 12px; font-size: 0.85rem;">
+            </div>
+        </div>
+
+        <div class="form-row" style="gap: 10px;">
+            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                <label style="font-size: 0.75rem;">Usuario Técnico</label>
+                <input type="text" class="input-control sub-dev-usuario" placeholder="Ej. admin, instalador..." value="${escapeHtml(dev.usuario || '')}" style="padding: 8px 12px; font-size: 0.85rem;">
+            </div>
+            <div class="form-group" style="flex: 1.5; margin-bottom: 0;">
+                <label style="font-size: 0.75rem;">Clave / Contraseña</label>
+                <div class="input-with-action">
+                    <input type="password" class="input-control sub-dev-password" placeholder="${meta.passPlaceholder}" value="${escapeHtml(dev.password || '')}" style="padding: 8px 12px; font-size: 0.85rem;">
+                    <button type="button" class="btn-icon btn-sub-dev-toggle-pass" title="Mostrar/Ocultar" style="width: 32px; height: 32px; font-size: 1rem;"><i class="bx bx-show"></i></button>
+                    <button type="button" class="btn-icon btn-sub-dev-gen-pass" title="Generar Clave/PIN" style="width: 32px; height: 32px; font-size: 1rem; color: var(--accent);"><i class="bx bx-bolt-circle"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-row" style="gap: 10px;">
+            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                <label style="font-size: 0.75rem;">Dirección IP / Host / Puerto</label>
+                <input type="text" class="input-control sub-dev-ip" placeholder="Ej. 192.168.1.100:8000" value="${escapeHtml(dev.ip || '')}" style="padding: 8px 12px; font-size: 0.85rem;">
+            </div>
+            <div class="form-group" style="flex: 1.5; margin-bottom: 0;">
+                <label style="font-size: 0.75rem;">Notas Técnicas del Equipo</label>
+                <input type="text" class="input-control sub-dev-notes" placeholder="Ej. Rack planta baja, VLAN 10, etc." value="${escapeHtml(dev.notes || '')}" style="padding: 8px 12px; font-size: 0.85rem;">
+            </div>
+        </div>
+    `;
+
+    const tipoSelect = card.querySelector(".sub-dev-tipo");
+    const iconSpan = card.querySelector(".sub-dev-icon");
+    const labelSpan = card.querySelector(".sub-dev-label-text");
+    const passInput = card.querySelector(".sub-dev-password");
+    tipoSelect.addEventListener("change", (e) => {
+        const selectedMeta = getSubscriberDeviceMeta(e.target.value);
+        iconSpan.textContent = selectedMeta.icon;
+        labelSpan.textContent = selectedMeta.label;
+        passInput.placeholder = selectedMeta.passPlaceholder;
+    });
+
+    const togglePassBtn = card.querySelector(".btn-sub-dev-toggle-pass");
+    togglePassBtn.addEventListener("click", () => {
+        const isPass = passInput.type === "password";
+        passInput.type = isPass ? "text" : "password";
+        togglePassBtn.innerHTML = isPass ? `<i class="bx bx-hide"></i>` : `<i class="bx bx-show"></i>`;
+    });
+
+    const genPassBtn = card.querySelector(".btn-sub-dev-gen-pass");
+    genPassBtn.addEventListener("click", () => {
+        const currentSelectedType = tipoSelect.value;
+        const generated = generateQuickPinOrKey(currentSelectedType, 6);
+        passInput.value = generated;
+        passInput.type = "text";
+        togglePassBtn.innerHTML = `<i class="bx bx-hide"></i>`;
+        showToast(`Clave generada para ${getSubscriberDeviceMeta(currentSelectedType).label}: ${generated}`);
+    });
+
+    const removeBtn = card.querySelector(".btn-remove-sub-dev");
+    removeBtn.addEventListener("click", () => {
+        if (container.children.length <= 1) {
+            if (confirm("¿Vaciar los datos de este equipo?")) {
+                card.querySelector(".sub-dev-detalle").value = "";
+                card.querySelector(".sub-dev-usuario").value = "";
+                card.querySelector(".sub-dev-password").value = "";
+                card.querySelector(".sub-dev-ip").value = "";
+                card.querySelector(".sub-dev-notes").value = "";
+            }
+            return;
+        }
+        card.remove();
+        updateSubscriberDeviceNumberBadges();
+    });
+
+    container.appendChild(card);
+    updateSubscriberDeviceNumberBadges();
+}
+
+function updateSubscriberDeviceNumberBadges() {
+    const container = document.getElementById("subscriber-devices-container");
+    if (!container) return;
+    const cards = container.querySelectorAll(".subscriber-device-card");
+    cards.forEach((card, idx) => {
+        const badge = card.querySelector(".sub-dev-num-badge");
+        if (badge) badge.textContent = `Equipo #${idx + 1}`;
+    });
+}
+
 
 // Password Access Control Checker v1.21.05
 function canUserAccessPassword(entry, user = state.currentUser) {
@@ -1254,21 +1455,20 @@ function setupEventListeners() {
         });
     }
 
-    const btnGenSubPass = document.getElementById("btn-gen-sub-pass");
-    if (btnGenSubPass) {
-        btnGenSubPass.addEventListener("click", () => {
-            const len = parseInt(document.getElementById("sub-pass-length-range")?.value) || 6;
-            const useUpper = document.getElementById("sub-opt-upper")?.checked ?? true;
-            const useLower = document.getElementById("sub-opt-lower")?.checked ?? true;
-            const useNumber = document.getElementById("sub-opt-number")?.checked ?? true;
-            const useSymbol = document.getElementById("sub-opt-symbol")?.checked ?? false;
+    // Subscribers multi-device listeners v1.21.07
+    const btnAddSubDev = document.getElementById("btn-add-subscriber-device");
+    if (btnAddSubDev) btnAddSubDev.addEventListener("click", () => addSubscriberDeviceRow());
 
-            let pass = generateCustomPassword(len, { upper: useUpper, lower: useLower, number: useNumber, symbol: useSymbol });
-            const subPassInput = document.getElementById("sub-password");
-            if (subPassInput) subPassInput.value = pass;
-            showToast(`Clave generada (${len} caracteres)`);
+    const btnCancelSub = document.getElementById("btn-cancel-subscriber");
+    if (btnCancelSub) btnCancelSub.addEventListener("click", () => switchScreen("subscribers"));
+
+    const subQuickBtns = document.querySelectorAll("#sub-quick-presets .subscriber-quick-btn");
+    subQuickBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+            const preset = btn.dataset.preset || "alarm";
+            addSubscriberDeviceRow({ tipo: preset });
         });
-    }
+    });
 
     // Form Submissions
     if (els.formPassword) els.formPassword.addEventListener("submit", savePasswordEntry);
@@ -1345,20 +1545,6 @@ function setupEventListeners() {
     if (btnBackSubLi) btnBackSubLi.addEventListener("click", () => switchScreen("subscribers"));
     const btnSubViewEdit = document.getElementById("btn-sub-view-edit");
     if (btnSubViewEdit) btnSubViewEdit.addEventListener("click", editSubscriberFromView);
-    
-    const btnSubViewCopyUser = document.getElementById("btn-sub-view-copy-user");
-    if (btnSubViewCopyUser) {
-        btnSubViewCopyUser.addEventListener("click", () => {
-            if (state.activeSubscriber) copyToClipboard(state.activeSubscriber.usuario);
-        });
-    }
-    
-    const btnSubViewCopyPass = document.getElementById("btn-sub-view-copy-pass");
-    if (btnSubViewCopyPass) {
-        btnSubViewCopyPass.addEventListener("click", () => {
-            if (state.activeSubscriber) copyToClipboard(state.activeSubscriber.password);
-        });
-    }
     
     const btnSubViewMap = document.getElementById("btn-sub-view-map");
     if (btnSubViewMap) {
@@ -2486,19 +2672,34 @@ function renderPasswords() {
     });
 }
 
-// B. Subscribers list
+// B. Subscribers list (Multi-Device Support v1.21.07)
 function renderSubscribers() {
     els.listSubscribers.innerHTML = "";
     const q = els.searchSubscribers.value.trim().toLowerCase();
 
     const filtered = state.vault.subscribers.filter(e => {
-        return (e.nombre || "").toLowerCase().includes(q) || 
-               (e.subscriber_code || "").toLowerCase().includes(q) ||
-               (e.address || "").toLowerCase().includes(q);
+        const devices = getSubscriberDevices(e);
+        const nameMatch = (e.nombre || "").toLowerCase().includes(q);
+        const codeMatch = (e.subscriber_code || "").toLowerCase().includes(q);
+        const addressMatch = (e.address || "").toLowerCase().includes(q);
+        const notesMatch = (e.notes || "").toLowerCase().includes(q);
+        
+        // Search inside all devices
+        const deviceMatch = devices.some(d => {
+            const typeMeta = getSubscriberDeviceMeta(d.tipo);
+            return (d.tipo || "").toLowerCase().includes(q) ||
+                   (typeMeta.label || "").toLowerCase().includes(q) ||
+                   (d.tipo_detalle || "").toLowerCase().includes(q) ||
+                   (d.usuario || "").toLowerCase().includes(q) ||
+                   (d.ip || "").toLowerCase().includes(q) ||
+                   (d.notes || "").toLowerCase().includes(q);
+        });
+
+        return nameMatch || codeMatch || addressMatch || notesMatch || deviceMatch;
     });
 
     if (filtered.length === 0) {
-        els.listSubscribers.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-secondary); font-size:0.9rem;">No hay abonados</div>`;
+        els.listSubscribers.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-secondary); font-size:0.9rem;">No se encontraron abonados</div>`;
         return;
     }
 
@@ -2506,35 +2707,54 @@ function renderSubscribers() {
         const card = document.createElement("div");
         card.className = "item-card anim-fade";
         
-        let emoji = "🔒";
-        if (e.tipo === "alarm") emoji = "🔔";
-        else if (e.tipo === "recorder") emoji = "📹";
-        else if (e.tipo === "camera") emoji = "📷";
-        else if (e.tipo === "system") emoji = "⚙️";
+        const devices = getSubscriberDevices(e);
+        const primaryDev = devices[0] || { tipo: "alarm", tipo_detalle: "", usuario: "", password: "" };
+        const primaryMeta = getSubscriberDeviceMeta(primaryDev.tipo);
+        const mainEmoji = primaryMeta.icon;
 
         const titleText = `[${e.subscriber_code || "?"}] ${e.nombre || "Sin Cliente"}`;
-        const typeText = e.tipo.toUpperCase() + (e.tipo_detalle ? ` (${e.tipo_detalle.toUpperCase()})` : '');
-        const subtext = `${emoji} ${typeText} • Usuario: ${e.usuario} ${e.address ? '• ' + e.address : ''}`;
+
+        // Build devices summary pills
+        let devicesPillsHtml = "";
+        devices.forEach(d => {
+            const meta = getSubscriberDeviceMeta(d.tipo);
+            const detailStr = d.tipo_detalle ? ` (${d.tipo_detalle})` : '';
+            devicesPillsHtml += `<span class="sub-card-device-pill">${meta.icon} ${meta.label}${detailStr}</span>`;
+        });
+
+        const addressText = e.address ? `<div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;"><i class="bx bx-map-pin"></i> ${escapeHtml(e.address)}</div>` : "";
+        const devCountBadge = devices.length > 1 
+            ? `<span class="subscriber-device-badge" style="font-size:0.68rem; margin-left: 6px;">${devices.length} Equipos</span>` 
+            : `<span class="subscriber-device-badge" style="font-size:0.68rem; margin-left: 6px;">${primaryMeta.label}</span>`;
 
         card.innerHTML = `
-            <div class="item-card-left">
-                <div class="item-logo-container" style="font-size:1.2rem;">${emoji}</div>
-                <div class="item-details">
-                    <span class="item-title">${titleText}</span>
-                    <span class="item-sub">${subtext}</span>
+            <div class="item-card-left" style="flex: 1; min-width: 0;">
+                <div class="item-logo-container" style="font-size:1.3rem; background: rgba(52, 211, 153, 0.12); border: 1px solid rgba(52, 211, 153, 0.25); color: #34d399;">${mainEmoji}</div>
+                <div class="item-details" style="flex: 1; min-width: 0;">
+                    <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
+                        <span class="item-title" style="font-weight: 700;">${escapeHtml(titleText)}</span>
+                        ${devCountBadge}
+                    </div>
+                    ${addressText}
+                    <div class="sub-card-devices-summary" style="margin-top: 4px;">
+                        ${devicesPillsHtml}
+                    </div>
                 </div>
             </div>
             <div class="item-actions">
-                <button class="btn-icon btn-copy" data-pass="${e.password}" title="Copiar Clave"><i class="bx bx-copy"></i></button>
-                <button class="btn-icon btn-edit" data-id="${e.id}" title="Editar"><i class="bx bx-edit-alt"></i></button>
-                <button class="btn-icon btn-delete" data-id="${e.id}" style="color:var(--danger);" title="Eliminar"><i class="bx bx-trash"></i></button>
+                ${primaryDev.password ? `<button class="btn-icon btn-copy" data-pass="${escapeHtml(primaryDev.password)}" title="Copiar Clave Principal (${primaryMeta.label})"><i class="bx bx-copy"></i></button>` : ''}
+                <button class="btn-icon btn-edit" data-id="${e.id}" title="Editar Ficha y Dispositivos"><i class="bx bx-edit-alt"></i></button>
+                <button class="btn-icon btn-delete" data-id="${e.id}" style="color:var(--danger);" title="Eliminar Abonado"><i class="bx bx-trash"></i></button>
             </div>
         `;
 
-        card.querySelector(".btn-copy").addEventListener("click", (evt) => {
-            evt.stopPropagation();
-            copyToClipboard(e.password);
-        });
+        const copyBtn = card.querySelector(".btn-copy");
+        if (copyBtn) {
+            copyBtn.addEventListener("click", (evt) => {
+                evt.stopPropagation();
+                copyToClipboard(primaryDev.password);
+            });
+        }
 
         card.querySelector(".btn-edit").addEventListener("click", (evt) => {
             evt.stopPropagation();
@@ -2544,10 +2764,6 @@ function renderSubscribers() {
         card.querySelector(".btn-delete").addEventListener("click", (evt) => {
             evt.stopPropagation();
             deleteSubscriberEntry(e.id);
-        });
-
-        card.addEventListener("dblclick", () => {
-            copyToClipboard(e.password);
         });
 
         card.addEventListener("click", (evt) => {
@@ -3299,43 +3515,36 @@ async function deletePasswordEntry(id) {
     }
 }
 
-// 2. Subscriber CRUD
+// 2. Subscriber CRUD (Multi-Device Support v1.21.07)
 function openSubscriberForm(id = null) {
     els.formSubscriber.reset();
     document.getElementById("sub-id").value = "";
-    document.getElementById("sub-type-detail").value = "";
+    document.getElementById("sub-code").value = "";
+    document.getElementById("sub-name").value = "";
+    document.getElementById("sub-address").value = "";
+    const notesEl = document.getElementById("sub-notes");
+    if (notesEl) notesEl.value = "";
 
-    // Reset password customization controls to default values
-    const passRange = document.getElementById("sub-pass-length-range");
-    const passRangeVal = document.getElementById("sub-pass-length-val");
-    if (passRange && passRangeVal) {
-        passRange.value = 6;
-        passRangeVal.textContent = 6;
-    }
-    const optUpper = document.getElementById("sub-opt-upper");
-    const optLower = document.getElementById("sub-opt-lower");
-    const optNumber = document.getElementById("sub-opt-number");
-    const optSymbol = document.getElementById("sub-opt-symbol");
-    if (optUpper) optUpper.checked = false;
-    if (optLower) optLower.checked = true;
-    if (optNumber) optNumber.checked = true;
-    if (optSymbol) optSymbol.checked = false;
+    const container = document.getElementById("subscriber-devices-container");
+    if (container) container.innerHTML = "";
 
     if (id) {
         const entry = state.vault.subscribers.find(e => e.id === id);
         if (entry) {
-            document.getElementById("subscriber-form-title").textContent = "Editar Abonado";
+            document.getElementById("subscriber-form-title").textContent = "Editar Datos de Abonado";
             document.getElementById("sub-id").value = entry.id;
-            document.getElementById("sub-type").value = entry.tipo || "alarm";
-            document.getElementById("sub-type-detail").value = entry.tipo_detalle || "";
             document.getElementById("sub-code").value = entry.subscriber_code || "";
             document.getElementById("sub-name").value = entry.nombre || "";
             document.getElementById("sub-address").value = entry.address || "";
-            document.getElementById("sub-username").value = entry.usuario || "";
-            document.getElementById("sub-password").value = entry.password || "";
+            if (notesEl) notesEl.value = entry.notes || "";
+
+            const devices = getSubscriberDevices(entry);
+            devices.forEach(d => addSubscriberDeviceRow(d));
         }
     } else {
-        document.getElementById("subscriber-form-title").textContent = "Nuevo Abonado";
+        document.getElementById("subscriber-form-title").textContent = "Nuevo Registro de Abonado";
+        // Default with 1 alarm device
+        addSubscriberDeviceRow({ tipo: "alarm", usuario: "Instalador", tipo_detalle: "", password: "", ip: "", notes: "" });
     }
     switchScreen("form-subscriber");
 }
@@ -3347,15 +3556,61 @@ async function saveSubscriberEntry(evt) {
         return;
     }
     const id = document.getElementById("sub-id").value;
-    const tipo = document.getElementById("sub-type").value;
-    const tipo_detalle = document.getElementById("sub-type-detail").value.trim();
     const subscriber_code = document.getElementById("sub-code").value.trim();
     const nombre = document.getElementById("sub-name").value.trim();
     const address = document.getElementById("sub-address").value.trim();
-    const usuario = document.getElementById("sub-username").value.trim();
-    const password = document.getElementById("sub-password").value.trim();
+    const notesEl = document.getElementById("sub-notes");
+    const notes = notesEl ? notesEl.value.trim() : "";
 
-    const entryData = { tipo, tipo_detalle, subscriber_code, nombre, address, usuario, password };
+    // Collect all devices from dynamic container
+    const deviceCards = document.querySelectorAll("#subscriber-devices-container .subscriber-device-card");
+    const devices = [];
+    deviceCards.forEach((card, idx) => {
+        const tipo = card.querySelector(".sub-dev-tipo")?.value || "alarm";
+        const tipo_detalle = card.querySelector(".sub-dev-detalle")?.value.trim() || "";
+        const usuario = card.querySelector(".sub-dev-usuario")?.value.trim() || "";
+        const password = card.querySelector(".sub-dev-password")?.value.trim() || "";
+        const ip = card.querySelector(".sub-dev-ip")?.value.trim() || "";
+        const devNotes = card.querySelector(".sub-dev-notes")?.value.trim() || "";
+
+        devices.push({
+            id: `dev_${Date.now()}_${idx}`,
+            tipo,
+            tipo_detalle,
+            usuario,
+            password,
+            ip,
+            notes: devNotes
+        });
+    });
+
+    if (devices.length === 0) {
+        devices.push({
+            id: `dev_${Date.now()}_0`,
+            tipo: "alarm",
+            tipo_detalle: "",
+            usuario: "",
+            password: "",
+            ip: "",
+            notes: ""
+        });
+    }
+
+    // Primary device for legacy fields synchronization
+    const primary = devices[0];
+
+    const entryData = {
+        subscriber_code,
+        nombre,
+        address,
+        notes,
+        devices,
+        // Legacy backward compatibility fields
+        tipo: primary.tipo,
+        tipo_detalle: primary.tipo_detalle,
+        usuario: primary.usuario,
+        password: primary.password
+    };
 
     if (id) {
         const idx = state.vault.subscribers.findIndex(s => s.id == id);
@@ -3369,7 +3624,7 @@ async function saveSubscriberEntry(evt) {
 
     setSyncStatus(false);
     switchScreen("subscribers");
-    showToast("Abonado guardado");
+    showToast("Datos de abonado guardados");
     
     // Send Telegram alert asynchronously (non-blocking)
     enviarAlertaTelegram("Abonado", { ...entryData, isNew: !id });
@@ -3385,11 +3640,12 @@ async function deleteSubscriberEntry(id) {
         showToast("Error: Acceso de sólo lectura");
         return;
     }
-    if (confirm("¿Eliminar este abonado?")) {
+    if (confirm("¿Eliminar este abonado y todos sus dispositivos registrados?")) {
         state.vault.subscribers = state.vault.subscribers.filter(s => s.id !== id);
         setSyncStatus(false);
         renderSubscribers();
         await syncWithCloud();
+        showToast("Abonado eliminado");
     }
 }
 
@@ -3805,16 +4061,26 @@ async function enviarAlertaTelegram(tipo, datos, isRetry = false) {
         detalleMsg = escapeMarkdown(detail);
         montoMsg = escapeMarkdown(`${parseFloat(datos.amount || 0).toFixed(2)} €`);
     } else if (tipo === "Abonado") {
-        const spec = datos.tipo_detalle ? ` (${datos.tipo_detalle})` : "";
-        tipoMsg = escapeMarkdown(`Abonado - ${datos.tipo.toUpperCase()}${spec}`);
+        tipoMsg = escapeMarkdown(`Datos de Abonado`);
         tecnicoMsg = escapeMarkdown(state.currentUser ? (state.currentUser.fullName || state.currentUser.username.toUpperCase()) : "TÉCNICO");
         
-        let detail = datos.nombre || "-";
+        const devices = getSubscriberDevices(datos);
+        let devSummary = "";
+        devices.forEach(d => {
+            const meta = getSubscriberDeviceMeta(d.tipo);
+            const mod = d.tipo_detalle ? ` (${d.tipo_detalle})` : "";
+            const u = d.usuario ? ` | User: ${d.usuario}` : "";
+            devSummary += `\n  • ${meta.icon} ${meta.label}${mod}${u}`;
+        });
+
+        let detail = `*Cliente:* ${datos.nombre || "-"}\n*Código:* ${datos.subscriber_code || "Sin código"}`;
         if (datos.address) {
-            detail += ` (${datos.address})`;
+            detail += `\n*Dirección:* ${datos.address}`;
         }
-        detalleMsg = escapeMarkdown(detail);
-        montoMsg = escapeMarkdown(datos.subscriber_code || "Sin número");
+        detail += `\n*Equipos:* (${devices.length})${devSummary}`;
+        
+        detalleMsg = detail;
+        montoMsg = escapeMarkdown(datos.subscriber_code || "Sin código");
     } else if (tipo === "Vacaciones") {
         tipoMsg = escapeMarkdown(`Vacaciones - ${datos.subtipo}`);
         tecnicoMsg = escapeMarkdown(datos.tecnico || "TÉCNICO");
@@ -4711,10 +4977,11 @@ function renderAuditScreen() {
         // Subscribers
         if (state.vault.subscribers) {
             state.vault.subscribers.forEach(s => {
+                const devs = getSubscriberDevices(s);
                 recentItems.push({
                     type: "subscriber",
-                    title: `Abonado: ${s.nombre || "Sin nombre"}`,
-                    detail: `Código: ${s.subscriber_code || "—"}`,
+                    title: `Datos de Abonado: ${s.nombre || "Sin nombre"}`,
+                    detail: `Código: ${s.subscriber_code || "—"} • ${devs.length} ${devs.length === 1 ? 'equipo' : 'equipos'}`,
                     timestamp: s.id || Date.now(),
                     icon: "🔔",
                     iconColor: "#10b981"
@@ -5443,26 +5710,142 @@ async function deleteFolder(brand) {
 
 function openSubscriberView(sub) {
     state.activeSubscriber = sub;
-    
-    let emoji = "🔒";
-    if (sub.tipo === "alarm") emoji = "🔔";
-    else if (sub.tipo === "recorder") emoji = "📹";
-    else if (sub.tipo === "camera") emoji = "📷";
-    else if (sub.tipo === "system") emoji = "⚙️";
-    
-    document.getElementById("sub-view-icon").textContent = emoji;
-    document.getElementById("sub-view-title").textContent = `[${sub.subscriber_code || "?"}] ${sub.nombre || "Sin Cliente"}`;
-    
-    let typeText = (sub.tipo || "alarm").toUpperCase();
-    if (sub.tipo_detalle) {
-        typeText += ` - ${sub.tipo_detalle.toUpperCase()}`;
+    const devices = getSubscriberDevices(sub);
+    const primary = devices[0] || { tipo: "alarm" };
+    const primaryMeta = getSubscriberDeviceMeta(primary.tipo);
+
+    const iconEl = document.getElementById("sub-view-icon");
+    if (iconEl) iconEl.textContent = primaryMeta.icon;
+
+    const titleEl = document.getElementById("sub-view-title");
+    if (titleEl) titleEl.textContent = `[${sub.subscriber_code || "?"}] ${sub.nombre || "Sin Cliente"}`;
+
+    const badgeDevices = document.getElementById("sub-view-badge-devices");
+    if (badgeDevices) {
+        badgeDevices.textContent = `${devices.length} ${devices.length === 1 ? 'Equipo' : 'Equipos'}`;
     }
-    document.getElementById("sub-view-type").textContent = typeText;
-    
-    document.getElementById("sub-view-address").textContent = sub.address || "(Sin dirección)";
-    document.getElementById("sub-view-username").textContent = sub.usuario || "-";
-    document.getElementById("sub-view-password").textContent = sub.password || "-";
-    
+
+    const badgeCode = document.getElementById("sub-view-code-badge");
+    if (badgeCode) {
+        badgeCode.textContent = sub.subscriber_code ? `Abonado ${sub.subscriber_code}` : "Abonado Técnico";
+    }
+
+    const addrEl = document.getElementById("sub-view-address");
+    if (addrEl) addrEl.textContent = sub.address || "(Sin dirección registrada)";
+
+    const notesContainer = document.getElementById("sub-view-notes-container");
+    const notesEl = document.getElementById("sub-view-notes");
+    if (notesContainer && notesEl) {
+        if (sub.notes && sub.notes.trim()) {
+            notesContainer.style.display = "flex";
+            notesEl.textContent = sub.notes;
+        } else {
+            notesContainer.style.display = "none";
+        }
+    }
+
+    // Render all devices registered under this subscriber
+    const devicesListContainer = document.getElementById("sub-view-devices-list");
+    if (devicesListContainer) {
+        devicesListContainer.innerHTML = "";
+
+        devices.forEach((dev, index) => {
+            const meta = getSubscriberDeviceMeta(dev.tipo);
+            const devCard = document.createElement("div");
+            devCard.className = "sub-view-device-card anim-fade";
+
+            const modelText = dev.tipo_detalle ? ` • ${escapeHtml(dev.tipo_detalle)}` : "";
+            const ipRow = dev.ip ? `
+                <div class="sub-view-cred-item">
+                    <span class="sub-view-cred-label">IP / Host / Puerto</span>
+                    <div class="sub-view-cred-val">
+                        <span style="font-family: monospace; font-size: 0.85rem;">${escapeHtml(dev.ip)}</span>
+                        <button type="button" class="btn-icon btn-copy-dev-ip" data-val="${escapeHtml(dev.ip)}" title="Copiar IP" style="width: 28px; height: 28px; font-size: 0.85rem;"><i class="bx bx-copy"></i></button>
+                    </div>
+                </div>
+            ` : "";
+
+            const devNotesRow = dev.notes ? `
+                <div class="sub-view-cred-item" style="grid-column: 1 / -1;">
+                    <span class="sub-view-cred-label">Notas del Dispositivo</span>
+                    <div class="sub-view-cred-val" style="font-size: 0.82rem; font-weight: normal; color: var(--text-secondary);">
+                        ${escapeHtml(dev.notes)}
+                    </div>
+                </div>
+            ` : "";
+
+            devCard.innerHTML = `
+                <div class="sub-view-device-header">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1.4rem;">${meta.icon}</span>
+                        <div>
+                            <span style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary);">${meta.label}</span>
+                            <span style="font-size: 0.85rem; color: var(--accent);">${modelText}</span>
+                        </div>
+                    </div>
+                    <span class="subscriber-device-badge">Equipo #${index + 1}</span>
+                </div>
+
+                <div class="sub-view-credential-grid">
+                    <div class="sub-view-cred-item">
+                        <span class="sub-view-cred-label">Usuario Técnico</span>
+                        <div class="sub-view-cred-val">
+                            <span>${escapeHtml(dev.usuario || "(Sin usuario)")}</span>
+                            ${dev.usuario ? `<button type="button" class="btn-icon btn-copy-dev-user" title="Copiar Usuario" style="width: 28px; height: 28px; font-size: 0.85rem;"><i class="bx bx-copy"></i></button>` : ''}
+                        </div>
+                    </div>
+
+                    <div class="sub-view-cred-item">
+                        <span class="sub-view-cred-label">Clave / Contraseña</span>
+                        <div class="sub-view-cred-val">
+                            <span class="dev-pass-display" style="font-family: monospace; letter-spacing: 1px;">${dev.password ? '••••••••' : '(Sin clave)'}</span>
+                            <div style="display: flex; gap: 4px;">
+                                ${dev.password ? `
+                                    <button type="button" class="btn-icon btn-toggle-dev-pass" title="Mostrar/Ocultar" style="width: 28px; height: 28px; font-size: 0.85rem;"><i class="bx bx-show"></i></button>
+                                    <button type="button" class="btn-icon btn-copy-dev-pass" title="Copiar Clave" style="width: 28px; height: 28px; font-size: 0.85rem;"><i class="bx bx-copy"></i></button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+
+                    ${ipRow}
+                    ${devNotesRow}
+                </div>
+            `;
+
+            // Wire copy user
+            const copyUserBtn = devCard.querySelector(".btn-copy-dev-user");
+            if (copyUserBtn) {
+                copyUserBtn.addEventListener("click", () => copyToClipboard(dev.usuario));
+            }
+
+            // Wire copy pass & toggle pass
+            const copyPassBtn = devCard.querySelector(".btn-copy-dev-pass");
+            if (copyPassBtn) {
+                copyPassBtn.addEventListener("click", () => copyToClipboard(dev.password));
+            }
+
+            const togglePassBtn = devCard.querySelector(".btn-toggle-dev-pass");
+            const passDisplay = devCard.querySelector(".dev-pass-display");
+            if (togglePassBtn && passDisplay) {
+                let isRevealed = false;
+                togglePassBtn.addEventListener("click", () => {
+                    isRevealed = !isRevealed;
+                    passDisplay.textContent = isRevealed ? dev.password : '••••••••';
+                    togglePassBtn.innerHTML = isRevealed ? `<i class="bx bx-hide"></i>` : `<i class="bx bx-show"></i>`;
+                });
+            }
+
+            // Wire copy IP
+            const copyIpBtn = devCard.querySelector(".btn-copy-dev-ip");
+            if (copyIpBtn) {
+                copyIpBtn.addEventListener("click", () => copyToClipboard(dev.ip));
+            }
+
+            devicesListContainer.appendChild(devCard);
+        });
+    }
+
     switchScreen("subscriber-view");
 }
 
@@ -10808,8 +11191,8 @@ function renderLocalDashboardList() {
 
     const scopes = state.currentUser.scope || [];
     const titles = {
-        passwords: "🌐 Contraseñas",
-        subscribers: "🔔 Abonados",
+        passwords: "🌐 Contraseñas apps y Webs",
+        subscribers: "🔔 Datos de Abonados",
         manuals: "📚 Manuales",
         expenses: "💰 Gastos",
         commercial: "📝 Comercial",
@@ -10895,10 +11278,10 @@ function renderLocalNavList() {
     const scopes = state.currentUser.scope || [];
     const titles = {
         dashboard: "🏠 Inicio",
-        subscribers: "🔔 Abonados",
+        subscribers: "🔔 Datos Abonados",
         "expenses-submenu": "💰 Gastos",
         vacations: "📅 Vacaciones",
-        passwords: "🔑 Claves",
+        passwords: "🔑 Claves apps y Webs",
         manuals: "📚 Manuales",
         commercial: "💼 Comercial",
         routes: "🚗 Rutas",

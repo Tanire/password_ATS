@@ -8,12 +8,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ATS Seguridad">
-    <link rel="icon" type="image/png" href="icon-512.png?v=1.21.06">
-    <link rel="shortcut icon" href="icon-512.png?v=1.21.06">
-    <link rel="apple-touch-icon" href="icon-512.png?v=1.21.06">
-    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png?v=1.21.06">
-    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=1.21.06">
-    <link rel="manifest" href="manifest.json?v=1.21.06">
+    <link rel="icon" type="image/png" href="icon-512.png?v=1.21.07">
+    <link rel="shortcut icon" href="icon-512.png?v=1.21.07">
+    <link rel="apple-touch-icon" href="icon-512.png?v=1.21.07">
+    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png?v=1.21.07">
+    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=1.21.07">
+    <link rel="manifest" href="manifest.json?v=1.21.07">
     
     <!-- Instant synchronous device detection before DOM and styles render -->
     <script>
@@ -48,7 +48,7 @@
     <!-- HTML5 QR / Barcode Scanner (ZXing based) v1.22.01 -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <!-- Main Style Sheet -->
-    <link rel="stylesheet" href="style.css?v=1.21.06">
+    <link rel="stylesheet" href="style.css?v=1.21.07">
     <!-- html2pdf.js library for clean client-side PDF generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <!-- jsPDF library for commercial reports -->
@@ -72,10 +72,14 @@
                 <div style="text-align: center;">
                     <div style="font-size: 2.2rem; margin-bottom: 8px;">🚀</div>
                     <h2 style="font-size: 1.3rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">¡Aplicación Actualizada!</h2>
-                    <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3);">Versión 1.21.06</span>
+                    <span style="font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3);">Versión 1.21.07</span>
                 </div>
                 
                 <div style="border-top: 1px solid var(--border-glass); border-bottom: 1px solid var(--border-glass); padding: 14px 0; max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; line-height: 1.4; color: var(--text-primary);">
+                    <div>
+                        <strong style="color: var(--accent); display: block; margin-bottom: 3px;">🔔 v1.21.07 - Datos de Abonados Multi-Dispositivo y Reorganización de Módulos</strong>
+                        <p style="margin: 0; color: var(--text-secondary);">Renombrado de módulos a 'Datos de Abonados' y 'Contraseñas apps y Webs'. En Datos de Abonados se integra una arquitectura multi-dispositivo que permite registrar múltiples equipos por cliente (Alarmas con clave, Grabadores, Switches gestionables, Routers, Cámaras, etc.) con usuario técnico, contraseña independiente, generador de claves/PIN, dirección IP y notas técnicas.</p>
+                    </div>
                     <div>
                         <strong style="color: var(--accent); display: block; margin-bottom: 3px;">🖥️ v1.21.06 - Optimización de Pantalla y Cuadrícula en Modo PC / Escritorio</strong>
                         <p style="margin: 0; color: var(--text-secondary);">Rediseño integral de la vista de PC: cuadrícula compacta y adaptable en el Panel de Control y listados para que todos los accesos quepan perfectamente en la ventana del navegador sin necesidad de scroll vertical ni tarjetas sobredimensionadas.</p>
@@ -168,7 +172,7 @@
         <div id="screen-login" class="screen active">
             <div class="login-box anim-fade">
                 <div class="login-logo-container" style="text-align: center; margin-bottom: 20px;">
-                    <img src="logo.png?v=1.21.06" alt="ALTA TECNOLOGIA PARA LA SEGURIDAD Logo" style="max-width: 240px; max-height: 95px; width: auto; height: auto; object-fit: contain; display: inline-block; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
+                    <img src="logo.png?v=1.21.07" alt="ALTA TECNOLOGIA PARA LA SEGURIDAD Logo" style="max-width: 240px; max-height: 95px; width: auto; height: auto; object-fit: contain; display: inline-block; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
                 </div>
                 <h2 style="font-size: 1.1rem; line-height: 1.3;">ALTA TECNOLOGIA PARA LA SEGURIDAD</h2>
                 <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--accent); margin-top: 5px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1.5px;">APP SISTEMAS</h3>
@@ -181,7 +185,7 @@
                     <input type="password" id="login-password" class="input-control" placeholder="Contraseña" required>
                 </div>
                 <div style="margin-top: 20px; font-size: 0.8rem; color: var(--text-secondary); text-align: center;">
-                    Versión 1.21.06 - By JMSYSTEMAS
+                    Versión 1.21.07 - By JMSYSTEMAS
                 </div>
                 <button id="btn-login" class="btn-premium">
                     <i class="bx bx-key"></i> DESBLOQUEAR
@@ -195,7 +199,7 @@
             <!-- App Header -->
             <header>
                 <div class="header-logo">
-                    <img src="logo.png?v=1.21.06" alt="Logo" style="height: 32px; width: auto; object-fit: contain; border-radius: 4px;">
+                    <img src="logo.png?v=1.21.07" alt="Logo" style="height: 32px; width: auto; object-fit: contain; border-radius: 4px;">
                     <h1 id="lbl-company-name">ALTA TECNOLOGIA PARA LA SEGURIDAD</h1>
                 </div>
                 <div class="header-actions" style="display: flex; align-items: center; gap: 8px;">
@@ -223,11 +227,11 @@
                     <div class="menu-grid anim-fade">
                         <div class="menu-card" id="menu-passwords">
                             <span class="card-icon" style="color: #3b82f6;">🌐</span>
-                            <span class="card-title">Contraseñas</span>
+                            <span class="card-title">Contraseñas apps y Webs</span>
                         </div>
                         <div class="menu-card" id="menu-subscribers">
                             <span class="card-icon" style="color: #10b981;">🔔</span>
-                            <span class="card-title">Abonados</span>
+                            <span class="card-title">Datos de Abonados</span>
                         </div>
                         <div class="menu-card" id="menu-manuals">
                             <span class="card-icon" style="color: #f59e0b;">📚</span>
@@ -270,7 +274,7 @@
                         </div>
                     </div>
                     <div style="text-align: center; margin-top: 40px; font-size: 0.8rem; color: var(--text-secondary);" class="dashboard-footer">
-                        Versión 1.21.06 - JMSYSTEMAS
+                        Versión 1.21.07 - JMSYSTEMAS
                     </div>
                 </div>
 
@@ -278,7 +282,7 @@
                 <!-- B. PASSWORDS LIST SCREEN -->
                 <div id="screen-passwords" class="screen">
                     <div class="list-header">
-                        <h2>Contraseñas Internas</h2>
+                        <h2>Contraseñas apps y Webs</h2>
                         <button class="btn-add-circle" id="btn-new-password" onclick="openPasswordForm(null)" title="Nueva Contraseña">+</button>
                     </div>
 
@@ -472,96 +476,105 @@
                     </form>
                 </div>
 
-                <!-- D. SUBSCRIBERS LIST SCREEN -->
+                <!-- D. SUBSCRIBERS LIST SCREEN (v1.21.07) -->
                 <div id="screen-subscribers" class="screen">
                     <div class="list-header">
-                        <h2>Abonados Técnicos</h2>
-                        <button class="btn-add-circle" id="btn-new-subscriber">+</button>
+                        <h2>Datos de Abonados</h2>
+                        <button class="btn-add-circle" id="btn-new-subscriber" title="Nuevo Registro de Abonado">+</button>
                     </div>
                     <div class="search-container">
                         <i class="bx bx-search search-icon"></i>
-                        <input type="text" id="search-subscribers" class="search-input" placeholder="Nº Abonado, Cliente o Dirección...">
+                        <input type="text" id="search-subscribers" class="search-input" placeholder="Nº Abonado, Cliente, Dirección o Dispositivo...">
                     </div>
                     <div class="items-list" id="list-subscribers">
                         <!-- Populated dynamically -->
                     </div>
                 </div>
 
-                <!-- E. EDIT SUBSCRIBER FORM -->
+                <!-- E. EDIT SUBSCRIBER FORM (MULTI-DEVICE ARCHITECTURE v1.21.07) -->
                 <div id="screen-form-subscriber" class="screen">
                     <div class="list-header">
-                        <h2 id="subscriber-form-title">Nuevo Abonado</h2>
-                        <button class="btn-icon" id="btn-back-subscribers"><i class="bx bx-arrow-back"></i></button>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <button class="btn-icon" id="btn-back-subscribers" title="Volver"><i class="bx bx-arrow-back"></i></button>
+                            <h2 id="subscriber-form-title" style="font-size: 1.25rem; font-weight: 700; margin: 0;">Nuevo Abonado</h2>
+                        </div>
                     </div>
-                    <form id="form-subscriber" class="anim-fade">
+                    <form id="form-subscriber" class="anim-fade" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 50px;">
                         <input type="hidden" id="sub-id">
-                        <div class="form-group">
-                            <label>Tipo de Equipo</label>
-                            <select id="sub-type" class="input-control">
-                                <option value="alarm">Alarma</option>
-                                <option value="recorder">Grabador</option>
-                                <option value="camera">Cámara</option>
-                                <option value="system">Sistema</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Especificación del Equipo</label>
-                            <input type="text" id="sub-type-detail" class="input-control" placeholder="Ej. Hikvision, Ajax, Paradox...">
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Nº Abonado</label>
-                                <input type="text" id="sub-code" class="input-control" placeholder="Ej. A124">
+
+                        <!-- 1. Datos Principales del Cliente -->
+                        <div style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+                            <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.9rem; color: var(--accent); border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 8px;">
+                                <i class="bx bx-buildings"></i>
+                                <span>Información General del Cliente</span>
                             </div>
-                            <div class="form-group">
-                                <label>Cliente</label>
-                                <input type="text" id="sub-name" class="input-control" placeholder="Nombre Comercial" required>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Dirección</label>
-                            <div class="input-with-action">
-                                <input type="text" id="sub-address" class="input-control" placeholder="Calle, Número, Localidad">
-                                <button type="button" class="btn-icon" id="btn-get-sub-location" title="Obtener Ubicación Actual"><i class="bx bx-map-pin"></i></button>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Usuario Técnico</label>
-                            <input type="text" id="sub-username" class="input-control" placeholder="Instalador / Admin" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Clave Acceso</label>
-                            <div class="input-with-action" style="margin-bottom: 10px;">
-                                <input type="text" id="sub-password" class="input-control" required style="flex: 1;">
-                                <button type="button" class="btn-icon" id="btn-gen-sub-pass" title="Generar Clave de Equipo"><i class="bx bx-bolt-circle"></i></button>
-                            </div>
-                            <div class="pass-options-panel" style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 12px; display: flex; flex-direction: column; gap: 10px;">
-                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-                                    <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500;">Longitud (4-10):</span>
-                                    <div style="display: flex; align-items: center; gap: 8px;">
-                                        <input type="range" id="sub-pass-length-range" min="4" max="10" value="6" style="accent-color: var(--accent); cursor: pointer; width: 100px;">
-                                        <span id="sub-pass-length-val" style="font-size: 0.85rem; font-weight: 600; min-width: 15px; text-align: center;">6</span>
-                                    </div>
+
+                            <div class="form-row">
+                                <div class="form-group" style="flex: 1;">
+                                    <label for="sub-code">Nº Abonado</label>
+                                    <input type="text" id="sub-code" class="input-control" placeholder="Ej. A124">
                                 </div>
-                                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
-                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-primary); cursor: pointer; margin-bottom: 0;">
-                                        <input type="checkbox" id="sub-opt-upper" style="accent-color: var(--accent); width: 14px; height: 14px;"> Mayús (A-Z)
-                                    </label>
-                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-primary); cursor: pointer; margin-bottom: 0;">
-                                        <input type="checkbox" id="sub-opt-lower" checked style="accent-color: var(--accent); width: 14px; height: 14px;"> Minús (a-z)
-                                    </label>
-                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-primary); cursor: pointer; margin-bottom: 0;">
-                                        <input type="checkbox" id="sub-opt-number" checked style="accent-color: var(--accent); width: 14px; height: 14px;"> Números (0-9)
-                                    </label>
-                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-primary); cursor: pointer; margin-bottom: 0;">
-                                        <input type="checkbox" id="sub-opt-symbol" style="accent-color: var(--accent); width: 14px; height: 14px;"> Símbolos
-                                    </label>
+                                <div class="form-group" style="flex: 2;">
+                                    <label for="sub-name">Cliente / Razón Social <span style="color: var(--danger);">*</span></label>
+                                    <input type="text" id="sub-name" class="input-control" placeholder="Nombre Comercial del Abonado" required>
                                 </div>
                             </div>
+
+                            <div class="form-group">
+                                <label for="sub-address">Dirección / Ubicación</label>
+                                <div class="input-with-action">
+                                    <input type="text" id="sub-address" class="input-control" placeholder="Calle, Número, Localidad, Provincia">
+                                    <button type="button" class="btn-icon" id="btn-get-sub-location" title="Obtener Ubicación GPS"><i class="bx bx-map-pin"></i></button>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="sub-notes">Observaciones Generales</label>
+                                <input type="text" id="sub-notes" class="input-control" placeholder="Teléfonos de contacto, horarios de acceso, notas de conserjería...">
+                            </div>
                         </div>
-                        <button type="submit" class="btn-premium" style="margin-top: 10px;">
-                            <i class="bx bx-save"></i> GUARDAR
-                        </button>
+
+                        <!-- 2. Sección Multi-Dispositivo -->
+                        <div style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 8px;">
+                                <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.9rem; color: #34d399;">
+                                    <i class="bx bx-devices"></i>
+                                    <span>Equipos y Credenciales Técnicas</span>
+                                </div>
+                                <button type="button" id="btn-add-subscriber-device" class="btn-premium" style="padding: 4px 12px; font-size: 0.78rem; background: rgba(52, 211, 153, 0.2); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.4);">
+                                    <i class="bx bx-plus"></i> Añadir Equipo
+                                </button>
+                            </div>
+
+                            <p style="margin: 0; font-size: 0.78rem; color: var(--text-secondary);">
+                                Añade todos los dispositivos que tenga el abonado (Alarmas con clave, Grabadores, Switches gestionables, Routers, etc.) con sus credenciales independientes.
+                            </p>
+
+                            <!-- Barra de Inserción Rápida -->
+                            <div class="subscriber-quick-add-bar" id="sub-quick-presets">
+                                <button type="button" class="subscriber-quick-btn" data-preset="alarm">🔔 + Alarma</button>
+                                <button type="button" class="subscriber-quick-btn" data-preset="recorder">📹 + Grabador</button>
+                                <button type="button" class="subscriber-quick-btn" data-preset="switch">🔀 + Switch</button>
+                                <button type="button" class="subscriber-quick-btn" data-preset="router">🌐 + Router</button>
+                                <button type="button" class="subscriber-quick-btn" data-preset="camera">📷 + Cámara</button>
+                                <button type="button" class="subscriber-quick-btn" data-preset="access">🚪 + Accesos</button>
+                                <button type="button" class="subscriber-quick-btn" data-preset="other">🔒 + Otro</button>
+                            </div>
+
+                            <!-- Contenedor Dinámico de Dispositivos -->
+                            <div id="subscriber-devices-container" style="display: flex; flex-direction: column; gap: 10px;">
+                                <!-- Rendered dynamically in app.js -->
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; margin-top: 5px;">
+                            <button type="button" class="btn-premium btn-secondary" id="btn-cancel-subscriber" style="flex: 1;">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="btn-premium" style="flex: 2;">
+                                <i class="bx bx-save"></i> GUARDAR DATOS DE ABONADO
+                            </button>
+                        </div>
                     </form>
                 </div>
 
@@ -1145,7 +1158,7 @@
                                         </div>
                                         <div class="settings-header-titles">
                                              <h3 class="settings-header-title">Sistema y Sesión</h3>
-                                             <p class="settings-header-subtitle">Versión v1.21.06, almacenamiento y cierre</p>
+                                             <p class="settings-header-subtitle">Versión v1.21.07, almacenamiento y cierre</p>
                                         </div>
                                     </div>
                                     <div class="settings-header-right">
@@ -1158,7 +1171,7 @@
                                         <div class="settings-version-card">
                                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                                 <span style="font-weight: 700; color: var(--text-primary); font-size: 0.9rem;">ATS Seguridad</span>
-                                                <span class="badge" style="background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3); font-size: 0.75rem;">v1.21.06</span>
+                                                <span class="badge" style="background: var(--accent-glass); color: var(--accent); border: 1px solid rgba(59, 130, 246, 0.3); font-size: 0.75rem;">v1.21.07</span>
                                             </div>
                                             <div style="font-size: 0.78rem; color: var(--text-secondary);">
                                                 Aplicación Web Progresiva (PWA) con almacenamiento local cifrado AES-GCM y sincronización Git.
@@ -1212,10 +1225,10 @@
                     </div>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; padding: 12px; background: var(--bg-secondary); border-radius: var(--radius-md); border: 1px solid var(--border-glass);">
                         <label class="scope-checkbox-label">
-                            <input type="checkbox" id="user-scope-passwords" checked> <span>🌐 Contraseñas</span>
+                            <input type="checkbox" id="user-scope-passwords" checked> <span>🌐 Contraseñas apps y Webs</span>
                         </label>
                         <label class="scope-checkbox-label">
-                            <input type="checkbox" id="user-scope-subscribers" checked> <span>🔔 Abonados</span>
+                            <input type="checkbox" id="user-scope-subscribers" checked> <span>🔔 Datos de Abonados</span>
                         </label>
                         <label class="scope-checkbox-label">
                             <input type="checkbox" id="user-scope-manuals" checked> <span>📚 Manuales</span>
@@ -1335,49 +1348,63 @@
             </form>
         </div>
         
-        <!-- N. SUBSCRIBER VIEW SHEET -->
+        <!-- N. SUBSCRIBER VIEW SHEET (MULTI-DEVICE TECHNICAL VIEW v1.21.07) -->
         <div id="screen-subscriber-view" class="screen">
             <div class="list-header">
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <button class="btn-icon" id="btn-back-sub-list"><i class="bx bx-arrow-back"></i></button>
-                    <h2>Detalles del Abonado</h2>
+                    <button class="btn-icon" id="btn-back-sub-list" title="Volver al Listado"><i class="bx bx-arrow-back"></i></button>
+                    <h2>Datos de Abonado</h2>
                 </div>
             </div>
-            <div class="anim-fade" style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 20px; flex: 1; display: flex; flex-direction: column; gap: 16px; margin-bottom: 80px;">
-                <div style="text-align: center; padding-bottom: 15px; border-bottom: 1px solid var(--border-glass);">
-                    <div style="font-size: 2.5rem; margin-bottom: 10px;" id="sub-view-icon">🔔</div>
-                    <h3 style="font-size: 1.25rem; font-weight: 700;" id="sub-view-title">[Código] Nombre</h3>
-                    <span style="font-size: 0.8rem; color: var(--accent); font-weight: 600; text-transform: uppercase;" id="sub-view-type">ALARMA</span>
+            <div class="anim-fade" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 80px;">
+                <!-- Tarjeta Principal del Abonado -->
+                <div style="background: var(--bg-secondary); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 12px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="font-size: 2rem; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: rgba(52, 211, 153, 0.12); border-radius: 12px; border: 1px solid rgba(52, 211, 153, 0.25);" id="sub-view-icon">🔔</div>
+                            <div>
+                                <h3 style="font-size: 1.2rem; font-weight: 700; margin: 0; color: var(--text-primary);" id="sub-view-title">[Código] Nombre</h3>
+                                <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                                    <span class="subscriber-device-badge" id="sub-view-badge-devices">0 Equipos</span>
+                                    <span style="font-size: 0.75rem; color: var(--accent); font-weight: 600;" id="sub-view-code-badge">Abonado</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dirección -->
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 500; text-transform: uppercase;">Dirección / Ubicación</span>
+                        <div style="font-size: 0.92rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                            <span id="sub-view-address" style="color: var(--text-primary);">-</span>
+                            <button type="button" class="btn-icon" id="btn-sub-view-map" title="Ver en Google Maps" style="width: 34px; height: 34px; font-size: 1.1rem; color: var(--accent);"><i class="bx bx-map"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Observaciones -->
+                    <div id="sub-view-notes-container" style="display: flex; flex-direction: column; gap: 4px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+                        <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 500; text-transform: uppercase;">Observaciones Generales</span>
+                        <span id="sub-view-notes" style="font-size: 0.85rem; color: var(--text-secondary); font-style: italic;">Sin observaciones registradas</span>
+                    </div>
+                </div>
+
+                <!-- Sección de Dispositivos del Abonado -->
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px; margin: 0; display: flex; align-items: center; gap: 6px;">
+                            <i class="bx bx-devices" style="color: #34d399;"></i>
+                            <span>Dispositivos y Claves Técnicas</span>
+                        </h4>
+                    </div>
+
+                    <!-- Lista Dinámica de Dispositivos -->
+                    <div id="sub-view-devices-list" style="display: flex; flex-direction: column; gap: 12px;">
+                        <!-- Rendered dynamically in app.js -->
+                    </div>
                 </div>
                 
-                <div style="display: flex; flex-direction: column; gap: 16px; flex: 1; overflow-y: auto;">
-                    <div style="display: flex; flex-direction: column; gap: 6px;">
-                        <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 500;">Dirección</span>
-                        <span style="font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                            <span id="sub-view-address">Calle Mayor, 12</span>
-                            <button type="button" class="btn-icon" id="btn-sub-view-map" title="Ver en Google Maps" style="width: 36px; height: 36px; font-size: 1rem;"><i class="bx bx-map"></i></button>
-                        </span>
-                    </div>
-                    
-                    <div style="display: flex; flex-direction: column; gap: 6px;">
-                        <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 500;">Usuario Técnico</span>
-                        <span style="font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                            <span id="sub-view-username">Admin</span>
-                            <button type="button" class="btn-icon btn-copy-view" id="btn-sub-view-copy-user" title="Copiar Usuario" style="width: 36px; height: 36px; font-size: 1rem;"><i class="bx bx-copy"></i></button>
-                        </span>
-                    </div>
-                    
-                    <div style="display: flex; flex-direction: column; gap: 6px;">
-                        <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 500;">Clave de Acceso</span>
-                        <span style="font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                            <span id="sub-view-password" style="font-family: monospace; letter-spacing: 1px;">1234</span>
-                            <button type="button" class="btn-icon btn-copy-view" id="btn-sub-view-copy-pass" title="Copiar Clave" style="width: 36px; height: 36px; font-size: 1rem;"><i class="bx bx-copy"></i></button>
-                        </span>
-                    </div>
-                </div>
-                
-                <button id="btn-sub-view-edit" class="btn-premium" style="margin-top: auto;">
-                    <i class="bx bx-edit-alt"></i> EDITAR ABONADO
+                <button id="btn-sub-view-edit" class="btn-premium" style="margin-top: 10px;">
+                    <i class="bx bx-edit-alt"></i> EDITAR DATOS Y DISPOSITIVOS
                 </button>
             </div>
         </div>
@@ -3485,7 +3512,7 @@
         </div>
         <div class="nav-item" data-screen="subscribers">
             <i class="bx bx-bell"></i>
-            <span>Abonados</span>
+            <span>Datos Abonados</span>
         </div>
         <div class="nav-item" data-screen="expenses-submenu">
             <i class="bx bx-wallet"></i>
@@ -4234,8 +4261,8 @@
     </div>
 
     <!-- Crypto, GitHub API, and App Controller Logic -->
-    <script src="crypto.js?v=1.21.06"></script>
-    <script src="github.js?v=1.21.06"></script>
-    <script src="app.js?v=1.21.06"></script>
+    <script src="crypto.js?v=1.21.07"></script>
+    <script src="github.js?v=1.21.07"></script>
+    <script src="app.js?v=1.21.07"></script>
 </body>
 </html>
